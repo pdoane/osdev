@@ -1,0 +1,15 @@
+This is a hobby OS project for learning more about low-level hardware.
+
+Software used:
+- MinGW
+- GCC
+- NASM
+- Make
+
+Build steps:
+- Run 'make' in the 'tools' and 'boot' directories
+- Copy the boot sector to the target drive:
+
+  $ tools/diskwrite.exe //./<drive letter>: boot/boot.bin
+
+- Boot!

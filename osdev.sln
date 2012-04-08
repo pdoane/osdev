@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{B8D3EDD8-6529-4E3E-BC69-B7D34C33A8A7}"
+	ProjectSection(SolutionItems) = preProject
+		tools\diskwrite.c = tools\diskwrite.c
+		tools\Makefile = tools\Makefile
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "boot", "boot", "{53880C07-253A-4941-A0FF-BA81A3FE4884}"
+	ProjectSection(SolutionItems) = preProject
+		boot\boot.asm = boot\boot.asm
+		boot\Makefile = boot\Makefile
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "emulators", "emulators", "{9CEBE310-DBCF-4B1F-B58E-D33FE657A863}"
+	ProjectSection(SolutionItems) = preProject
+		qemu.bat = qemu.bat
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
