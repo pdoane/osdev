@@ -10,6 +10,6 @@ Build steps:
 - Run 'make' in the 'tools' and 'boot' directories
 - Copy the boot sector to the target drive:
 
-  $ tools/diskwrite.exe //./<drive letter>: boot/boot.bin
+  $ tools/set_boot.exe //./<drive letter>: boot/boot.bin
 
 - Boot!

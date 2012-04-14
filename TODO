@@ -1,0 +1,6 @@
+Loader
+
+- 2-stage boot loader
+- 64-bit mode
+- Execute C-mode kernel
+- SMP initialization

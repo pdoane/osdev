@@ -1,10 +1,15 @@
 CC := gcc
 CFLAGS := -std=c99 -Wall -O
 
-all: diskwrite.exe
+TARGETS := read_boot.exe set_boot.exe
+
+all: $(TARGETS)
 
 clean:
-	rm -f diskwrite.exe
+	rm -f $(TARGETS)
 
-diskwrite.exe: diskwrite.c
-	$(CC) -o $@ $< $(CFLAGS)
+read_boot.exe: read_boot.c fat16.h
+	$(CC) -o $@ $^ $(CFLAGS)
+
+set_boot.exe: set_boot.c
+	$(CC) -o $@ $^ $(CFLAGS)
