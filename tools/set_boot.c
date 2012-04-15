@@ -7,9 +7,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define SECTOR_SIZE				512
-#define JMP_CODE_SIZE			3
-#define BIOS_PARAM_BLOCK_SIZE	62
+#define SECTOR_SIZE             512
+#define JMP_CODE_SIZE           3
+#define BIOS_PARAM_BLOCK_SIZE   62
 
 // ------------------------------------------------------------------------------------------------
 static void Usage()

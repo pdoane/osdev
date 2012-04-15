@@ -110,8 +110,8 @@ int main(int argc, const char** argv)
     fprintf(stdout, "FAT Count = %d\n", bpb->fatCount);
     fprintf(stdout, "Root Entry Count = %d\n", bpb->rootEntryCount);
     fprintf(stdout, "Sector Count = %d\n", bpb->sectorCount);
-    fprintf(stdout, "Media Type = %d\n", bpb->mediaType);
-    fprintf(stdout, "Sectors Per FAT = 0x%x\n", bpb->sectorsPerFat);
+    fprintf(stdout, "Media Type = 0x%x\n", bpb->mediaType);
+    fprintf(stdout, "Sectors Per FAT = %d\n", bpb->sectorsPerFat);
     fprintf(stdout, "Sectors Per Track = %d\n", bpb->sectorsPerTrack);
     fprintf(stdout, "Head Count = %d\n", bpb->headCount);
     fprintf(stdout, "Hidden Sector Count = %d\n", bpb->hiddenSectorCount);

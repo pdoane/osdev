@@ -6,10 +6,17 @@ Software used:
 - NASM
 - Make
 
-Build steps:
-- Run 'make' in the 'tools' and 'boot' directories
-- Copy the boot sector to the target drive:
+Emulator steps:
 
+  $ make
+  $ qemu.bat
+
+Hardware steps:
+
+  Format a FAT16 drive, update the boot sector and copy the loader binary
+
+  $ make
   $ tools/set_boot.exe //./<drive letter>: boot/boot.bin
+  $ cp boot/loader.bin <drive letter>:
 
-- Boot!
+  Boot!
