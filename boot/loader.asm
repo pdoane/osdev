@@ -28,6 +28,7 @@ loader:
         call enable_a20_gate
         call enable_unreal_mode
         call load_kernel
+        call build_memory_map
         call build_vm_tables
         call enable_long_mode
 
@@ -76,6 +77,44 @@ load_kernel:
         jg .next_cluster
 
         ret
+
+; -------------------------------------------------------------------------------------------------
+; Builds the e820 Memory map
+build_memory_map:
+    mov di, memory_map              ; Destination for memory map storage
+    xor ebx, ebx                    ; State for BIOS call, set to 0 initially
+
+.loop:
+    mov eax, 0xe820                 ; Call int 0x15, 0xe820 memory map
+    mov edx, 0x534D4150
+    mov ecx, 24
+    int 0x15
+
+    jc .done                        ; Carry means unsupported or end of list
+
+    cmp eax, 0x534D4150             ; EAX should match EDX
+    jne .done
+
+    jcxz .next_entry                ; Skip zero-length entries
+
+    cmp cl, 20                      ; Test for ACPI 3.X entry
+    jbe .good_entry
+
+    test byte [es:di + 20], 1       ; Test ACPI 3.X ignore bit
+    je .next_entry
+
+.good_entry:
+    add di, 24                      ; Found a valid entry
+
+.next_entry:
+    test ebx, ebx                   ; Go to next entry
+    jne .loop
+
+.done:
+    xor ax, ax                      ; Write terminating entry
+    mov cx, 12
+    rep stosw
+    ret
 
 ; ----------------------------------------------------------------------------------------
 ; Build 64-bit VM tables

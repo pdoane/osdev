@@ -6,6 +6,14 @@
 
 #define VIDMEM_BASE 0xb8000
 
+typedef struct MemoryRegion
+{
+    u64 start;
+    u64 size;
+    u32 type;
+    u32 acpi_3_0;
+} MemoryRegion;
+
 // ------------------------------------------------------------------------------------------------
 static void clear()
 {
@@ -33,11 +41,21 @@ static void print(const char* s, uint line)
 // ------------------------------------------------------------------------------------------------
 int kmain()
 {
-    char buf[32];
+    char buf[80];
 
     clear();
-    snprintf(buf, sizeof(buf), "Hello World %d!", 3141);
-    print(buf, 0);
+
+    uint line = 0;
+    MemoryRegion* region = (MemoryRegion*)0x1100;
+    while (region->type)
+    {
+        snprintf(buf, sizeof(buf), "region %d: start: 0x%016llx end: 0x%016llx type: %d", line,
+            region->start, region->start + region->size, region->type);
+        print(buf, line);
+
+        ++region;
+        ++line;
+    }
 
     for (;;)
     {

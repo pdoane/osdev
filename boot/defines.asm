@@ -3,6 +3,7 @@
 ; -------------------------------------------------------------------------------------------------
 
 ; Memory Locations
+%define memory_map                  0x1100
 %define vm_pml4                     0x2000
 %define vm_pdp                      0x3000
 %define vm_pd                       0x4000

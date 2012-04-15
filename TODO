@@ -2,6 +2,5 @@
 - Interrupt handlers
 - IRQ
 - Console utilities
-- E820 memory map
 - SMP initialization
 - VM tables
