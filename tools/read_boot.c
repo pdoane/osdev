@@ -125,6 +125,5 @@ int main(int argc, const char** argv)
     fprintf(stdout, "File System = %s\n", fileSystem);
 
     // Success!
-    fprintf(stdout, "Success!\n");
     return EXIT_SUCCESS;
 }

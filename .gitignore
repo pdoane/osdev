@@ -1,4 +1,5 @@
 *.bin
+*.d
 *.img
 *.exe
 *.o

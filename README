@@ -17,7 +17,7 @@ Hardware steps:
 
   $ make
   $ tools/set_boot.exe //./<drive letter>: boot/boot.bin
-  $ cp boot/loader.bin <drive letter>:
-  $ cp kernel/kernel.bin <drive letter>:
+  $ cp boot/loader.bin <drive letter>:/
+  $ cp kernel/kernel.bin <drive letter>:/
 
   Boot!

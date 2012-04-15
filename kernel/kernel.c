@@ -2,18 +2,42 @@
 // kernel.c
 // ------------------------------------------------------------------------------------------------
 
+#include "format.h"
+
+#define VIDMEM_BASE 0xb8000
+
+// ------------------------------------------------------------------------------------------------
+static void clear()
+{
+    volatile u64* p = (volatile u64*)VIDMEM_BASE;
+    for (int i = 0; i < 500; ++i)
+    {
+        *p++ = 0x1f201f201f201f20;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void print(const char* s, uint line)
+{
+    volatile u8* p = (volatile u8*)VIDMEM_BASE;
+
+    p += line * 80 * 2;
+
+    while (*s)
+    {
+        *p++ = *s++;
+        *p++ = 0x1f;
+    }
+}
+
 // ------------------------------------------------------------------------------------------------
 int kmain()
 {
-    unsigned long long* p = (unsigned long long*)0x00b8000;
-    for (int i = 0; i < 500; ++i)
-    {
-        *(p + i) = 0x1f201f201f201f20;
-    }
+    char buf[32];
 
-    *(p + 0) = 0x1f6c1f6c1f651f48;
-    *(p + 1) = 0x1f6f1f571f201f6f;
-    *(p + 2) = 0x1f211f641f6c1f72;
+    clear();
+    snprintf(buf, sizeof(buf), "Hello World %d!", 3141);
+    print(buf, 0);
 
     for (;;)
     {

@@ -35,9 +35,19 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "kernel", "kernel", "{540847D6-87C3-435D-994A-C12DE71831B0}"
 	ProjectSection(SolutionItems) = preProject
+		kernel\format.c = kernel\format.c
+		kernel\format.h = kernel\format.h
+		kernel\format_test.c = kernel\format_test.c
 		kernel\kernel.c = kernel\kernel.c
 		kernel\linker.ld = kernel\linker.ld
 		kernel\module.mk = kernel\module.mk
+		kernel\types.h = kernel\types.h
+		kernel\vararg.h = kernel\vararg.h
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{C8D4412A-40CF-41B4-84B7-C069CD22BD65}"
+	ProjectSection(SolutionItems) = preProject
+		test\test.h = test\test.h
 	EndProjectSection
 EndProject
 Global
