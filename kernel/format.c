@@ -6,15 +6,62 @@
 #include "types.h"
 
 // ------------------------------------------------------------------------------------------------
+enum
+{
+    PAD_ZERO = 1,
+    PAD_LEFT = 2,
+};
+
+typedef struct Formatter
+{
+    char* p;
+    char* end;
+    uint flags;
+    int width;
+} Formatter;
+
+// ------------------------------------------------------------------------------------------------
+static void output_char(Formatter* f, char c)
+{
+    if (f->p < f->end)
+    {
+        *f->p++ = c;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void output_string(Formatter* f, const char* s)
+{
+    int width = f->width;
+    char padChar = f->flags & PAD_ZERO ? '0' : ' ';
+
+    if (~f->flags & PAD_LEFT)
+    {
+        while (--width >= 0)
+        {
+            output_char(f, padChar);
+        }
+    }
+
+    while (*s)
+    {
+        output_char(f, *s++);
+    }
+
+    while (--width >= 0)
+    {
+        output_char(f, padChar);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
 {
     char buf[32];
 
-    char* p = str;
-    char* end = str + size - 1;
-
-#define OUTPUT(c) do { *p++ = (c); if (p == end) goto exit; } while(0)
-#define OUTPUT_STRING(s) while ((c = *s) != 0) { OUTPUT(c); ++s; }
+    Formatter f;
+    f.p = str;
+    f.end = str + size - 1;
 
     for (;;)
     {
@@ -28,37 +75,105 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
         // Output non-format character
         if (c != '%')
         {
-            OUTPUT(c);
+            output_char(&f, c);
             continue;
         }
 
-        // Parse type
-        char type = *fmt++;
+        // Parse type specifier
+        c = *fmt++;
 
+        // Parse flags
+        f.flags = 0;
+        if (c == '-')
+        {
+            f.flags |= PAD_LEFT;
+            c = *fmt++;
+        }
+        else if (c == '0')
+        {
+            f.flags |= PAD_ZERO;
+            c = *fmt++;
+        }
+
+        // Parse width
+        f.width = -1;
+        if (c >= '0' && c <= '9')
+        {
+            int width = 0;
+            do
+            {
+                width = width * 10 + c - '0';
+                c = *fmt++;
+            }
+            while (c >= '0' && c <= '9');
+
+            f.width = width;
+        }
+
+        // Parse length modifier
+        bool isLongLong = false;
+
+        if (c == 'l')
+        {
+            c = *fmt++;
+            if (c == 'l')
+            {
+                c = *fmt++;
+                isLongLong = true;
+            }
+        }
+
+        // Process type specifier
+        char type = c;
         switch (type)
         {
         case '%':
-            OUTPUT('%');
+            output_char(&f, '%');
             break;
 
         case 'c':
             c = va_arg(args, int);
-            OUTPUT(c);
+            output_char(&f, c);
             break;
 
         case 's':
             {
                 char* s = va_arg(args, char*);
-                OUTPUT_STRING(s);
+                if (!s)
+                {
+                    s = "(null)";
+                }
+
+                if (f.width > 0)
+                {
+                    char* p = s;
+                    while (*p)
+                    {
+                        ++p;
+                    }
+
+                    f.width -= p - s;
+                }
+
+                output_string(&f, s);
             }
             break;
 
         case 'd':
             {
-                int n = va_arg(args, int);
+                long long n;
+                if (isLongLong)
+                {
+                    n = va_arg(args, long long);
+                }
+                else
+                {
+                    n = va_arg(args, int);
+                }
+
                 if (n < 0)
                 {
-                    OUTPUT('-');
+                    output_char(&f, '-');
                     n = -n;
                 }
 
@@ -70,16 +185,54 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
                     c = '0' + (n % 10);
                     *--s = c;
                     n /= 10;
-                } while (n > 0);
+                }
+                while (n > 0);
 
-                OUTPUT_STRING(s);
+                f.width -= buf + sizeof(buf) - 1 - s;
+                output_string(&f, s);
+            }
+            break;
+
+        case 'u':
+            {
+                unsigned long long n;
+                if (isLongLong)
+                {
+                    n = va_arg(args, unsigned long long);
+                }
+                else
+                {
+                    n = va_arg(args, unsigned int);
+                }
+
+                char* s = buf + sizeof(buf) - 1;
+                *s = '\0';
+
+                do
+                {
+                    c = '0' + (n % 10);
+                    *--s = c;
+                    n /= 10;
+                }
+                while (n > 0);
+
+                f.width -= buf + sizeof(buf) - 1 - s;
+                output_string(&f, s);
             }
             break;
 
         case 'x':
         case 'X':
             {
-                uint n = va_arg(args, uint);
+                unsigned long long n;
+                if (isLongLong)
+                {
+                    n = va_arg(args, unsigned long long);
+                }
+                else
+                {
+                    n = va_arg(args, unsigned int);
+                }
 
                 char* s = buf + sizeof(buf) - 1;
                 *s = '\0';
@@ -102,19 +255,21 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
 
                     *--s = c;
                     n >>= 4;
-                } while (n > 0);
+                }
+                while (n > 0);
 
-                OUTPUT_STRING(s);
+                f.width -= buf + sizeof(buf) - 1 - s;
+                output_string(&f, s);
             }
         }
     }
 
-#undef OUTPUT
-#undef OUTPUT_STRING
+    if (f.p < f.end + 1)
+    {
+        *f.p = '\0';
+    }
 
-exit:
-    *p = '\0';
-    return p - str;
+    return f.p - str;
 }
 
 // ------------------------------------------------------------------------------------------------
