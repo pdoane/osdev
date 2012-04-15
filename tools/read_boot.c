@@ -79,14 +79,14 @@ int main(int argc, const char** argv)
     char curSector[SECTOR_SIZE];
     if (!ReadSector(diskPath, curSector))
     {
-        fprintf(stderr, "Failed to read current boot sector: %d\n", GetLastError());
+        fprintf(stderr, "Failed to read current boot sector: %lu\n", GetLastError());
         return EXIT_FAILURE;
     }
 
     // Dump sector 0
     if (!WriteSector(dumpPath, curSector))
     {
-        fprintf(stderr, "Failed to dump boot sector: %d\n", GetLastError());
+        fprintf(stderr, "Failed to dump boot sector: %lu\n", GetLastError());
         return EXIT_FAILURE;
     }
 

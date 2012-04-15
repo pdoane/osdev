@@ -82,7 +82,7 @@ int main(int argc, const char** argv)
     char bootLoader[SECTOR_SIZE];
     if (!ReadSector(bootSectorPath, bootLoader))
     {
-        fprintf(stderr, "Failed to read boot loader: %d\n", GetLastError());
+        fprintf(stderr, "Failed to read boot loader: %lu\n", GetLastError());
         return EXIT_FAILURE;
     }
 
@@ -90,7 +90,7 @@ int main(int argc, const char** argv)
     char curSector[SECTOR_SIZE];
     if (!ReadSector(diskPath, curSector))
     {
-        fprintf(stderr, "Failed to read current boot sector: %d\n", GetLastError());
+        fprintf(stderr, "Failed to read current boot sector: %lu\n", GetLastError());
         return EXIT_FAILURE;
     }
 
@@ -102,7 +102,7 @@ int main(int argc, const char** argv)
     // Write sector 0
     if (!WriteSector(diskPath, newSector))
     {
-        fprintf(stderr, "Failed to write new boot sector: %d\n", GetLastError());
+        fprintf(stderr, "Failed to write new boot sector: %lu\n", GetLastError());
         return EXIT_FAILURE;
     }
 

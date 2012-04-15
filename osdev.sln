@@ -3,8 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual Studio 2010
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{B8D3EDD8-6529-4E3E-BC69-B7D34C33A8A7}"
 	ProjectSection(SolutionItems) = preProject
+		tools\fat16.c = tools\fat16.c
 		tools\fat16.h = tools\fat16.h
-		tools\Makefile = tools\Makefile
+		tools\fat16_test.c = tools\fat16_test.c
+		tools\img_edit.c = tools\img_edit.c
+		tools\module.mk = tools\module.mk
 		tools\read_boot.c = tools\read_boot.c
 		tools\set_boot.c = tools\set_boot.c
 	EndProjectSection
@@ -12,7 +15,9 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "boot", "boot", "{53880C07-253A-4941-A0FF-BA81A3FE4884}"
 	ProjectSection(SolutionItems) = preProject
 		boot\boot.asm = boot\boot.asm
-		boot\Makefile = boot\Makefile
+		boot\defines.asm = boot\defines.asm
+		boot\loader.asm = boot\loader.asm
+		boot\module.mk = boot\module.mk
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "emulators", "emulators", "{9CEBE310-DBCF-4B1F-B58E-D33FE657A863}"
@@ -22,8 +27,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "emulators", "emulators", "{
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{154C46AE-2126-4835-95DB-DF45EC6F6AAC}"
 	ProjectSection(SolutionItems) = preProject
+		Makefile = Makefile
+		module.mk = module.mk
 		README = README
 		TODO = TODO
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "kernel", "kernel", "{540847D6-87C3-435D-994A-C12DE71831B0}"
+	ProjectSection(SolutionItems) = preProject
+		kernel\kernel.c = kernel\kernel.c
+		kernel\linker.ld = kernel\linker.ld
+		kernel\module.mk = kernel\module.mk
 	EndProjectSection
 EndProject
 Global

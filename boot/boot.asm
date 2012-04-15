@@ -1,5 +1,11 @@
+; -------------------------------------------------------------------------------------------------
+; boot.asm
+; -------------------------------------------------------------------------------------------------
+
 [ORG 0x7c00]
 [BITS 16]
+
+%include "boot/defines.asm"
 
 ; -------------------------------------------------------------------------------------------------
 ; Entrypoint for boot loader
@@ -8,31 +14,7 @@ entry:
         jmp short loader
         nop
 
-times 0x3b db 0            ; BIOS parameter block
-
-; Bios Parameter Block
-%define boot_sector_base            0x7c00
-%define bpb_oem                     boot_sector_base + 0x03
-%define bpb_bytes_per_sector        boot_sector_base + 0x0b
-%define bpb_sectors_per_cluster     boot_sector_base + 0x0d
-%define bpb_reserved_sector_count   boot_sector_base + 0x0e
-%define bpb_fat_count               boot_sector_base + 0x10
-%define bpb_root_entry_count        boot_sector_base + 0x11
-%define bpb_sector_count            boot_sector_base + 0x13
-%define bpb_media_type              boot_sector_base + 0x15
-%define bpb_sectors_per_fat         boot_sector_base + 0x16
-%define bpb_sectors_per_track       boot_sector_base + 0x18
-%define bpb_head_count              boot_sector_base + 0x1a
-%define bpb_hidden_sector_count     boot_sector_base + 0x1c
-%define bpb_large_sector_count      boot_sector_base + 0x20
-
-; Extended Bios Parameter Block
-%define ebpb_drive_number           boot_sector_base + 0x24
-%define epbp_flags                  boot_sector_base + 0x25
-%define epbp_signature              boot_sector_base + 0x26
-%define epbp_volume_id              boot_sector_base + 0x27
-%define epbp_volume_label           boot_sector_base + 0x2b
-%define epbp_filesystem             boot_sector_base + 0x36
+times 0x3b db 0                     ; BIOS parameter block
 
 loader:
         mov [ebpb_drive_number], dl
@@ -40,54 +22,26 @@ loader:
         mov ds, ax
         mov es, ax
         mov ss, ax
-        mov sp, 0x7c00
+        mov sp, boot_sector_base
 
-        ; Clear Screen
-        mov ax, 0x3
+        mov ax, 0x3                 ; Clear Screen
         int 0x10
 
-        ; Print loading message
-        mov si, msg_load
+        mov si, msg_load            ; Print loading message
         call bios_print
 
-        ; Find root directory
-        xor eax, eax
-        mov al, [bpb_fat_count]
-        mul word[bpb_sectors_per_fat]
-        add ax, [bpb_reserved_sector_count]
-
-find_loader:
-        mov bx, 0x8000
-        mov di, bx
-        call read_sector
-
-.next_entry:
-        mov cx, 0x0b
-        mov si, filename_loader
-        repe cmpsb                ; compare ds:si with es:di
-        jz load_file
-
-        add di, 0x20
-        and di, -0x20
-        cmp di, [bpb_bytes_per_sector]
-        jnz .next_entry
-
-        mov si, msg_failed
-        call bios_print
-        jmp $
+        call find_root_file
 
 load_file:
         mov ax, [di+0xf]
-        mov bx, 0x8000
+        mov bx, loader_base
 
 .next_cluster:
         call read_cluster
         cmp ax, 0xfff8
         jg .next_cluster
 
-run_loader:
-        mov dl, [ebpb_drive_number]
-        jmp 0:0x8000
+        jmp 0:loader_base           ; Run loader
 
 ; -------------------------------------------------------------------------------------------------
 ; Reads a sector using LBA
@@ -172,13 +126,12 @@ read_cluster:
         shr cx, 4                   ; (root_entry_count * 32) / 512
         add ax, cx
 
-        xor cx, cx
-        mov cl, [bpb_sectors_per_cluster]
+        xor dx, dx
+        mov dl, [bpb_sectors_per_cluster]
 
 .next_sector:
         call read_sector
-        dec cx
-        cmp cx, 0
+        dec dx
         jne .next_sector
 
 .next_cluster:
@@ -189,10 +142,10 @@ read_cluster:
         div word[bpb_bytes_per_sector]
         add ax, [bpb_reserved_sector_count]
 
-        mov bx, 0x7e00
+        mov bx, temp_sector
         call read_sector
 
-        mov bx, 0x7e00
+        mov bx, temp_sector
         add bx, dx
         mov ax, [bx]
         pop bx
@@ -200,6 +153,37 @@ read_cluster:
 .exit:
         pop dx
         pop cx
+        ret
+
+; -------------------------------------------------------------------------------------------------
+; Find root file
+; destroys: eax, bx, cx, si, di
+find_root_file:
+        xor eax, eax
+        mov al, [bpb_fat_count]
+        mul word[bpb_sectors_per_fat]
+        add ax, [bpb_reserved_sector_count]
+
+        mov bx, temp_sector
+        mov di, bx
+        call read_sector
+
+.next_entry:
+        mov si, filename
+        mov cx, 0x0b
+        repe cmpsb                ; compare ds:si with es:di
+        jz .done
+
+        add di, 0x20
+        and di, -0x20
+        cmp di, [bpb_bytes_per_sector]
+        jnz .next_entry
+
+        mov si, msg_failed
+        call bios_print
+        jmp $
+
+.done:
         ret
 
 ; -------------------------------------------------------------------------------------------------
@@ -218,12 +202,12 @@ bios_print:
         pop ax
         ret
 
-; ----------------------------------------------------------------------------------------
+; -------------------------------------------------------------------------------------------------
 msg_load db 'Booting...', 13, 10, 0
 msg_failed db 'Read Failure', 13, 10, 0
-filename_loader db 'LOADER  BIN'
+filename db 'LOADER  BIN'
 
-; ----------------------------------------------------------------------------------------
+; -------------------------------------------------------------------------------------------------
 ; Footer
 times 510-($-$$) db 0    ; Fill boot sector
 dw 0xAA55                ; Boot loader signature

@@ -245,6 +245,5 @@ int main(int argc, const char** argv)
     }
 
     // Success!
-    fprintf(stdout, "Success!\n");
     return EXIT_SUCCESS;
 }

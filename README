@@ -1,8 +1,8 @@
 This is a hobby OS project for learning more about low-level hardware.
 
 Software used:
-- MinGW
-- GCC
+- Cygwin
+- GCC (native + cross-compiler for x86_64-elf)
 - NASM
 - Make
 
@@ -13,10 +13,11 @@ Emulator steps:
 
 Hardware steps:
 
-  Format a FAT16 drive, update the boot sector and copy the loader binary
+  Format a FAT16 drive, update the boot sector and copy the loader and kernel binaries
 
   $ make
   $ tools/set_boot.exe //./<drive letter>: boot/boot.bin
   $ cp boot/loader.bin <drive letter>:
+  $ cp kernel/kernel.bin <drive letter>:
 
   Boot!
