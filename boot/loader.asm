@@ -352,7 +352,8 @@ gdt:
 ; -------------------------------------------------------------------------------------------------
 [BITS 64]
 long_mode:
-        mov ax, gdt.data                    ; Use gdt data segment
+        lgdt [gdt.desc]
+        mov ax, gdt.data
         mov ds, ax
         mov es, ax
         mov fs, ax

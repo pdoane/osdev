@@ -1,6 +1,5 @@
 
-- Interrupt handlers
-- IRQ
 - Console utilities
 - SMP initialization
+- APIC support
 - VM tables

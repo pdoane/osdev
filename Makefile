@@ -1,6 +1,7 @@
 all: all_targets
 
 SOURCES :=
+ASM_SOURCES :=
 TARGETS :=
 
 include ./module.mk
@@ -18,6 +19,9 @@ LD := x86_64-elf-ld
 %.bin: %.asm
 	nasm -f bin -o $@ $<
 
+%.cross.o: %.asm
+	nasm -f elf64 -o $@ $<
+
 %.host.o: %.c
 	$(HOST_CC) -MMD -c $(HOST_CFLAGS) $< -o $@
 
@@ -34,6 +38,7 @@ usb_e: tools/set_boot.exe boot/boot.bin boot/loader.bin kernel/kernel.bin
 clean:
 	rm -f \
 		$(TARGETS) \
+		$(ASM_SOURCES:.asm=.cross.o) \
 		$(SOURCES:.c=.host.o) \
 		$(SOURCES:.c=.cross.o) \
 		$(SOURCES:.c=.host.d) \

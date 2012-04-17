@@ -3,16 +3,18 @@
 ; -------------------------------------------------------------------------------------------------
 
 ; Memory Locations
-%define memory_map                  0x1100
+%define idt_base                    0x1000
 %define vm_pml4                     0x2000
 %define vm_pdp                      0x3000
 %define vm_pd                       0x4000
+%define memory_map                  0x5000
 %define boot_sector_base            0x7c00
 %define temp_sector                 0x7e00
 %define loader_base                 0x8000
 
 %define kernel_stack                0x8000
-%define kernel_base                 0x100000
+%define vga_text_base               0x000b8000
+%define kernel_base                 0x00100000
 
 ; Bios Parameter Block
 %define bpb_oem                     boot_sector_base + 0x03
