@@ -1,11 +1,9 @@
 // ------------------------------------------------------------------------------------------------
-// format.h
+// lowmem.h
 // ------------------------------------------------------------------------------------------------
 
 #pragma once
 
-#include "stdarg.h"
-#include "types.h"
-
-int vsnprintf(char* str, size_t size, const char* format, va_list args);
-int snprintf(char* str, size_t size, const char* format, ...);
+#define IDT_BASE                    0x1000
+#define MEMORY_MAP                  0x5000
+#define VGA_TEXT_BASE               ((volatile u16*)0xb8000)

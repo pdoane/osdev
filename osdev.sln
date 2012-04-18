@@ -35,14 +35,35 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "kernel", "kernel", "{540847D6-87C3-435D-994A-C12DE71831B0}"
 	ProjectSection(SolutionItems) = preProject
+		kernel\console.c = kernel\console.c
+		kernel\console.h = kernel\console.h
 		kernel\format.c = kernel\format.c
 		kernel\format.h = kernel\format.h
 		kernel\format_test.c = kernel\format_test.c
+		kernel\idt.c = kernel\idt.c
+		kernel\idt.h = kernel\idt.h
+		kernel\interrupt.asm = kernel\interrupt.asm
+		kernel\io.h = kernel\io.h
+		kernel\keyboard.c = kernel\keyboard.c
+		kernel\keyboard.h = kernel\keyboard.h
+		kernel\keycode.h = kernel\keycode.h
+		kernel\keymap.asm = kernel\keymap.asm
 		kernel\kernel.c = kernel\kernel.c
 		kernel\linker.ld = kernel\linker.ld
+		kernel\lowmem.h = kernel\lowmem.h
 		kernel\module.mk = kernel\module.mk
+		kernel\pic.c = kernel\pic.c
+		kernel\pic.h = kernel\pic.h
+		kernel\stdarg.h = kernel\stdarg.h
+		kernel\string.c = kernel\string.c
+		kernel\string.h = kernel\string.h
+		kernel\string_test.c = kernel\string_test.c
+		kernel\test.c = kernel\test.c
 		kernel\types.h = kernel\types.h
-		kernel\vararg.h = kernel\vararg.h
+		kernel\vga.c = kernel\vga.c
+		kernel\vga.h = kernel\vga.h
+		kernel\vm.c = kernel\vm.c
+		kernel\vm.h = kernel\vm.h
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{C8D4412A-40CF-41B4-84B7-C069CD22BD65}"

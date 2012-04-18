@@ -1,11 +1,13 @@
 // ------------------------------------------------------------------------------------------------
-// format.h
+// idt.h
 // ------------------------------------------------------------------------------------------------
 
 #pragma once
 
-#include "stdarg.h"
 #include "types.h"
 
-int vsnprintf(char* str, size_t size, const char* format, va_list args);
-int snprintf(char* str, size_t size, const char* format, ...);
+#define INTERRUPT_GATE              0x8e00
+#define TRAP_GATE                   0x8f00
+
+void idt_init();
+void idt_set_handler(u8 index, u16 type, void (*handler)());

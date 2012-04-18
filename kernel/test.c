@@ -1,26 +1,15 @@
 // ------------------------------------------------------------------------------------------------
-// kernel.c
+// test.c
 // ------------------------------------------------------------------------------------------------
 
-#include "console.h"
-#include "idt.h"
-#include "keyboard.h"
-#include "pic.h"
-#include "vga.h"
-#include "vm.h"
+void format_test();
+void string_test();
 
 // ------------------------------------------------------------------------------------------------
-int kmain()
+int main(int argc, const char** argv)
 {
-    vga_text_init();
-    console_init();
-    console_print("Welcome!\n");
+    format_test();
+    string_test();
 
-    idt_init();
-    vm_init();
-    pic_init();
-    keyboard_init();
-
-    for (;;) {}
     return 0;
 }

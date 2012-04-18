@@ -7,7 +7,7 @@
 #include <string.h>
 
 // ------------------------------------------------------------------------------------------------
-int main(int argc, const char** argv)
+void format_test()
 {
     char buf[32];
 
@@ -95,6 +95,4 @@ int main(int argc, const char** argv)
     // multiple format characters
     expect(snprintf(buf, sizeof(buf), "%c %c", 'a', 'b') == 3);
     expect(strcmp(buf, "a b") == 0);
-
-    return 0;
 }
