@@ -34,8 +34,8 @@ BiosParamBlock bpb =
 // ------------------------------------------------------------------------------------------------
 int main(int argc, const char** argv)
 {
-    expect(sizeof(struct BiosParamBlock) == 62);
-    expect(sizeof(struct DirEntry) == 32);
+    ASSERT_EQ_UINT(sizeof(struct BiosParamBlock), 62);
+    ASSERT_EQ_UINT(sizeof(struct DirEntry), 32);
 
     uint metaSectorCount = 536;
     uint clusterCount = 63880;
@@ -45,7 +45,7 @@ int main(int argc, const char** argv)
     u8* image = FatAllocImage(imageSize);
     for (uint i = 0; i < imageSize; ++i)
     {
-        expect(image[i] == ENTRY_ERASED);
+        ASSERT_EQ_UINT(image[i], ENTRY_ERASED);
     }
 
     // Create dummy boot sector
@@ -56,27 +56,27 @@ int main(int argc, const char** argv)
     bootSector[0x1ff] = 0xaa;
 
     // Initialize image
-    expect(FatInitImage(image, bootSector));
-    expect(FatGetImageSize(image) == imageSize);
-    expect(FatGetMetaSectorCount(image) == metaSectorCount);
-    expect(FatGetClusterCount(image) == clusterCount);
+    ASSERT_TRUE(FatInitImage(image, bootSector));
+    ASSERT_EQ_UINT(FatGetImageSize(image), imageSize);
+    ASSERT_EQ_UINT(FatGetMetaSectorCount(image), metaSectorCount);
+    ASSERT_EQ_UINT(FatGetClusterCount(image), clusterCount);
 
-    expect(FatGetClusterValue(image, 0, 0) == 0xfff8);
-    expect(FatGetClusterValue(image, 1, 0) == 0xfff8);
-    expect(FatGetClusterValue(image, 0, 1) == 0xffff);
-    expect(FatGetClusterValue(image, 1, 1) == 0xffff);
+    ASSERT_EQ_HEX16(FatGetClusterValue(image, 0, 0), 0xfff8);
+    ASSERT_EQ_HEX16(FatGetClusterValue(image, 1, 0), 0xfff8);
+    ASSERT_EQ_HEX16(FatGetClusterValue(image, 0, 1), 0xffff);
+    ASSERT_EQ_HEX16(FatGetClusterValue(image, 1, 1), 0xffff);
 
     // Allocate all clusters
     for (uint i = 2; i < clusterCount; ++i)
     {
         u16 index = FatFindFreeCluster(image);
-        expect(index != 0);
+        ASSERT_TRUE(index != 0);
         FatUpdateCluster(image, index, 0xffff);
     }
 
     // Try to allocate another cluster -- this should fail.
     u16 clusterIndex = FatFindFreeCluster(image);
-    expect(clusterIndex == 0);
+    ASSERT_EQ_UINT(clusterIndex, 0);
 
     // Free all clusters we just allocated
     for (uint i = 2; i < clusterCount; ++i)
@@ -89,31 +89,31 @@ int main(int argc, const char** argv)
     u8 ext[3];
 
     FatSplitPath(name, ext, "a");
-    expect(memcmp(name, "A       ", sizeof(name)) == 0);
-    expect(memcmp(ext, "   ", sizeof(ext)) == 0);
+    ASSERT_EQ_MEM(name, "A       ", sizeof(name));
+    ASSERT_EQ_MEM(ext, "   ", sizeof(ext));
 
     FatSplitPath(name, ext, "abc.de");
-    expect(memcmp(name, "ABC     ", sizeof(name)) == 0);
-    expect(memcmp(ext, "DE ", sizeof(ext)) == 0);
+    ASSERT_EQ_MEM(name, "ABC     ", sizeof(name));
+    ASSERT_EQ_MEM(ext, "DE ", sizeof(ext));
 
     FatSplitPath(name, ext, "abcdEFGH.iJk");
-    expect(memcmp(name, "ABCDEFGH", sizeof(name)) == 0);
-    expect(memcmp(ext, "IJK", sizeof(ext)) == 0);
+    ASSERT_EQ_MEM(name, "ABCDEFGH", sizeof(name));
+    ASSERT_EQ_MEM(ext, "IJK", sizeof(ext));
 
     FatSplitPath(name, ext, "dir/abcdefgh0.ijk0");
-    expect(memcmp(name, "ABCDEFGH", sizeof(name)) == 0);
-    expect(memcmp(ext, "IJK", sizeof(ext)) == 0);
+    ASSERT_EQ_MEM(name, "ABCDEFGH", sizeof(name));
+    ASSERT_EQ_MEM(ext, "IJK", sizeof(ext));
 
     // Directory Entry Updating
     DirEntry* entry = FatFindFreeRootEntry(image);
-    expect(entry != 0);
+    ASSERT_TRUE(entry != 0);
 
     FatSplitPath(name, ext, "dir/abcdefgh0.ijk0");
     FatUpdateDirEntry(entry, 1, name, ext, 2);
-    expect(entry->clusterIndex == 1);
-    expect(entry->fileSize == 2);
-    expect(memcmp(entry->name, "ABCDEFGH", sizeof(entry->name)) == 0);
-    expect(memcmp(entry->ext, "IJK", sizeof(entry->ext)) == 0);
+    ASSERT_EQ_UINT(entry->clusterIndex, 1);
+    ASSERT_EQ_UINT(entry->fileSize, 2);
+    ASSERT_EQ_MEM(entry->name, "ABCDEFGH", sizeof(entry->name));
+    ASSERT_EQ_MEM(entry->ext, "IJK", sizeof(entry->ext));
 
     FatRemoveDirEntry(entry);
 
@@ -121,14 +121,14 @@ int main(int argc, const char** argv)
     for (uint i = 0; i < bpb.rootEntryCount; ++i)
     {
         entry = FatFindFreeRootEntry(image);
-        expect(entry != 0);
+        ASSERT_TRUE(entry != 0);
 
         FatUpdateDirEntry(entry, 1, name, ext, 0);
     }
 
     // Try to allocate another directory -- this should fail.
     entry = FatFindFreeRootEntry(image);
-    expect(entry == 0);
+    ASSERT_EQ_PTR(entry, 0);
 
     // Free all directory entries we just allocated
     DirEntry* root = FatGetRootDirectory(image);
@@ -141,12 +141,12 @@ int main(int argc, const char** argv)
     // Add file data, single cluster
     char* data = "Hello World!";
     u16 rootClusterIndex = FatAddData(image, data, strlen(data) + 1);
-    expect(rootClusterIndex != 0);
-    expect(FatGetClusterValue(image, 0, rootClusterIndex) == 0xffff);
+    ASSERT_TRUE(rootClusterIndex != 0);
+    ASSERT_EQ_HEX16(FatGetClusterValue(image, 0, rootClusterIndex), 0xffff);
     char* writtenData = (char*)(image + FatGetClusterOffset(image, rootClusterIndex));
-    expect(strcmp(writtenData, data) == 0);
+    ASSERT_EQ_STR(writtenData, data);
     FatRemoveData(image, rootClusterIndex);
-    expect(FatGetClusterValue(image, 0, rootClusterIndex) == 0x0000);
+    ASSERT_EQ_HEX16(FatGetClusterValue(image, 0, rootClusterIndex), 0x0000);
 
     // Add file data, multi-cluster
 #define INT_DATA_COUNT 500
@@ -158,7 +158,7 @@ int main(int argc, const char** argv)
     }
 
     rootClusterIndex = FatAddData(image, intData, sizeof(intData));
-    expect(rootClusterIndex != 0);
+    ASSERT_TRUE(rootClusterIndex != 0);
 
     uint index = 0;
     clusterIndex = rootClusterIndex;
@@ -169,7 +169,7 @@ int main(int argc, const char** argv)
         {
             if (index < INT_DATA_COUNT)
             {
-                expect(writtenData[i] == intData[index]);
+                ASSERT_EQ_UINT(writtenData[i], intData[index]);
                 ++index;
             }
         }
@@ -177,24 +177,23 @@ int main(int argc, const char** argv)
         clusterIndex = FatGetClusterValue(image, 0, clusterIndex);
     }
 
-    expect(index == INT_DATA_COUNT);
+    ASSERT_EQ_UINT(index, INT_DATA_COUNT);
 
     FatRemoveData(image, rootClusterIndex);
-    expect(FatGetClusterValue(image, 0, rootClusterIndex) == 0x0000);
+    ASSERT_EQ_HEX16(FatGetClusterValue(image, 0, rootClusterIndex), 0x0000);
 
     // Add file test
     entry = FatAddFile(image, "boot/boot.bin", data, strlen(data) + 1);
-    expect(entry);
+    ASSERT_TRUE(entry != 0);
     rootClusterIndex = entry->clusterIndex;
-    expect(rootClusterIndex != 0);
-    expect(FatGetClusterValue(image, 0, rootClusterIndex) == 0xffff);
+    ASSERT_TRUE(rootClusterIndex != 0);
+    ASSERT_EQ_HEX16(FatGetClusterValue(image, 0, rootClusterIndex), 0xffff);
     writtenData = (char*)(image + FatGetClusterOffset(image, rootClusterIndex));
-    expect(strcmp(writtenData, data) == 0);
+    ASSERT_EQ_STR(writtenData, data);
     FatRemoveFile(image, entry);
 
-    expect(FatGetClusterValue(image, 0, rootClusterIndex) == 0x0000);
-    expect(entry->name[0] == ENTRY_AVAILABLE);
+    ASSERT_EQ_HEX16(FatGetClusterValue(image, 0, rootClusterIndex), 0x0000);
+    ASSERT_EQ_UINT(entry->name[0], ENTRY_AVAILABLE);
 
-    printf("Success!\n");
     return EXIT_SUCCESS;
 }

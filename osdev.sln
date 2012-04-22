@@ -33,13 +33,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		TODO = TODO
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "kernel", "kernel", "{540847D6-87C3-435D-994A-C12DE71831B0}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "kernel source", "kernel source", "{540847D6-87C3-435D-994A-C12DE71831B0}"
 	ProjectSection(SolutionItems) = preProject
 		kernel\console.c = kernel\console.c
 		kernel\console.h = kernel\console.h
 		kernel\format.c = kernel\format.c
 		kernel\format.h = kernel\format.h
-		kernel\format_test.c = kernel\format_test.c
 		kernel\idt.c = kernel\idt.c
 		kernel\idt.h = kernel\idt.h
 		kernel\interrupt.asm = kernel\interrupt.asm
@@ -47,8 +46,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "kernel", "kernel", "{540847
 		kernel\keyboard.c = kernel\keyboard.c
 		kernel\keyboard.h = kernel\keyboard.h
 		kernel\keycode.h = kernel\keycode.h
-		kernel\keymap.asm = kernel\keymap.asm
 		kernel\kernel.c = kernel\kernel.c
+		kernel\keymap.c = kernel\keymap.c
+		kernel\keymap.h = kernel\keymap.h
 		kernel\linker.ld = kernel\linker.ld
 		kernel\lowmem.h = kernel\lowmem.h
 		kernel\module.mk = kernel\module.mk
@@ -57,8 +57,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "kernel", "kernel", "{540847
 		kernel\stdarg.h = kernel\stdarg.h
 		kernel\string.c = kernel\string.c
 		kernel\string.h = kernel\string.h
-		kernel\string_test.c = kernel\string_test.c
-		kernel\test.c = kernel\test.c
 		kernel\types.h = kernel\types.h
 		kernel\vga.c = kernel\vga.c
 		kernel\vga.h = kernel\vga.h
@@ -66,9 +64,23 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "kernel", "kernel", "{540847
 		kernel\vm.h = kernel\vm.h
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{C8D4412A-40CF-41B4-84B7-C069CD22BD65}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test framework", "test framework", "{C8D4412A-40CF-41B4-84B7-C069CD22BD65}"
 	ProjectSection(SolutionItems) = preProject
+		test\test.c = test\test.c
 		test\test.h = test\test.h
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "kernel tests", "kernel tests", "{1D3B050B-D7ED-478F-B2D0-A4EE9CDB8761}"
+	ProjectSection(SolutionItems) = preProject
+		kernel\format_test.c = kernel\format_test.c
+		kernel\keyboard_test.c = kernel\keyboard_test.c
+		kernel\string_test.c = kernel\string_test.c
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "kernel mocks", "kernel mocks", "{63A9C63B-5B26-4725-B636-BD43EA933508}"
+	ProjectSection(SolutionItems) = preProject
+		kernel\console_mock.c = kernel\console_mock.c
+		kernel\console_mock.h = kernel\console_mock.h
 	EndProjectSection
 EndProject
 Global

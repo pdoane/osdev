@@ -1,26 +1,32 @@
-all: all_targets
+all: all_targets check
 
 SOURCES :=
 ASM_SOURCES :=
 TARGETS :=
+TESTS :=
 
 include ./module.mk
 include boot/module.mk
 include kernel/module.mk
 include tools/module.mk
 
+# Standard Settings
+CC := gcc
+STD_CFLAGS := -I . -std=c99 -Wall -O2
+
 # Cross Compiler
 CROSS_CC := x86_64-elf-gcc
-CROSS_CFLAGS := -I . -std=c99 -fno-builtin -nostdlib -nostartfiles -nodefaultlibs -Wall -O2
+CROSS_CFLAGS := -DCROSS -fno-builtin -nostdlib -nostartfiles -nodefaultlibs $(STD_CFLAGS)
 CROSS_LD := x86_64-elf-ld
 
 # Host Compiler without standard library
-HOST_CC := gcc
-HOST_CFLAGS := -I . -std=c99 -fno-builtin -nostdlib -nostartfiles -nodefaultlibs -Wall -O2
+HOST_CFLAGS := -DHOST -fno-builtin -nostdlib -nostartfiles -nodefaultlibs $(STD_CFLAGS)
+
+# Host Compiler for unit testing
+TEST_CFLAGS := -DTEST -fno-builtin -nostdlib -nostartfiles -nodefaultlibs $(STD_CFLAGS)
 
 # Host Compiler with standard library
-NATIVE_CC := gcc
-NATIVE_CFLAGS := -I . -std=c99 -Wall -O2
+NATIVE_CFLAGS := -DNATIVE $(STD_CFLAGS)
 
 %.bin: %.asm
 	nasm -f bin -o $@ $<
@@ -29,15 +35,24 @@ NATIVE_CFLAGS := -I . -std=c99 -Wall -O2
 	nasm -f elf64 -o $@ $<
 
 %.cross.o: %.c
-	$(CROSS_CC) -c -MD -DCROSS $(CROSS_CFLAGS) $< -o $@
+	$(CROSS_CC) -c -MD $(CROSS_CFLAGS) $< -o $@
 
 %.host.o: %.c
-	$(HOST_CC) -c -MD -DHOST $(HOST_CFLAGS) $< -o $@
+	$(CC) -c -MD $(HOST_CFLAGS) $< -o $@
+
+%.test.o: %.c
+	$(CC) -c -MD $(TEST_CFLAGS) $< -o $@
 
 %.native.o: %.c
-	$(NATIVE_CC) -c -MMD -DNATIVE $(NATIVE_CFLAGS) $< -o $@
+	$(CC) -c -MMD $(NATIVE_CFLAGS) $< -o $@
+
+%.exe.run: %.exe
+	$^
+	@echo > $@
 
 all_targets: $(TARGETS)
+
+check: $(TESTS:=.run)
 
 usb_e: tools/set_boot.exe boot/boot.bin boot/loader.bin kernel/kernel.bin
 	tools/set_boot.exe //./e: boot/boot.bin
@@ -45,16 +60,9 @@ usb_e: tools/set_boot.exe boot/boot.bin boot/loader.bin kernel/kernel.bin
 	cp kernel/kernel.bin e:/
 
 clean:
-	rm -f \
-		$(TARGETS) \
-		$(ASM_SOURCES:.asm=.cross.o) \
-		$(SOURCES:.c=.host.o) \
-		$(SOURCES:.c=.cross.o) \
-		$(SOURCES:.c=.native.o) \
-		$(SOURCES:.c=.host.d) \
-		$(SOURCES:.c=.cross.d) \
-		$(SOURCES:.c=.native.d)
+	rm -f */*.bin */*.exe */*.exe.run */*.o */*.d
 
 -include $(SOURCES:.c=.host.d)
 -include $(SOURCES:.c=.cross.d)
+-include $(SOURCES:.c=.test.d)
 -include $(SOURCES:.c=.native.d)

@@ -1,6 +1,7 @@
 *.bin
 *.d
-*.img
 *.exe
+*.exe.run
+*.img
 *.o
 *.suo

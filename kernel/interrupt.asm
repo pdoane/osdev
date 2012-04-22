@@ -7,6 +7,10 @@
 [GLOBAL exception_handlers]
 [GLOBAL keyboard_interrupt]
 
+[EXTERN keyboard_buffer]
+[EXTERN keyboard_read]
+[EXTERN keyboard_write]
+
 ; -------------------------------------------------------------------------------------------------
 ; Default handlers
 
@@ -116,24 +120,31 @@ vga_print:
 ; Keyboard interrupt
 keyboard_interrupt:
         push rax
+        push rbx
 
-        xor rax, rax
+        ; read current write position
+        xor rbx, rbx
+        mov bl, byte [keyboard_write]
+
+        ; check for full buffer
+        mov rax, rbx
+        inc rax
+        cmp al, [keyboard_read]
+        je .done
+
+        ; Read scancode
         in al, 0x60
-        test al, 0x80
-        jz .keydown
-        jmp .done
 
-.keydown:
-        mov rbx, keymap
-        add rbx, rax
-        mov al, [rbx]
-        mov [0x000b8f00], al
+        ; Write scancode to buffer
+        mov byte [keyboard_buffer + rbx], al
+        inc rbx
+        mov byte [keyboard_write], bl
 
 .done:
+        ; Acknowledge interrupt
         mov al, 0x20
         out 0x20, al
 
+        pop rbx
         pop rax
         iretq
-
-%include "kernel/keymap.asm"
