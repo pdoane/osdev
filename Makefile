@@ -1,7 +1,6 @@
 all: all_targets check
 
 SOURCES :=
-ASM_SOURCES :=
 TARGETS :=
 TESTS :=
 
@@ -22,7 +21,7 @@ CROSS_LD := x86_64-elf-ld
 # Host Compiler without standard library
 HOST_CFLAGS := -DHOST -fno-builtin -nostdlib -nostartfiles -nodefaultlibs $(STD_CFLAGS)
 
-# Host Compiler for unit testing
+# Host Compiler for unit testing without standard library
 TEST_CFLAGS := -DTEST -fno-builtin -nostdlib -nostartfiles -nodefaultlibs $(STD_CFLAGS)
 
 # Host Compiler with standard library

@@ -6,6 +6,14 @@
 #include "console.h"
 #include "lowmem.h"
 
+#define PAGE_PRESENT                    0x01    // Must be 1 to reference page-directory
+#define PAGE_WRITE                      0x02    // Write access
+#define PAGE_USER                       0x04    // User-mode access
+#define PAGE_WRITE_THROUGH              0x08    // Page-level write-through
+#define PAGE_CACHE_DISABLE              0x10    // Page-level cache-disable
+
+#define PD_2MB                          0x80    // 2MB Page
+
 // ------------------------------------------------------------------------------------------------
 typedef struct MemoryRegion
 {
@@ -31,7 +39,33 @@ static void dump_memory_map()
 }
 
 // ------------------------------------------------------------------------------------------------
+static void vm_enable_pd(u64 pd_offset, u64 base, uint flags)
+{
+    u64* pd = (u64*)pd_offset;
+    for (uint i = 0; i < 512; ++i)
+    {
+        pd[i] = base | PD_2MB | flags;
+        base += 0x200000;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void vm_enable_pdp(uint pdp_index, u64 pd_offset, u64 base, uint flags)
+{
+    vm_enable_pd(pd_offset, base, flags);
+    u64* pdp = (u64*)VM_PDP;
+    pdp[pdp_index] = pd_offset | flags;
+}
+
+// ------------------------------------------------------------------------------------------------
 void vm_init()
 {
+    // Enable 4GB of memory access
+    uint flags = PAGE_PRESENT | PAGE_WRITE | PAGE_USER;
+    vm_enable_pdp(0, VM_PD + 0x0000, 0x00000000, flags);
+    vm_enable_pdp(1, VM_PD + 0x1000, 0x40000000, flags);
+    vm_enable_pdp(2, VM_PD + 0x2000, 0x80000000, flags);
+    vm_enable_pdp(3, VM_PD + 0x3000, 0xc0000000, flags | PAGE_CACHE_DISABLE);
+
     dump_memory_map();
 }

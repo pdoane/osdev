@@ -2,11 +2,14 @@
 
 KERNEL_SOURCES := \
 	kernel/kernel.c \
+	kernel/acpi.c \
 	kernel/console.c \
-    kernel/idt.c \
+	kernel/idt.c \
+	kernel/ioapic.c \
 	kernel/format.c \
 	kernel/keyboard.c \
 	kernel/keymap.c \
+	kernel/local_apic.c \
 	kernel/pic.c \
 	kernel/string.c \
 	kernel/vga.c \

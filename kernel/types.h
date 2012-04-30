@@ -14,6 +14,7 @@ typedef long long           i64;
 typedef unsigned long long  u64;
 
 typedef u32                 size_t;
+typedef u64                 uintptr_t;
 typedef unsigned int        uint;
 
 #define PACKED __attribute__((__packed__))

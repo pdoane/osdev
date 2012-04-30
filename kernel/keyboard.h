@@ -12,7 +12,6 @@
 #define KBD_NUM_LOCK                    0x08
 #define KBD_ESCAPE_SEQUENCE             0x10
 
-void keyboard_init();
 void keyboard_poll();
 
 u8 keyboard_get_flags();

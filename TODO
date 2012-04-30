@@ -1,5 +1,4 @@
 
-- Console utilities
+- PCI Bus Enumeration
 - SMP initialization
-- APIC support
-- VM tables
+- PXE Network Booting

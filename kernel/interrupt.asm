@@ -6,10 +6,12 @@
 [GLOBAL default_interrupt_handler]
 [GLOBAL exception_handlers]
 [GLOBAL keyboard_interrupt]
+[GLOBAL spurious_interrupt]
 
 [EXTERN keyboard_buffer]
 [EXTERN keyboard_read]
 [EXTERN keyboard_write]
+[EXTERN local_apic_address]
 
 ; -------------------------------------------------------------------------------------------------
 ; Default handlers
@@ -121,6 +123,7 @@ vga_print:
 keyboard_interrupt:
         push rax
         push rbx
+        push rdi
 
         ; read current write position
         xor rbx, rbx
@@ -142,9 +145,17 @@ keyboard_interrupt:
 
 .done:
         ; Acknowledge interrupt
-        mov al, 0x20
-        out 0x20, al
+        mov rdi, [local_apic_address]
+        add rdi, 0xb0
+        xor eax, eax
+        stosd
 
+        pop rdi
         pop rbx
         pop rax
+        iretq
+
+; -------------------------------------------------------------------------------------------------
+; Spurious interrupt
+spurious_interrupt:
         iretq

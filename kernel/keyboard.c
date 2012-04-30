@@ -10,23 +10,11 @@
 #include "keymap.h"
 
 // ------------------------------------------------------------------------------------------------
-extern void keyboard_interrupt();
-
 u8 keyboard_buffer[256];
 u8 keyboard_read;
 u8 keyboard_write;
 
 static u8 s_flags;
-
-// ------------------------------------------------------------------------------------------------
-void keyboard_init()
-{
-    keyboard_read = 0;
-    keyboard_write = 0;
-
-    idt_set_handler(0x21, INTERRUPT_GATE, keyboard_interrupt);
-    outb(0x0021, inb(0x0021) & ~0x2);
-}
 
 // ------------------------------------------------------------------------------------------------
 void keyboard_on_code(uint keycode)
