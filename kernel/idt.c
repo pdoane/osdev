@@ -24,9 +24,9 @@ typedef struct IDT_Entry
 
 typedef void (*Handler)();
 
-void default_exception_handler();
-void default_interrupt_handler();
-void (*exception_handlers[20])();
+extern void default_exception_handler();
+extern void default_interrupt_handler();
+extern void (*exception_handlers[20])();
 
 // ------------------------------------------------------------------------------------------------
 void idt_init()

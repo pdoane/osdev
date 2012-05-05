@@ -28,9 +28,9 @@ void vga_text_clear()
 // ------------------------------------------------------------------------------------------------
 void vga_text_setcursor(uint offset)
 {
-    outb(0x3d4, 0x0e);
-    outb(0x3d5, offset >> 8);
-    outb(0x3d4, 0x0f);
-    outb(0x3d5, offset);
+    out8(0x3d4, 0x0e);
+    out8(0x3d5, offset >> 8);
+    out8(0x3d4, 0x0f);
+    out8(0x3d5, offset);
 }
 

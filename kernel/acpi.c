@@ -52,34 +52,42 @@ typedef struct APIC_Header
     u8 length;
 } PACKED APIC_Header;
 
+// APIC structure types
+#define APIC_TYPE_LOCAL_APIC            0
+#define APIC_TYPE_IO_APIC               1
+#define APIC_TYPE_INTERRUPT_OVERRIDE    2
+
 // ------------------------------------------------------------------------------------------------
-typedef struct ACPI_ProcessorLocalAPIC
+typedef struct APIC_LocalAPIC
 {
     APIC_Header header;
     u8 acpiProcessorId;
     u8 apicId;
     u32 flags;
-} PACKED ACPI_ProcessorLocalAPIC;
+} PACKED APIC_LocalAPIC;
 
 // ------------------------------------------------------------------------------------------------
-typedef struct ACPI_IO_APIC
+typedef struct APIC_IO_APIC
 {
     APIC_Header header;
     u8 ioApicId;
     u8 reserved;
     u32 ioApicAddress;
     u32 globalSystemInterruptBase;
-} PACKED ACPI_IO_APIC;
+} PACKED APIC_IO_APIC;
 
 // ------------------------------------------------------------------------------------------------
-typedef struct ACPI_InterruptSourceOverride
+typedef struct APIC_InterruptOverride
 {
     APIC_Header header;
     u8 bus;
     u8 source;
-    u32 globalSystemInterrupt;
+    u32 interrupt;
     u16 flags;
-} PACKED ACPI_InterruptSourceOverride;
+} PACKED APIC_InterruptOverride;
+
+// ------------------------------------------------------------------------------------------------
+static ACPI_MADT* s_madt;
 
 // ------------------------------------------------------------------------------------------------
 static void acpi_parse_facp(ACPI_FADT* facp)
@@ -87,7 +95,7 @@ static void acpi_parse_facp(ACPI_FADT* facp)
     if (facp->smiCommandPort)
     {
         //console_print("Enabling ACPI\n");
-        //outb(facp->smiCommandPort, facp->acpiEnable);
+        //out8(facp->smiCommandPort, facp->acpiEnable);
 
         // TODO - wait for SCI_EN bit
     }
@@ -100,6 +108,8 @@ static void acpi_parse_facp(ACPI_FADT* facp)
 // ------------------------------------------------------------------------------------------------
 static void acpi_parse_apic(ACPI_MADT* madt)
 {
+    s_madt = madt;
+
     console_print("Local APIC Address = 0x%08x\n", madt->localApicAddr);
     local_apic_address = (u8*)(uintptr_t)madt->localApicAddr;
 
@@ -108,27 +118,28 @@ static void acpi_parse_apic(ACPI_MADT* madt)
 
     while (p < end)
     {
-        u8 type = *(p + 0);
-        u8 length = *(p + 1);
+        APIC_Header* header = (APIC_Header*)p;
+        u8 type = header->type;
+        u8 length = header->length;
 
-        if (type == 0)
+        if (type == APIC_TYPE_LOCAL_APIC)
         {
-            ACPI_ProcessorLocalAPIC* s = (ACPI_ProcessorLocalAPIC*)p;
+            APIC_LocalAPIC* s = (APIC_LocalAPIC*)p;
 
             console_print("Found CPU: %d %d %x\n", s->acpiProcessorId, s->apicId, s->flags);
         }
-        else if (type == 1)
+        else if (type == APIC_TYPE_IO_APIC)
         {
-            ACPI_IO_APIC* s = (ACPI_IO_APIC*)p;
+            APIC_IO_APIC* s = (APIC_IO_APIC*)p;
 
             console_print("Found I/O APIC: %d 0x%08x %d\n", s->ioApicId, s->ioApicAddress, s->globalSystemInterruptBase);
             ioapic_address = (u8*)(uintptr_t)s->ioApicAddress;
         }
-        else if (type == 2)
+        else if (type == APIC_TYPE_INTERRUPT_OVERRIDE)
         {
-            ACPI_InterruptSourceOverride* s = (ACPI_InterruptSourceOverride*)p;
+            APIC_InterruptOverride* s = (APIC_InterruptOverride*)p;
 
-            console_print("Found Interrupt Override: %d %d %d 0x%04x\n", s->bus, s->source, s->globalSystemInterrupt, s->flags);
+            console_print("Found Interrupt Override: %d %d %d 0x%04x\n", s->bus, s->source, s->interrupt, s->flags);
         }
         else
         {
@@ -268,3 +279,32 @@ void acpi_init()
     }
 }
 
+// ------------------------------------------------------------------------------------------------
+uint acpi_remap_irq(uint irq)
+{
+    ACPI_MADT* madt = s_madt;
+
+    u8* p = (u8*)(madt + 1);
+    u8* end = (u8*)madt + madt->header.length;
+
+    while (p < end)
+    {
+        APIC_Header* header = (APIC_Header*)p;
+        u8 type = header->type;
+        u8 length = header->length;
+
+        if (type == APIC_TYPE_INTERRUPT_OVERRIDE)
+        {
+            APIC_InterruptOverride* s = (APIC_InterruptOverride*)p;
+
+            if (s->source == irq)
+            {
+                return s->interrupt;
+            }
+        }
+
+        p += length;
+    }
+
+    return irq;
+}

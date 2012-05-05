@@ -9,7 +9,7 @@
 
 // ------------------------------------------------------------------------------------------------
 // Globals
-volatile u8* local_apic_address;
+u8* local_apic_address;
 
 // ------------------------------------------------------------------------------------------------
 // Local APIC Registers
@@ -42,23 +42,18 @@ volatile u8* local_apic_address;
 // ------------------------------------------------------------------------------------------------
 static u32 lapic_in(uint reg)
 {
-    return *(volatile u32*)(local_apic_address + reg);
+    return mmio_read32(local_apic_address + reg);
 }
 
 // ------------------------------------------------------------------------------------------------
 static void lapic_out(uint reg, u32 data)
 {
-    *(volatile u32*)(local_apic_address + reg) = data;
+    mmio_write32(local_apic_address + reg, data);
 }
 
 // ------------------------------------------------------------------------------------------------
 void local_apic_init()
 {
-    // TODO - determine if IMCR needs to be disabled
-    // Initialize Interrupt Mode Configuration Register
-    //outb(0x22, 0x70);       // Select IMCR
-    //outb(0x23, 0x01);       // Pass signals through the APIC
-
     // Clear task priority to enable all interrupts
     lapic_out(LAPIC_TPR, 0);
 

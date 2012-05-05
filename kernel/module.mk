@@ -10,7 +10,10 @@ KERNEL_SOURCES := \
 	kernel/keyboard.c \
 	kernel/keymap.c \
 	kernel/local_apic.c \
+	kernel/pci.c \
+	kernel/pci_classify.c \
 	kernel/pic.c \
+	kernel/pit.c \
 	kernel/string.c \
 	kernel/vga.c \
 	kernel/vm.c

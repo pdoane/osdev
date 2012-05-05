@@ -1,12 +1,12 @@
 // ------------------------------------------------------------------------------------------------
-// ioapic.h
+// pit.h
 // ------------------------------------------------------------------------------------------------
 
 #pragma once
 
 #include "types.h"
 
-extern u8* ioapic_address;
+extern volatile u32 pit_ticks;
 
-void ioapic_init();
-void ioapic_set_entry(u8* base, u8 index, u64 data);
+void pit_init();
+void pit_wait(uint ms);

@@ -4,10 +4,11 @@
 
 #include "ioapic.h"
 #include "console.h"
+#include "io.h"
 
 // ------------------------------------------------------------------------------------------------
 // Globals
-volatile u8* ioapic_address;
+u8* ioapic_address;
 
 // ------------------------------------------------------------------------------------------------
 // Memory mapped registers for IO APIC register access
@@ -22,21 +23,21 @@ volatile u8* ioapic_address;
 #define IOREDTBL                        0x10
 
 // ------------------------------------------------------------------------------------------------
-static void ioapic_out(volatile u8* base, u8 reg, u32 val)
+static void ioapic_out(u8* base, u8 reg, u32 val)
 {
-    *(volatile u32*)(base + IOREGSEL) = reg;
-    *(volatile u32*)(base + IOWIN) = val;
+    mmio_write32(base + IOREGSEL, reg);
+    mmio_write32(base + IOWIN, val);
 }
 
 // ------------------------------------------------------------------------------------------------
-static u32 ioapic_in(volatile u8* base, u8 reg)
+static u32 ioapic_in(u8* base, u8 reg)
 {
-    *(volatile u32*)(base + IOREGSEL) = reg;
-    return *(volatile u32*)(base + IOWIN);
+    mmio_write32(base + IOREGSEL, reg);
+    return mmio_read32(base + IOWIN);
 }
 
 // ------------------------------------------------------------------------------------------------
-void ioapic_set_entry(volatile u8* base, u8 index, u64 data)
+void ioapic_set_entry(u8* base, u8 index, u64 data)
 {
     ioapic_out(base, IOREDTBL + index * 2, (u32)data);
     ioapic_out(base, IOREDTBL + index * 2 + 1, (u32)(data >> 32));

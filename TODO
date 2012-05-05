@@ -1,4 +1,4 @@
 
-- PCI Bus Enumeration
 - SMP initialization
 - PXE Network Booting
+- APIC timer

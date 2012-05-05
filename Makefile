@@ -11,7 +11,7 @@ include tools/module.mk
 
 # Standard Settings
 CC := gcc
-STD_CFLAGS := -I . -std=c99 -Wall -O2
+STD_CFLAGS := -I . -std=c99 -Wall -Werror-implicit-function-declaration -fno-common -O2
 
 # Cross Compiler
 CROSS_CC := x86_64-elf-gcc

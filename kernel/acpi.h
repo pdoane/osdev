@@ -7,3 +7,4 @@
 #include "types.h"
 
 void acpi_init();
+uint acpi_remap_irq(uint irq);

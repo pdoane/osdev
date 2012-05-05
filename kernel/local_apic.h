@@ -6,6 +6,6 @@
 
 #include "types.h"
 
-extern volatile u8* local_apic_address;
+extern u8* local_apic_address;
 
 void local_apic_init();

@@ -16,4 +16,6 @@
 #define IRQ_ATA0                        0x0e
 #define IRQ_ATA1                        0x0f
 
+#define INT_TIMER                       0x20
+#define INT_KEYBOARD                    0x21
 #define INT_SPURIOUS                    0xff

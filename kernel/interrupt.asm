@@ -6,11 +6,13 @@
 [GLOBAL default_interrupt_handler]
 [GLOBAL exception_handlers]
 [GLOBAL keyboard_interrupt]
+[GLOBAL pit_interrupt]
 [GLOBAL spurious_interrupt]
 
 [EXTERN keyboard_buffer]
 [EXTERN keyboard_read]
 [EXTERN keyboard_write]
+[EXTERN pit_ticks]
 [EXTERN local_apic_address]
 
 ; -------------------------------------------------------------------------------------------------
@@ -152,6 +154,26 @@ keyboard_interrupt:
 
         pop rdi
         pop rbx
+        pop rax
+        iretq
+
+; -------------------------------------------------------------------------------------------------
+; PIT interrupt
+pit_interrupt:
+        push rax
+        push rdi
+
+        mov eax, dword [pit_ticks]
+        inc eax
+        mov dword [pit_ticks], eax
+
+        ; Acknowledge interrupt
+        mov rdi, [local_apic_address]
+        add rdi, 0xb0
+        xor eax, eax
+        stosd
+
+        pop rdi
         pop rax
         iretq
 
