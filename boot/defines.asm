@@ -8,11 +8,13 @@
 %define vm_pdp                      0x3000
 %define vm_pd                       0x4000
 %define memory_map                  0x5000
+%define local_apic_address          0x6000
+%define active_cpu_count            0x6008
 %define boot_sector_base            0x7c00
 %define temp_sector                 0x7e00
 %define loader_base                 0x8000
 
-%define kernel_stack                0x8000
+%define kernel_stacks               0x00020000
 %define vga_text_base               0x000b8000
 %define kernel_base                 0x00100000
 

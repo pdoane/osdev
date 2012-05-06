@@ -8,4 +8,8 @@
 
 extern u8* local_apic_address;
 
-void local_apic_init();
+void lapic_init();
+
+uint lapic_getid();
+void lapic_send_init(uint apic_id);
+void lapic_send_startup(uint apic_id, uint vector);

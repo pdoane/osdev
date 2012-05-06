@@ -9,6 +9,11 @@
 #include "string.h"
 
 // ------------------------------------------------------------------------------------------------
+// Globals
+uint acpi_cpu_count;
+u8 acpi_cpu_ids[MAX_CPU_COUNT];
+
+// ------------------------------------------------------------------------------------------------
 typedef struct ACPI_Header
 {
     u32 signature;
@@ -127,6 +132,11 @@ static void acpi_parse_apic(ACPI_MADT* madt)
             APIC_LocalAPIC* s = (APIC_LocalAPIC*)p;
 
             console_print("Found CPU: %d %d %x\n", s->acpiProcessorId, s->apicId, s->flags);
+            if (acpi_cpu_count < MAX_CPU_COUNT)
+            {
+                acpi_cpu_ids[acpi_cpu_count] = s->apicId;
+                ++acpi_cpu_count;
+            }
         }
         else if (type == APIC_TYPE_IO_APIC)
         {

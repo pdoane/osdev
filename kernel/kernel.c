@@ -12,6 +12,7 @@
 #include "pci.h"
 #include "pic.h"
 #include "pit.h"
+#include "smp.h"
 #include "string.h"
 #include "vga.h"
 #include "vm.h"
@@ -39,6 +40,7 @@ int kmain()
     acpi_init();
     interrupt_init();
     pci_init();
+    smp_init();
 
     for (;;)
     {
@@ -59,7 +61,7 @@ static void interrupt_init()
 
     // Initialize subsystems
     pic_init();
-    local_apic_init();
+    lapic_init();
     ioapic_init();
     pit_init();
 

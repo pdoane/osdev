@@ -14,6 +14,7 @@ KERNEL_SOURCES := \
 	kernel/pci_classify.c \
 	kernel/pic.c \
 	kernel/pit.c \
+	kernel/smp.c \
 	kernel/string.c \
 	kernel/vga.c \
 	kernel/vm.c
