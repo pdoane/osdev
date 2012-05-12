@@ -1,16 +1,18 @@
 This is a hobby OS project for learning more about low-level hardware.  See
 the LICENSE file for details.
 
----------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 Hardware Requirements:
 
 - 64-bit x86 CPU
 - Intel Gigabit Ethernet (only QEMU's 82540 has been tested so far)
 
----------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 Setup and Installation for Windows:
 
-- Install Cygwin (http://www.cygwin.com/) including the following packages (and their dependencies):
+- Install Cygwin (http://www.cygwin.com/) including the following packages
+  and their dependencies:
+
     - bison
     - flex
     - gcc4
@@ -58,19 +60,19 @@ Setup and Installation for Windows:
 
 - Install QEMU:
   - Precompiled Windows binaries are located at http://lassauge.free.fr/qemu/
-  - Download and run http://lassauge.free.fr/qemu/release/Qemu-1.0.1-windows.zip
+  - Install http://lassauge.free.fr/qemu/release/Qemu-1.0.1-windows.zip
   - Add Qemu to your PATH system environment variable
-  - Copy bios.bin and vgabios-cirrus.bin from the Bios folder to the root install of QEMU
+  - Copy bios.bin and vgabios-cirrus.bin from the Bios folder to the root directory
 
 - Install the TAP driver:
   - OpenVPN installers are located at http://openvpn.net/index.php/download.html
-  - Download and run http://swupdate.openvpn.org/community/releases/openvpn-2.2.2-install.exe
+  - Install http://swupdate.openvpn.org/community/releases/openvpn-2.2.2-install.exe
   - Install only the "TAP Virtual Ethernet Adapter" component.
   - Modify the Network Connections:
     - Rename the TAP interface from "Local Area Connection (n)" to "tap"
     - Bridge the TAP interface with your active Local Area Connection.
 
----------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 Kernel configuration:
 
 - Update the following globals in net.c as appropriate:
@@ -78,13 +80,13 @@ Kernel configuration:
     - net_subnet_mask
     - net_gateway_ip
 
----------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 Emulator steps:
 
   $ make
   $ qemu.bat
 
----------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 Hardware steps:
 
   Format a FAT16 drive, update the boot sector and copy the loader and kernel
