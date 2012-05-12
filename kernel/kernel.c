@@ -9,6 +9,7 @@
 #include "keyboard.h"
 #include "local_apic.h"
 #include "int.h"
+#include "net.h"
 #include "pci.h"
 #include "pic.h"
 #include "pit.h"
@@ -40,11 +41,13 @@ int kmain()
     acpi_init();
     interrupt_init();
     pci_init();
+    net_init();
     smp_init();
 
     for (;;)
     {
         keyboard_poll();
+        net_poll();
     }
 
     return 0;

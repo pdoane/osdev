@@ -3,15 +3,21 @@
 KERNEL_SOURCES := \
 	kernel/kernel.c \
 	kernel/acpi.c \
+	kernel/arp.c \
 	kernel/console.c \
+	kernel/eth_8254x.c \
+	kernel/format.c \
+	kernel/icmp.c \
 	kernel/idt.c \
 	kernel/ioapic.c \
-	kernel/format.c \
+	kernel/ipv4.c \
 	kernel/keyboard.c \
 	kernel/keymap.c \
 	kernel/local_apic.c \
+	kernel/net.c \
 	kernel/pci.c \
 	kernel/pci_classify.c \
+	kernel/pci_driver.c \
 	kernel/pic.c \
 	kernel/pit.c \
 	kernel/smp.c \

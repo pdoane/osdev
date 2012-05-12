@@ -1,0 +1,22 @@
+Websites:
+
+- http://OSDev.org
+
+Hardware Documents:
+
+- 82093AA I/O Advanced Programmable Interrupt Controller (IOAPIC)
+- 8254 Programmable Interval Timer (PIT)
+- 8259A Programmable Interrupt Controller (PIC)
+- Advanced Configuration and Power Interface Specification (ACPI)
+- Intel(r) 64 and IA-32 Architectures Software Developer's Manual
+- Intel PCI/PCI-X Family of Gigabit Ethernet Controllers Software Developer's Manual
+
+Protocol Documents:
+
+- RFC 768: User Datagram Protocol (UDP)
+- RFC 791: Internet Protocol (IP)
+- RFC 792: Internet Control Message Protocol (ICMP)
+- RFC 793: Transmission Control Protocol (TCP)
+- RFC 826: An Ethernet Address Resolution Protocol (ARP)
+- RFC 894: A Standard for the Transmission of IP Datagrams over Ethernet Networks
+- RFC 1042: A Standard for the Transmission of IP Datagrams over IEEE 802 Networks
