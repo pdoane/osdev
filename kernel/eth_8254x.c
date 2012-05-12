@@ -6,6 +6,7 @@
 #include "console.h"
 #include "io.h"
 #include "net.h"
+#include "net_driver.h"
 #include "pci_driver.h"
 #include "string.h"
 
@@ -181,6 +182,58 @@ static u16 eeprom_read(u8* mmio_addr, u8 eeprom_addr)
     return val >> EERD_DATA_SHIFT;
 }
 
+
+// ------------------------------------------------------------------------------------------------
+static void eth_8254x_poll()
+{
+    RX_Desc* desc = &RX_DESCS[dev.rx_read];
+
+    while (desc->status & RSTA_DD)
+    {
+        u8* pkt = (u8*)desc->addr;
+        uint len = desc->len;
+
+        if (desc->errors)
+        {
+            console_print("Packet Error: (0x%x)\n", desc->errors);
+        }
+        else
+        {
+            net_rx(pkt, len);
+        }
+
+        desc->status = 0;
+
+        mmio_write32(dev.mmio_addr + REG_RDT, dev.rx_read);
+
+        dev.rx_read = (dev.rx_read + 1) & (RX_DESC_COUNT - 1);
+        desc = &RX_DESCS[dev.rx_read];
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void eth_8254x_tx(u8* pkt, uint len)
+{
+    console_print("Sending packet %x %d, %d %d %d\n", pkt, len, mmio_read32(dev.mmio_addr + REG_TDH), mmio_read32(dev.mmio_addr + REG_TDT), dev.tx_write);
+
+    TX_Desc* desc = &TX_DESCS[dev.tx_write];
+
+    desc->addr = (u64)pkt;
+    desc->len = len;
+    desc->cmd = CMD_EOP | CMD_IFCS | CMD_RS;
+
+    dev.tx_write = (dev.tx_write + 1) & (TX_DESC_COUNT - 1);
+    mmio_write32(dev.mmio_addr + REG_TDT, dev.tx_write);
+
+    while (~desc->status & TSTA_DD)
+    {
+        // TODO - wait
+        //console_print("%x\n", desc->sta);
+    }
+
+    console_print("Packet sent %x\n", desc->status);
+}
+
 // ------------------------------------------------------------------------------------------------
 void eth_8254x_init(u16 vendor_id, u16 device_id, uint id)
 {
@@ -291,56 +344,9 @@ void eth_8254x_init(u16 vendor_id, u16 device_id, uint id)
         | TCTL_RTLC
         );
 
+    net_driver.active = true;
+    net_driver.poll = eth_8254x_poll;
+    net_driver.tx = eth_8254x_tx;
+
     console_print("Ethernet Driver Initialized\n");
-}
-
-// ------------------------------------------------------------------------------------------------
-void eth_8254x_poll()
-{
-    RX_Desc* desc = &RX_DESCS[dev.rx_read];
-
-    while (desc->status & RSTA_DD)
-    {
-        u8* pkt = (u8*)desc->addr;
-        uint len = desc->len;
-
-        if (desc->errors)
-        {
-            console_print("Packet Error: (0x%x)\n", desc->errors);
-        }
-        else
-        {
-            net_rx(pkt, len);
-        }
-
-        desc->status = 0;
-
-        mmio_write32(dev.mmio_addr + REG_RDT, dev.rx_read);
-
-        dev.rx_read = (dev.rx_read + 1) & (RX_DESC_COUNT - 1);
-        desc = &RX_DESCS[dev.rx_read];
-    }
-}
-
-// ------------------------------------------------------------------------------------------------
-void eth_8254x_tx(u8* pkt, uint len)
-{
-    console_print("Sending packet %x %d, %d %d %d\n", pkt, len, mmio_read32(dev.mmio_addr + REG_TDH), mmio_read32(dev.mmio_addr + REG_TDT), dev.tx_write);
-
-    TX_Desc* desc = &TX_DESCS[dev.tx_write];
-
-    desc->addr = (u64)pkt;
-    desc->len = len;
-    desc->cmd = CMD_EOP | CMD_IFCS | CMD_RS;
-
-    dev.tx_write = (dev.tx_write + 1) & (TX_DESC_COUNT - 1);
-    mmio_write32(dev.mmio_addr + REG_TDT, dev.tx_write);
-
-    while (~desc->status & TSTA_DD)
-    {
-        // TODO - wait
-        //console_print("%x\n", desc->sta);
-    }
-
-    console_print("Packet sent %x\n", desc->status);
 }

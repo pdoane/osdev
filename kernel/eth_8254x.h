@@ -7,5 +7,3 @@
 #include "types.h"
 
 void eth_8254x_init(u16 vendor_id, u16 device_id, uint id);
-void eth_8254x_poll();
-void eth_8254x_tx(u8* pkt, uint len);

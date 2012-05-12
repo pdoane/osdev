@@ -15,6 +15,7 @@ KERNEL_SOURCES := \
 	kernel/keymap.c \
 	kernel/local_apic.c \
 	kernel/net.c \
+	kernel/net_driver.c \
 	kernel/pci.c \
 	kernel/pci_classify.c \
 	kernel/pci_driver.c \
