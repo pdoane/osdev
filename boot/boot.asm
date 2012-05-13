@@ -120,6 +120,7 @@ read_cluster:
         mov al, [bpb_fat_count]
         mul word[bpb_sectors_per_fat]
         add ax, [bpb_reserved_sector_count]
+        add ax, [bpb_hidden_sector_count]
         add ax, cx
 
         mov cx, [bpb_root_entry_count]
@@ -141,6 +142,7 @@ read_cluster:
         shl ax, 1
         div word[bpb_bytes_per_sector]
         add ax, [bpb_reserved_sector_count]
+        add ax, [bpb_hidden_sector_count]
 
         mov bx, temp_sector
         call read_sector
@@ -163,6 +165,7 @@ find_root_file:
         mov al, [bpb_fat_count]
         mul word[bpb_sectors_per_fat]
         add ax, [bpb_reserved_sector_count]
+        add ax, [bpb_hidden_sector_count]
 
         mov bx, temp_sector
         mov di, bx
@@ -179,7 +182,7 @@ find_root_file:
         cmp di, [bpb_bytes_per_sector]
         jnz .next_entry
 
-        mov si, msg_failed
+        mov si, msg_no_file
         call bios_print
         jmp $
 
@@ -205,6 +208,7 @@ bios_print:
 ; -------------------------------------------------------------------------------------------------
 msg_load db 'Booting...', 13, 10, 0
 msg_failed db 'Read Failure', 13, 10, 0
+msg_no_file db 'File not Found', 13, 10, 0
 filename db 'LOADER  BIN'
 
 ; -------------------------------------------------------------------------------------------------

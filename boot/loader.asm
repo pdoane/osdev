@@ -264,6 +264,7 @@ transfer_cluster:
         mov al, [bpb_fat_count]
         mul word[bpb_sectors_per_fat]
         add ax, [bpb_reserved_sector_count]
+        add ax, [bpb_hidden_sector_count]
         add ax, cx
 
         mov cx, [bpb_root_entry_count]
@@ -291,6 +292,7 @@ transfer_cluster:
         shl ax, 1
         div word[bpb_bytes_per_sector]
         add ax, [bpb_reserved_sector_count]
+        add ax, [bpb_hidden_sector_count]
 
         mov bx, temp_sector
         call read_sector
@@ -314,6 +316,7 @@ find_root_file:
         mov al, [bpb_fat_count]
         mul word[bpb_sectors_per_fat]
         add ax, [bpb_reserved_sector_count]
+        add ax, [bpb_hidden_sector_count]
 
         mov bx, temp_sector
         mov di, bx
