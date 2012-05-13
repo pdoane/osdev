@@ -431,6 +431,7 @@ ap32:
 ; -------------------------------------------------------------------------------------------------
 [BITS 64]
 bsp64:
+        cli                         ; TODO - why is this second cli needed?
         xor rax, rax
         mov ds, ax
         mov es, ax
