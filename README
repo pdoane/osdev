@@ -5,7 +5,7 @@ the LICENSE file for details.
 Hardware Requirements:
 
 - 64-bit x86 CPU
-- Intel Gigabit Ethernet (only QEMU's 82540 has been tested so far)
+- Intel Gigabit Ethernet
 
 -------------------------------------------------------------------------------
 Setup and Installation for Windows:
@@ -61,8 +61,8 @@ Setup and Installation for Windows:
 - Install QEMU:
   - Precompiled Windows binaries are located at http://lassauge.free.fr/qemu/
   - Install http://lassauge.free.fr/qemu/release/Qemu-1.0.1-windows.zip
-  - Add Qemu to your PATH system environment variable
-  - Copy bios.bin and vgabios-cirrus.bin from the Bios folder to the root directory
+  - Copy bios.bin and vgabios-cirrus.bin from the Bios folder to QEMU's
+    root directory.
 
 - Install the TAP driver:
   - OpenVPN installers are located at http://openvpn.net/index.php/download.html
@@ -72,6 +72,9 @@ Setup and Installation for Windows:
     - Rename the TAP interface from "Local Area Connection (n)" to "tap"
     - Bridge the TAP interface with your active Local Area Connection.
 
+- Update PATH:
+  - Add QEMU and /usr/local/cross/bin to the PATH variable in .bash_profile
+
 -------------------------------------------------------------------------------
 Kernel configuration:
 
@@ -79,6 +82,16 @@ Kernel configuration:
     - net_local_ip
     - net_subnet_mask
     - net_gateway_ip
+
+-------------------------------------------------------------------------------
+What to expect:
+
+- The ethernet driver is initialized in promiscuous mode, so it will display
+  all packets on the LAN.
+
+- The network stack will reply to ICMP requests (i.e. ping).
+
+- There is rudimentary console support, but no commands yet.
 
 -------------------------------------------------------------------------------
 Emulator steps:
