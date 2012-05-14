@@ -31,7 +31,7 @@ void ipv4_print(u8* pkt, uint len)
     uint ecn = (pkt[1]) & 0x3;
     u16 packet_len = (pkt[2] << 8) | pkt[3];
     u16 id = (pkt[4] << 8) | pkt[5];
-    u16 fragment = (pkt[6] << 8) | pkt[7];
+    u16 fragment = ((pkt[6] << 8) | pkt[7]) & 0x1fff;
     u8 ttl = pkt[8];
     u8 protocol = pkt[9];
     u16 checksum = (pkt[10] << 8) | pkt[11];
@@ -68,9 +68,9 @@ void ipv4_rx(u8* pkt, uint len)
     //uint ihl = (pkt[0]) & 0xf;
     //uint dscp = (pkt[1] >> 2) & 0x3f;
     //uint ecn = (pkt[1]) & 0x3;
-    u16 packet_len = (pkt[2] << 8) | pkt[3];
+    //u16 packet_len = (pkt[2] << 8) | pkt[3];
     //u16 id = (pkt[4] << 8) | pkt[5];
-    u16 fragment = (pkt[6] << 8) | pkt[7];
+    u16 fragment = ((pkt[6] << 8) | pkt[7]) & 0x1fff;
     //u8 ttl = pkt[8];
     u8 protocol = pkt[9];
     //u16 checksum = (pkt[10] << 8) | pkt[11];
@@ -90,7 +90,7 @@ void ipv4_rx(u8* pkt, uint len)
     switch (protocol)
     {
     case IP_PROTOCOL_ICMP:
-        icmp_rx(pkt, packet_len);	// Send the base IPv4 packet
+        icmp_rx(pkt, len);	// Send the base IPv4 packet
         break;
 
     case IP_PROTOCOL_TCP:
