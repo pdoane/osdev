@@ -10,7 +10,7 @@
 #include "string.h"
 
 // ------------------------------------------------------------------------------------------------
-u8 net_trace = 1;
+u8 net_trace = 0;
 u8 net_broadcast_mac[6] = { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
 u8 net_local_mac[6];
 u8 net_local_ip[4] = { 192, 168, 1, 42 };

@@ -11,31 +11,29 @@
 static void pci_visit(uint bus, uint dev, uint func)
 {
     uint id = PCI_MAKE_ID(bus, dev, func);
-    u16 vendor_id = pci_in16(id, PCI_CONFIG_VENDOR_ID);
-    if (vendor_id == 0xffff)
+
+    PCI_DeviceInfo info;
+    info.vendor_id = pci_in16(id, PCI_CONFIG_VENDOR_ID);
+    if (info.vendor_id == 0xffff)
     {
         return;
     }
 
-    u16 device_id = pci_in16(id, PCI_CONFIG_DEVICE_ID);
-    u8 prog_intf = pci_in8(id, PCI_CONFIG_PROG_INTF);
-    u8 subclass = pci_in8(id, PCI_CONFIG_SUBCLASS);
-    u8 class_code = pci_in8(id, PCI_CONFIG_CLASS_CODE);
+    info.device_id = pci_in16(id, PCI_CONFIG_DEVICE_ID);
+    info.prog_intf = pci_in8(id, PCI_CONFIG_PROG_INTF);
+    info.subclass = pci_in8(id, PCI_CONFIG_SUBCLASS);
+    info.class_code = pci_in8(id, PCI_CONFIG_CLASS_CODE);
 
     console_print("%02x:%02x:%d 0x%04x/0x%04x: %s\n",
         bus, dev, func,
-        vendor_id, device_id,
-        pci_class_name(class_code, subclass, prog_intf)
+        info.vendor_id, info.device_id,
+        pci_class_name(info.class_code, info.subclass, info.prog_intf)
         );
 
     PCI_Driver* driver = pci_driver_table;
-    while (driver->vendor_id)
+    while (driver->init)
     {
-        if (driver->vendor_id == vendor_id && driver->device_id == device_id)
-        {
-            driver->init(vendor_id, device_id, id);
-        }
-
+        driver->init(id, &info);
         ++driver;
     }
 }
@@ -43,7 +41,7 @@ static void pci_visit(uint bus, uint dev, uint func)
 // ------------------------------------------------------------------------------------------------
 void pci_init()
 {
-    console_print("Enumerating PCI Devices\n");
+    console_print("PCI Initialization\n");
     for (uint bus = 0; bus < 256; ++bus)
     {
         for (uint dev = 0; dev < 32; ++dev)

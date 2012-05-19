@@ -17,6 +17,8 @@
 #define KERNEL_STACK                0x00020000  // 4k per CPU (up to 0x00030000 for 16 cpus)
 #define KERNEL_BASE                 0x00100000
 
+#define MEM_START                   0x00200000
+
 #else
 
 extern u16 vga_text_base[80*25];

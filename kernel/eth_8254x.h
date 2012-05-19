@@ -5,5 +5,6 @@
 #pragma once
 
 #include "types.h"
+#include "pci_driver.h"
 
-void eth_8254x_init(u16 vendor_id, u16 device_id, uint id);
+void eth_8254x_init(uint id, PCI_DeviceInfo* info);

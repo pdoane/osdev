@@ -9,14 +9,10 @@
 #include "net_driver.h"
 #include "pci_driver.h"
 #include "string.h"
+#include "vm.h"
 
 #define RX_DESC_COUNT                   32
 #define TX_DESC_COUNT                   32
-
-// TODO - memory manager
-#define RX_DESCS                        ((RX_Desc*)0x00200000)
-#define TX_DESCS                        ((TX_Desc*)0x00200200)
-#define RX_PACKETS                      ((u8*)0x00201000)
 
 #define PACKET_SIZE                     2048
 
@@ -82,6 +78,8 @@ typedef struct Device
     u8* mmio_addr;
     uint rx_read;
     uint tx_write;
+    RX_Desc* rx_descs;
+    TX_Desc* tx_descs;
 } Device;
 
 static Device dev;
@@ -186,7 +184,7 @@ static u16 eeprom_read(u8* mmio_addr, u8 eeprom_addr)
 // ------------------------------------------------------------------------------------------------
 static void eth_8254x_poll()
 {
-    RX_Desc* desc = &RX_DESCS[dev.rx_read];
+    RX_Desc* desc = &dev.rx_descs[dev.rx_read];
 
     while (desc->status & RSTA_DD)
     {
@@ -207,16 +205,16 @@ static void eth_8254x_poll()
         mmio_write32(dev.mmio_addr + REG_RDT, dev.rx_read);
 
         dev.rx_read = (dev.rx_read + 1) & (RX_DESC_COUNT - 1);
-        desc = &RX_DESCS[dev.rx_read];
+        desc = &dev.rx_descs[dev.rx_read];
     }
 }
 
 // ------------------------------------------------------------------------------------------------
 static void eth_8254x_tx(u8* pkt, uint len)
 {
-    console_print("Sending packet %x %d, %d %d %d\n", pkt, len, mmio_read32(dev.mmio_addr + REG_TDH), mmio_read32(dev.mmio_addr + REG_TDT), dev.tx_write);
+    console_print("Sending packet\n");
 
-    TX_Desc* desc = &TX_DESCS[dev.tx_write];
+    TX_Desc* desc = &dev.tx_descs[dev.tx_write];
 
     desc->addr = (u64)pkt;
     desc->len = len;
@@ -230,26 +228,44 @@ static void eth_8254x_tx(u8* pkt, uint len)
         // TODO - wait
         //console_print("%x\n", desc->sta);
     }
-
-    console_print("Packet sent %x\n", desc->status);
 }
 
 // ------------------------------------------------------------------------------------------------
-void eth_8254x_init(u16 vendor_id, u16 device_id, uint id)
+void eth_8254x_init(uint id, PCI_DeviceInfo* info)
 {
-    console_print("Initializing Ethernet 8254x\n");
+    // Check device supported.
+    if (info->vendor_id != 0x8086)
+    {
+        return;
+    }
 
-    // Base I/O Address (TODO - support additional flags)
-    u32 bar0 = pci_in32(id, PCI_CONFIG_BASE_ADDR0);
-    console_print("mmio_addr = %x\n", bar0);
+    if (!(info->device_id == 0x100e || info->vendor_id == 0x1503))
+    {
+        return;
+    }
+
+    console_print("Initializing Intel Gigabit Ethernet\n");
+
+    // Base I/O Address
+    u32 bar0 = pci_in32(id, PCI_CONFIG_BAR0);
+    if (bar0 & 0x1)
+    {
+        // Only Memory Mapped I/O supported
+        return;
+    }
+    if (bar0 & 0x4)
+    {
+        // TODO - support 64-bit pointer
+        return;
+    }
+
     bar0 &= ~0xf;    // clear low 4 bits
 
     u8* mmio_addr = (u8*)(uintptr_t)bar0;
     dev.mmio_addr = mmio_addr;
 
     // IRQ
-    u8 irq = pci_in8(id, PCI_CONFIG_INTERRUPT_LINE);
-    console_print("irq = %d\n", irq);
+    //u8 irq = pci_in8(id, PCI_CONFIG_INTERRUPT_LINE);
 
     // MAC address
     u32 ral = mmio_read32(mmio_addr + REG_RAL);   // Try Receive Address Register first
@@ -295,9 +311,16 @@ void eth_8254x_init(u16 vendor_id, u16 device_id, uint id)
     // Clear all interrupts
     mmio_read32(mmio_addr + REG_ICR);
 
+    // Allocate memory
+    u8* rx_packet = vm_alloc(RX_DESC_COUNT * PACKET_SIZE);
+    RX_Desc* rx_descs = vm_alloc(RX_DESC_COUNT * sizeof(RX_Desc));
+    TX_Desc* tx_descs = vm_alloc(TX_DESC_COUNT * sizeof(TX_Desc));
+
+    dev.rx_descs = rx_descs;
+    dev.tx_descs = tx_descs;
+
     // Receive Setup
-    u8* rx_packet = RX_PACKETS;
-    RX_Desc* rx_desc = RX_DESCS;
+    RX_Desc* rx_desc = rx_descs;
     RX_Desc* rx_end = rx_desc + RX_DESC_COUNT;
     for (; rx_desc != rx_end; ++rx_desc, rx_packet += PACKET_SIZE)
     {
@@ -307,8 +330,8 @@ void eth_8254x_init(u16 vendor_id, u16 device_id, uint id)
 
     dev.rx_read = 0;
 
-    mmio_write32(mmio_addr + REG_RDBAL, (uintptr_t)RX_DESCS);
-    mmio_write32(mmio_addr + REG_RDBAH, (uintptr_t)RX_DESCS >> 32);
+    mmio_write32(mmio_addr + REG_RDBAL, (uintptr_t)rx_descs);
+    mmio_write32(mmio_addr + REG_RDBAH, (uintptr_t)rx_descs >> 32);
     mmio_write32(mmio_addr + REG_RDLEN, RX_DESC_COUNT * 16);
     mmio_write32(mmio_addr + REG_RDH, 0);
     mmio_write32(mmio_addr + REG_RDT, RX_DESC_COUNT - 1);
@@ -325,14 +348,14 @@ void eth_8254x_init(u16 vendor_id, u16 device_id, uint id)
         );
 
     // Transmit Setup
-    TX_Desc* tx_desc = TX_DESCS;
+    TX_Desc* tx_desc = tx_descs;
     //TX_Desc* tx_end = tx_desc + TX_DESC_COUNT;
     memset(tx_desc, 0, TX_DESC_COUNT * 16);
 
     dev.tx_write = 0;
 
-    mmio_write32(mmio_addr + REG_TDBAL, (uintptr_t)TX_DESCS);
-    mmio_write32(mmio_addr + REG_TDBAH, (uintptr_t)TX_DESCS >> 32);
+    mmio_write32(mmio_addr + REG_TDBAL, (uintptr_t)tx_descs);
+    mmio_write32(mmio_addr + REG_TDBAH, (uintptr_t)tx_descs >> 32);
     mmio_write32(mmio_addr + REG_TDLEN, TX_DESC_COUNT * 16);
     mmio_write32(mmio_addr + REG_TDH, 0);
     mmio_write32(mmio_addr + REG_TDT, 0);
@@ -347,6 +370,4 @@ void eth_8254x_init(u16 vendor_id, u16 device_id, uint id)
     net_driver.active = true;
     net_driver.poll = eth_8254x_poll;
     net_driver.tx = eth_8254x_tx;
-
-    console_print("Ethernet Driver Initialized\n");
 }

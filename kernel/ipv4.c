@@ -90,7 +90,7 @@ void ipv4_rx(u8* pkt, uint len)
     switch (protocol)
     {
     case IP_PROTOCOL_ICMP:
-        icmp_rx(pkt, len);	// Send the base IPv4 packet
+        icmp_rx(pkt, len);  // Send the base IPv4 packet
         break;
 
     case IP_PROTOCOL_TCP:

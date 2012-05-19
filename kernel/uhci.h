@@ -1,11 +1,10 @@
 // ------------------------------------------------------------------------------------------------
-// vm.h
+// uhci.h
 // ------------------------------------------------------------------------------------------------
 
 #pragma once
 
 #include "types.h"
+#include "pci_driver.h"
 
-void vm_init();
-
-void* vm_alloc(uint size);
+void uhci_init(uint id, PCI_DeviceInfo* info);

@@ -1,3 +1,11 @@
 
+- USB
+   - Descriptor management
+   - Device enumeration
+   - Keyboard
+   - Mouse
+   - Hub
+   - EHCI
+
 - PXE Network Booting
 - APIC timer

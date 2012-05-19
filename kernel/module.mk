@@ -23,6 +23,7 @@ KERNEL_SOURCES := \
 	kernel/pit.c \
 	kernel/smp.c \
 	kernel/string.c \
+	kernel/uhci.c \
 	kernel/vga.c \
 	kernel/vm.c
 

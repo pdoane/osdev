@@ -10,6 +10,8 @@ Hardware Documents:
 - Advanced Configuration and Power Interface Specification (ACPI)
 - Intel(r) 64 and IA-32 Architectures Software Developer's Manual
 - Intel PCI/PCI-X Family of Gigabit Ethernet Controllers Software Developer's Manual
+- Universal Host Controller Interface (UHCI) Design Guide
+- Enhanced Host Controller Interface (EHCI) Specification for Universal Serial Bus
 
 Protocol Documents:
 

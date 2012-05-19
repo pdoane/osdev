@@ -34,12 +34,12 @@
 #define PCI_CONFIG_BIST                 0x0f
 
 // Type 0x00 (Generic) Configuration Registers
-#define PCI_CONFIG_BASE_ADDR0           0x10
-#define PCI_CONFIG_BASE_ADDR1           0x14
-#define PCI_CONFIG_BASE_ADDR2           0x18
-#define PCI_CONFIG_BASE_ADDR3           0x1c
-#define PCI_CONFIG_BASE_ADDR4           0x20
-#define PCI_CONFIG_BASE_ADDR5           0x24
+#define PCI_CONFIG_BAR0                 0x10
+#define PCI_CONFIG_BAR1                 0x14
+#define PCI_CONFIG_BAR2                 0x18
+#define PCI_CONFIG_BAR3                 0x1c
+#define PCI_CONFIG_BAR4                 0x20
+#define PCI_CONFIG_BAR5                 0x24
 #define PCI_CONFIG_CARDBUS_CIS          0x28
 #define PCI_CONFIG_SUBSYSTEM_VENDOR_ID  0x2c
 #define PCI_CONFIG_SUBSYSTEM_DEVICE_ID  0x2e
@@ -50,11 +50,19 @@
 #define PCI_CONFIG_MIN_GRANT            0x3e
 #define PCI_CONFIG_MAX_LATENCY          0x3f
 
-typedef struct PCI_Driver
+// ------------------------------------------------------------------------------------------------
+typedef struct PCI_DeviceInfo
 {
     u16 vendor_id;
     u16 device_id;
-    void (*init)(u16 vendor_id, u16 device_id, uint id);
+    u8 class_code;
+    u8 subclass;
+    u8 prog_intf;
+} PCI_DeviceInfo;
+
+typedef struct PCI_Driver
+{
+    void (*init)(uint id, PCI_DeviceInfo* info);
 } PCI_Driver;
 
 // ------------------------------------------------------------------------------------------------

@@ -14,6 +14,8 @@
 
 #define PD_2MB                          0x80    // 2MB Page
 
+static u64 s_mem_next;
+
 // ------------------------------------------------------------------------------------------------
 typedef struct MemoryRegion
 {
@@ -68,4 +70,16 @@ void vm_init()
     vm_enable_pdp(3, VM_PD + 0x3000, 0xc0000000, flags | PAGE_CACHE_DISABLE);
 
     dump_memory_map();
+
+    s_mem_next = 0x00200000;
+}
+
+// ------------------------------------------------------------------------------------------------
+void* vm_alloc(uint size)
+{
+    // Round all requests up to 4k page size for now
+    size = (size + 4095) & ~4095;
+    void* result = (void*)s_mem_next;
+    s_mem_next += size;
+    return result;
 }
