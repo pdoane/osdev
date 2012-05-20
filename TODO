@@ -1,11 +1,10 @@
 
 - USB
-   - Descriptor management
-   - Device enumeration
-   - Keyboard
-   - Mouse
+   - Keyboard LEDs
    - Hub
    - EHCI
+   - Improved Descriptor/Queue management
+   - Short Packet Detect optimization
 
 - PXE Network Booting
 - APIC timer

@@ -5,13 +5,9 @@
 [GLOBAL default_exception_handler]
 [GLOBAL default_interrupt_handler]
 [GLOBAL exception_handlers]
-[GLOBAL keyboard_interrupt]
 [GLOBAL pit_interrupt]
 [GLOBAL spurious_interrupt]
 
-[EXTERN keyboard_buffer]
-[EXTERN keyboard_read]
-[EXTERN keyboard_write]
 [EXTERN pit_ticks]
 [EXTERN local_apic_address]
 
@@ -119,43 +115,6 @@ vga_print:
         jmp vga_print
 .done:
         ret
-
-; -------------------------------------------------------------------------------------------------
-; Keyboard interrupt
-keyboard_interrupt:
-        push rax
-        push rbx
-        push rdi
-
-        ; read current write position
-        xor rbx, rbx
-        mov bl, byte [keyboard_write]
-
-        ; check for full buffer
-        mov rax, rbx
-        inc rax
-        cmp al, [keyboard_read]
-        je .done
-
-        ; Read scancode
-        in al, 0x60
-
-        ; Write scancode to buffer
-        mov byte [keyboard_buffer + rbx], al
-        inc rbx
-        mov byte [keyboard_write], bl
-
-.done:
-        ; Acknowledge interrupt
-        mov rdi, [local_apic_address]
-        add rdi, 0xb0
-        xor eax, eax
-        stosd
-
-        pop rdi
-        pop rbx
-        pop rax
-        iretq
 
 ; -------------------------------------------------------------------------------------------------
 ; PIT interrupt

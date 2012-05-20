@@ -6,7 +6,6 @@
 #include "acpi.h"
 #include "idt.h"
 #include "ioapic.h"
-#include "keyboard.h"
 #include "local_apic.h"
 #include "int.h"
 #include "net.h"
@@ -15,13 +14,13 @@
 #include "pit.h"
 #include "smp.h"
 #include "string.h"
+#include "usb.h"
 #include "vga.h"
 #include "vm.h"
 
 // ------------------------------------------------------------------------------------------------
 extern char __bss_start, __bss_end;
 
-extern void keyboard_interrupt();
 extern void pit_interrupt();
 extern void spurious_interrupt();
 
@@ -46,7 +45,7 @@ int kmain()
 
     for (;;)
     {
-        keyboard_poll();
+        usb_poll();
         net_poll();
     }
 
@@ -59,7 +58,6 @@ static void interrupt_init()
     // Build Interrupt Table
     idt_init();
     idt_set_handler(INT_TIMER, INTERRUPT_GATE, pit_interrupt);
-    idt_set_handler(INT_KEYBOARD, INTERRUPT_GATE, keyboard_interrupt);
     idt_set_handler(INT_SPURIOUS, INTERRUPT_GATE, spurious_interrupt);
 
     // Initialize subsystems
@@ -70,7 +68,6 @@ static void interrupt_init()
 
     // Enable IO APIC entries
     ioapic_set_entry(ioapic_address, acpi_remap_irq(IRQ_TIMER), INT_TIMER);
-    ioapic_set_entry(ioapic_address, acpi_remap_irq(IRQ_KEYBOARD), INT_KEYBOARD);
 
     // Enable all interrupts
     __asm__ volatile("sti");

@@ -62,6 +62,25 @@ void* memmove(void* dst, const void* src, size_t n)
 }
 
 // ------------------------------------------------------------------------------------------------
+void* memchr(const void* buf, int c, size_t n)
+{
+    u8* p = (u8*)buf;
+    u8* end = p + n;
+
+    while (p != end)
+    {
+        if (*p == c)
+        {
+            return p;
+        }
+
+        ++p;
+    }
+
+    return 0;
+}
+
+// ------------------------------------------------------------------------------------------------
 size_t strlen(const char* str)
 {
     const char* s = str;

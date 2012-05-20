@@ -159,7 +159,6 @@ void console_on_keydown(uint code)
     case KEY_DOWN:
         break;
 
-    case KEY_KP4:
     case KEY_LEFT:
         if (s_cursor > 0)
         {
@@ -167,7 +166,6 @@ void console_on_keydown(uint code)
         }
         break;
 
-    case KEY_KP6:
     case KEY_RIGHT:
         line = console_get_input_line();
         len = strlen(line);
@@ -177,12 +175,10 @@ void console_on_keydown(uint code)
         }
         break;
 
-    case KEY_KP7:
     case KEY_HOME:
         s_cursor = 0;
         break;
 
-    case KEY_KP1:
     case KEY_END:
         line = console_get_input_line();
         len = strlen(line);

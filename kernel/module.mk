@@ -9,11 +9,12 @@ KERNEL_SOURCES := \
 	kernel/format.c \
 	kernel/icmp.c \
 	kernel/idt.c \
+	kernel/input.c \
 	kernel/ioapic.c \
 	kernel/ipv4.c \
-	kernel/keyboard.c \
 	kernel/keymap.c \
 	kernel/local_apic.c \
+	kernel/mem_dump.c \
 	kernel/net.c \
 	kernel/net_driver.c \
 	kernel/pci.c \
@@ -24,6 +25,12 @@ KERNEL_SOURCES := \
 	kernel/smp.c \
 	kernel/string.c \
 	kernel/uhci.c \
+	kernel/usb.c \
+	kernel/usb_desc.c \
+	kernel/usb_dev.c \
+	kernel/usb_driver.c \
+	kernel/usb_kbd.c \
+	kernel/usb_mouse.c \
 	kernel/vga.c \
 	kernel/vm.c
 
@@ -46,13 +53,11 @@ SOURCES += \
 	kernel/console_mock.c \
 	kernel/console_test.c \
 	kernel/format_test.c \
-	kernel/keyboard_test.c \
 	kernel/string_test.c
 
 TESTS += \
 	kernel/console_test.exe \
 	kernel/format_test.exe \
-	kernel/keyboard_test.exe \
 	kernel/string_test.exe \
 	kernel/format_test_native.exe \
 	kernel/string_test_native.exe
@@ -61,9 +66,6 @@ kernel/console_test.exe: test/test.test.o kernel/console_test.test.o kernel/cons
 	$(CC) -o $@ $^
 
 kernel/format_test.exe: test/test.test.o kernel/format_test.test.o kernel/format.test.o
-	$(CC) -o $@ $^
-
-kernel/keyboard_test.exe: test/test.test.o kernel/keyboard_test.test.o kernel/keyboard.test.o kernel/keymap.test.o kernel/console_mock.test.o
 	$(CC) -o $@ $^
 
 kernel/string_test.exe: test/test.test.o kernel/string_test.test.o kernel/string.test.o

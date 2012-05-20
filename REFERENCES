@@ -12,6 +12,8 @@ Hardware Documents:
 - Intel PCI/PCI-X Family of Gigabit Ethernet Controllers Software Developer's Manual
 - Universal Host Controller Interface (UHCI) Design Guide
 - Enhanced Host Controller Interface (EHCI) Specification for Universal Serial Bus
+- Universal Serial Bus: Device Class Definition for Human Interface Devices (HID)
+- Universal Serial Bus: HID Usage Tables
 
 Protocol Documents:
 
