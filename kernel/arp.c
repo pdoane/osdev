@@ -233,7 +233,11 @@ void arp_rx(u8* pkt, uint len)
     ARP_Entry* entry = arp_lookup(spa);
     if (entry)
     {
-        console_print("ARP Merging entry\n");
+        if (net_trace)
+        {
+            console_print("ARP Merging entry\n");
+        }
+
         memcpy(entry->ha, sha, 6);
         merge = true;
     }
@@ -247,7 +251,11 @@ void arp_rx(u8* pkt, uint len)
         // Add a new entry if we didn't update earlier.
         if (!merge)
         {
-            console_print("ARP Adding entry\n");
+            if (net_trace)
+            {
+                console_print("ARP Adding entry\n");
+            }
+
             arp_add(sha, spa);
         }
 

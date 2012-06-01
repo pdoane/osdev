@@ -137,6 +137,7 @@ const char* pci_class_name(uint class_code, uint subclass, uint prog_intf);
 #define PCI_SERIAL_USB_UHCI             0x00
 #define PCI_SERIAL_USB_OHCI             0x10
 #define PCI_SERIAL_USB_EHCI             0x20
+#define PCI_SERIAL_USB_XHCI             0x30
 #define PCI_SERIAL_USB_OTHER            0x80
 
 // Wireless Controllers

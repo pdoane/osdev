@@ -39,16 +39,16 @@ load_file:
 .next_cluster:
         call read_cluster
         cmp ax, 0xfff8
-        jg .next_cluster
+        jb .next_cluster
 
         jmp 0:loader_base           ; Run loader
 
 ; -------------------------------------------------------------------------------------------------
 ; Reads a sector using LBA
 ; in:  eax = logical sector #
-;      es:bx = destination buffer
+;      bx = destination buffer
 ; out: eax = next sector #
-;      es:bx = destination buffer + sector size
+;      bx = destination buffer + sector size
 read_sector:
         push si
         push di
@@ -61,7 +61,7 @@ read_sector:
         push byte 0                 ; High-32 bit sector to read
         push byte 0                 ; High-32 bit sector to read
         push eax                    ; Low-32 bit sector to read
-        push es                     ; Destination Segment
+        push byte 0                 ; Destination Segment
         push bx                     ; Destination Offset
         push byte 1                 ; Number of sectors
         push byte 16                ; Size of parameter block
@@ -89,12 +89,6 @@ read_sector:
         ; increment to next sector
         inc eax
         add bx, 0x200
-        jnc .exit
-
-        ; increment to next segment
-        mov dx, es
-        add dh, 0x10
-        mov es, dx
 
 .exit:
         pop dx
@@ -105,9 +99,9 @@ read_sector:
 ; -------------------------------------------------------------------------------------------------
 ; Read a cluster using LBA
 ; in:  ax = cluster #
-;      es:bx = destination buffer
+;      bx = destination buffer
 ; out: ax = next cluster #
-;      es:bx = destination buffer + cluster size
+;      bx = destination buffer + cluster size
 read_cluster:
         push cx
         push dx
@@ -140,7 +134,7 @@ read_cluster:
 
         push bx
         shl ax, 1
-        div word[bpb_bytes_per_sector]
+        div word[bpb_bytes_per_sector]          ; Remainder stored in dx
         add ax, [bpb_reserved_sector_count]
         add ax, [bpb_hidden_sector_count]
 
@@ -159,7 +153,6 @@ read_cluster:
 
 ; -------------------------------------------------------------------------------------------------
 ; Find root file
-; destroys: eax, bx, cx, si, di
 find_root_file:
         xor eax, eax
         mov al, [bpb_fat_count]
@@ -167,6 +160,10 @@ find_root_file:
         add ax, [bpb_reserved_sector_count]
         add ax, [bpb_hidden_sector_count]
 
+        mov dx, [bpb_root_entry_count]
+        shr dx, 4                   ; (root_entry_count * 32) / 512
+
+.next_sector:
         mov bx, temp_sector
         mov di, bx
         call read_sector
@@ -179,9 +176,16 @@ find_root_file:
 
         add di, 0x20
         and di, -0x20
-        cmp di, [bpb_bytes_per_sector]
+        mov bx, temp_sector
+        add bx, [bpb_bytes_per_sector]
+        cmp di, bx
         jnz .next_entry
 
+        ; End of sector
+        dec dx
+        jnz .next_sector
+
+        ; End of root entry count
         mov si, msg_no_file
         call bios_print
         jmp $
@@ -192,6 +196,7 @@ find_root_file:
 ; -------------------------------------------------------------------------------------------------
 ; Prints a string to the screen
 ; in: si = address of string
+; out: si = end of string
 bios_print:
         push ax
         mov ah, 0x0e

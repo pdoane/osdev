@@ -1,10 +1,15 @@
 
+- Interrupts
+   - MSI
+   - PCI Routing Tables from ACPI if needed
 - USB
    - Keyboard LEDs
    - Hub
    - EHCI
    - Improved Descriptor/Queue management
    - Short Packet Detect optimization
-
+- Memory Management
+   - Physical Memory Allocator
+   - Virtual Memory Allocator
 - PXE Network Booting
 - APIC timer

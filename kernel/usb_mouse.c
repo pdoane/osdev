@@ -32,4 +32,6 @@ bool usb_mouse_init(USB_Device* dev)
         dev->drv_poll = usb_mouse_poll;
         return true;
     }
+
+    return false;
 }

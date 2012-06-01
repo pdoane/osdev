@@ -58,15 +58,6 @@ loader_bsp:
         jmp gdt64.code:bsp64        ; Jump to 64-bit code
 
 ; -------------------------------------------------------------------------------------------------
-; Enable A20 Gate
-enable_a20_gate:
-        in al, 0x92
-        or al, 0x02
-        out 0x92, al
-
-        ret
-
-; -------------------------------------------------------------------------------------------------
 ; Enable Unreal Mode
 enable_unreal_mode:
         lgdt [gdt64.desc]           ; Load GDT
@@ -286,14 +277,19 @@ transfer_cluster:
         jne .next_sector
 
 .next_cluster:
-        pop ax                      ; Restore original cluster #
+        ; Restore original cluster #
+        pop ax
 
+        ; Read FAT table for next cluster #
+        push es
         push bx
         shl ax, 1
-        div word[bpb_bytes_per_sector]
+        div word[bpb_bytes_per_sector]          ; Remainder stored in dx
         add ax, [bpb_reserved_sector_count]
         add ax, [bpb_hidden_sector_count]
 
+        xor bx, bx
+        mov es, bx
         mov bx, temp_sector
         call read_sector
 
@@ -301,6 +297,7 @@ transfer_cluster:
         add bx, dx
         mov ax, [bx]
         pop bx
+        pop es
 
 .exit:
         pop dx
@@ -310,7 +307,6 @@ transfer_cluster:
 
 ; -------------------------------------------------------------------------------------------------
 ; Find root file
-; destroys: eax, bx, cx, si, di
 find_root_file:
         xor eax, eax
         mov al, [bpb_fat_count]
@@ -318,6 +314,10 @@ find_root_file:
         add ax, [bpb_reserved_sector_count]
         add ax, [bpb_hidden_sector_count]
 
+        mov dx, [bpb_root_entry_count]
+        shr dx, 4                   ; (root_entry_count * 32) / 512
+
+.next_sector:
         mov bx, temp_sector
         mov di, bx
         call read_sector
@@ -330,10 +330,17 @@ find_root_file:
 
         add di, 0x20
         and di, -0x20
-        cmp di, [bpb_bytes_per_sector]
+        mov bx, temp_sector
+        add bx, [bpb_bytes_per_sector]
+        cmp di, bx
         jnz .next_entry
 
-        mov si, msg_failed
+        ; End of sector
+        dec dx
+        jnz .next_sector
+
+        ; End of root entry count
+        mov si, msg_no_file
         call bios_print
         jmp $
 
@@ -360,6 +367,7 @@ bios_print:
 ; Data
 msg_load db 'Loading Kernel...', 13, 10, 0
 msg_failed db 'Read Failure', 13, 10, 0
+msg_no_file db 'File not Found', 13, 10, 0
 filename db 'KERNEL  BIN'
 
 ; -------------------------------------------------------------------------------------------------

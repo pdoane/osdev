@@ -88,6 +88,7 @@ const char* pci_class_name(uint class_code, uint subclass, uint prog_intf)
         case PCI_SERIAL_USB_UHCI:       return "USB (UHCI)";
         case PCI_SERIAL_USB_OHCI:       return "USB (OHCI)";
         case PCI_SERIAL_USB_EHCI:       return "USB2";
+        case PCI_SERIAL_USB_XHCI:       return "USB3";
         case PCI_SERIAL_USB_OTHER:      return "USB Controller";
         default:                        return "Unknown USB Class";
         }

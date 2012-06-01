@@ -212,8 +212,6 @@ static void eth_8254x_poll()
 // ------------------------------------------------------------------------------------------------
 static void eth_8254x_tx(u8* pkt, uint len)
 {
-    console_print("Sending packet\n");
-
     TX_Desc* desc = &dev.tx_descs[dev.tx_write];
 
     desc->addr = (u64)pkt;
@@ -239,7 +237,7 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
         return;
     }
 
-    if (!(info->device_id == 0x100e || info->vendor_id == 0x1503))
+    if (!(info->device_id == 0x100e || info->device_id == 0x1503))
     {
         return;
     }
@@ -272,10 +270,13 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
     if (ral)
     {
         u32 rah = mmio_read32(mmio_addr + REG_RAH);
-        console_print("ral = %x\n", ral);
-        console_print("rah = %x\n", rah);
 
-        // TODO
+        net_local_mac[0] = (u8)(ral);
+        net_local_mac[1] = (u8)(ral >> 8);
+        net_local_mac[2] = (u8)(ral >> 16);
+        net_local_mac[3] = (u8)(ral >> 24);
+        net_local_mac[4] = (u8)(rah);
+        net_local_mac[5] = (u8)(rah >> 8);
     }
     else
     {
