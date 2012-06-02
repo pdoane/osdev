@@ -30,6 +30,7 @@ KERNEL_SOURCES := \
 	kernel/usb_desc.c \
 	kernel/usb_dev.c \
 	kernel/usb_driver.c \
+	kernel/usb_hub.c \
 	kernel/usb_kbd.c \
 	kernel/usb_mouse.c \
 	kernel/vga.c \

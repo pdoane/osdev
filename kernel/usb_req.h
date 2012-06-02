@@ -40,6 +40,14 @@
 #define REQ_SYNC_FRAME                  0x0c
 
 // ------------------------------------------------------------------------------------------------
+// USB Hub Class Requests
+
+#define REQ_CLEAR_TT_BUFFER             0x08
+#define REQ_RESET_TT                    0x09
+#define REQ_GET_TT_STATE                0x0a
+#define REQ_STOP_TT                     0x0b
+
+// ------------------------------------------------------------------------------------------------
 // USB HID Interface Requests
 
 #define REQ_GET_REPORT                  0x01
@@ -50,11 +58,31 @@
 #define REQ_SET_PROTOCOL                0x0b
 
 // ------------------------------------------------------------------------------------------------
-// USB Feature Selectors
+// USB Standard Feature Selectors
 
-#define FEATURE_DEVICE_REMOTE_WAKEUP    1   // Device
-#define FEATURE_ENDPOINT_HALT           2   // Endpoint
-#define FEATURE_TEST_MODE               3   // Device
+#define F_DEVICE_REMOTE_WAKEUP          1   // Device
+#define F_ENDPOINT_HALT                 2   // Endpoint
+#define F_TEST_MODE                     3   // Device
+
+// ------------------------------------------------------------------------------------------------
+// USB Hub Feature Seletcors
+
+#define F_C_HUB_LOCAL_POWER             0   // Hub
+#define F_C_HUB_OVER_CURRENT            1   // Hub
+#define F_PORT_CONNECTION               0   // Port
+#define F_PORT_ENABLE                   1   // Port
+#define F_PORT_SUSPEND                  2   // Port
+#define F_PORT_OVER_CURRENT             3   // Port
+#define F_PORT_RESET                    4   // Port
+#define F_PORT_POWER                    8   // Port
+#define F_PORT_LOW_SPEED                9   // Port
+#define F_C_PORT_CONNECTION             16  // Port
+#define F_C_PORT_ENABLE                 17  // Port
+#define F_C_PORT_SUSPEND                18  // Port
+#define F_C_PORT_OVER_CURRENT           19  // Port
+#define F_C_PORT_RESET                  20  // Port
+#define F_PORT_TEST                     21  // Port
+#define F_PORT_INDICATOR                22  // Port
 
 // ------------------------------------------------------------------------------------------------
 // USB Device Request

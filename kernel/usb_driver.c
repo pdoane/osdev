@@ -5,12 +5,14 @@
 #include "usb_driver.h"
 
 // drivers
+#include "usb_hub.h"
 #include "usb_kbd.h"
 #include "usb_mouse.h"
 
 // ------------------------------------------------------------------------------------------------
 USB_Driver usb_driver_table[] =
 {
+    { usb_hub_init },
     { usb_kbd_init },
     { usb_mouse_init },
     { 0 }

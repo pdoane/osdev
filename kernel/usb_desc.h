@@ -23,6 +23,11 @@
 #define USB_DESC_PHYSICAL               0x23
 
 // ------------------------------------------------------------------------------------------------
+// USB HUB Descriptor Types
+
+#define USB_DESC_HUB                    0x29
+
+// ------------------------------------------------------------------------------------------------
 // USB Device Descriptor
 
 typedef struct USB_DeviceDesc
@@ -112,6 +117,29 @@ typedef struct USB_HidDesc
 } PACKED USB_HidDesc;
 
 // ------------------------------------------------------------------------------------------------
+// USB Hub Descriptor
+
+typedef struct USB_HubDesc
+{
+    u8 len;
+    u8 type;
+    u8 port_count;
+    u16 chars;
+    u8 port_power_time;
+    u8 current;
+    // removable/power control bits vary in size
+} PACKED USB_HubDesc;
+
+// Hub Characteristics
+#define HUB_POWER_MASK                  0x03        // Logical Power Switching Mode
+#define HUB_POWER_GLOBAL                0x00
+#define HUB_POWER_INDIVIDUAL            0x01
+#define HUB_COMPOUND                    0x04        // Part of a Compound Device
+#define HUB_CURRENT_MASK                0x18        // Over-current Protection Mode
+#define HUB_TT_TTI_MASK                 0x60        // TT Think Time
+#define HUB_PORT_INDICATORS             0x80        // Port Indicators
+
+// ------------------------------------------------------------------------------------------------
 // Functions
 
 void usb_print_device_desc(USB_DeviceDesc* desc);
@@ -119,4 +147,5 @@ void usb_print_conf_desc(USB_ConfDesc* desc);
 void usb_print_intf_desc(USB_IntfDesc* desc);
 void usb_print_endp_desc(USB_EndpDesc* desc);
 
-void usb_print_hid_desc(USB_HidDesc* hid_desc);
+void usb_print_hid_desc(USB_HidDesc* desc);
+void usb_print_hub_desc(USB_HubDesc* desc);

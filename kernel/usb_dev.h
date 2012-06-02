@@ -38,7 +38,6 @@ typedef struct USB_Device
     USB_IntfDesc intf_desc;
     USB_EndpDesc endp_desc;
 
-    bool (*hc_reset)(struct USB_Device* dev);
     bool (*hc_transfer)(struct USB_Device* dev, USB_DevReq* req, void* data);
     bool (*hc_poll)(struct USB_Device* dev, uint len, void* data);
 

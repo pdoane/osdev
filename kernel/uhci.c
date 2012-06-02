@@ -62,16 +62,16 @@
 // ------------------------------------------------------------------------------------------------
 // Port Status and Control Registers
 
-#define PORT_CCS                        (1 << 0)    // Current Connect Status
-#define PORT_CSC                        (1 << 1)    // Connect Status Change
-#define PORT_PE                         (1 << 2)    // Port Enabled
-#define PORT_PEC                        (1 << 3)    // Port Enable Change
+#define PORT_CONNECTION                 (1 << 0)    // Current Connect Status
+#define PORT_CONNECTION_CHANGE          (1 << 1)    // Connect Status Change
+#define PORT_ENABLE                     (1 << 2)    // Port Enabled
+#define PORT_ENABLE_CHANGE              (1 << 3)    // Port Enable Change
 #define PORT_LS                         (3 << 4)    // Line Status
 #define PORT_RD                         (1 << 6)    // Resume Detect
 #define PORT_LSDA                       (1 << 8)    // Low Speed Device Attached
 #define PORT_RESET                      (1 << 9)    // Port Reset
 #define PORT_SUSP                       (1 << 12)   // Suspend
-#define PORT_RWC                        (PORT_PEC | PORT_CSC)
+#define PORT_RWC                        (PORT_CONNECTION_CHANGE | PORT_ENABLE_CHANGE)
 
 // ------------------------------------------------------------------------------------------------
 // Transfer Descriptor
@@ -238,7 +238,7 @@ static bool uhci_qh_wait(UHCI_Controller* hc, UHCI_QH* qh)
 
     if (qh->element != TD_PTR_TERMINATE)
     {
-        console_print("Queue not complete\n");
+        console_print("Queue not complete: 0x%x\n", qh->element);
         for (;;)
         {
         }
@@ -268,39 +268,29 @@ static uint uhci_reset_port(UHCI_Controller* hc, uint port)
         status = in16(hc->io_addr + reg);
 
         // Check if device is attached to port
-        if (~status & PORT_CCS)
+        if (~status & PORT_CONNECTION)
         {
             break;
         }
 
         // Acknowledge change in status
-        if (status & (PORT_PEC | PORT_CSC))
+        if (status & (PORT_ENABLE_CHANGE | PORT_CONNECTION_CHANGE))
         {
-            uhci_port_clr(hc->io_addr + reg, PORT_PEC | PORT_CSC);
+            uhci_port_clr(hc->io_addr + reg, PORT_ENABLE_CHANGE | PORT_CONNECTION_CHANGE);
             continue;
         }
 
         // Check if device is enabled
-        if (status & PORT_PE)
+        if (status & PORT_ENABLE)
         {
             break;
         }
 
         // Enable the port
-        uhci_port_set(hc->io_addr + reg, PORT_PE);
+        uhci_port_set(hc->io_addr + reg, PORT_ENABLE);
     }
 
     return status;
-}
-
-// ------------------------------------------------------------------------------------------------
-static bool uhci_dev_reset(USB_Device* dev)
-{
-    UHCI_Controller* hc = (UHCI_Controller*)dev->hc;
-
-    uint status = uhci_reset_port(hc, dev->port);
-
-    return status & PORT_PE;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -390,8 +380,6 @@ static bool uhci_dev_poll(USB_Device* dev, uint len, void* data)
 
     uhci_td_init(td, prev, speed, addr, endp, toggle, packet_type, packet_size, data);
 
-    dev->endp_toggle ^= 1;
-
     // Initialize queue head
     UHCI_QH* qh = &hc->qh[0];
     qh->element = (u32)(uintptr_t)&hc->td_pool[0];
@@ -412,6 +400,7 @@ static bool uhci_dev_poll(USB_Device* dev, uint len, void* data)
         }
     }
 
+    dev->endp_toggle ^= 1;
     return true;
 }
 
@@ -425,7 +414,7 @@ static void uhci_probe(UHCI_Controller* hc)
         // Reset port
         uint status = uhci_reset_port(hc, port);
 
-        if (status & PORT_PE)
+        if (status & PORT_ENABLE)
         {
             uint speed = (status & PORT_LSDA) ? USB_LOW_SPEED : USB_FULL_SPEED;
 
@@ -438,7 +427,6 @@ static void uhci_probe(UHCI_Controller* hc)
                 dev->speed = speed;
                 dev->max_packet_size = 8;
 
-                dev->hc_reset = uhci_dev_reset;
                 dev->hc_transfer = uhci_dev_transfer;
                 dev->hc_poll = uhci_dev_poll;
 

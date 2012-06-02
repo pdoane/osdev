@@ -4,6 +4,7 @@
 
 #include "usb_dev.h"
 #include "console.h"
+#include "pit.h"
 #include "usb_driver.h"
 #include "vm.h"
 
@@ -29,7 +30,6 @@ USB_Device* usb_dev_create()
         dev->max_packet_size = 0;
         dev->endp_toggle = 0;
 
-        dev->hc_reset = 0;
         dev->hc_transfer = 0;
         dev->hc_poll = 0;
         dev->drv_poll = 0;
@@ -55,9 +55,6 @@ bool usb_dev_init(USB_Device* dev)
 
     dev->max_packet_size = dev_desc.max_packet_size;
 
-    // Reset port following Windows behavior
-    dev->hc_reset(dev);
-
     // Set address
     uint addr = s_next_addr++;
 
@@ -70,6 +67,8 @@ bool usb_dev_init(USB_Device* dev)
     }
 
     dev->addr = addr;
+
+    pit_wait(2);    // Set address recovery time
 
     // Read entire descriptor
     if (!usb_dev_request(dev,
@@ -311,7 +310,7 @@ bool usb_dev_clear_halt(USB_Device* dev)
     return usb_dev_request(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_ENDP,
         REQ_CLEAR_FEATURE,
-        FEATURE_ENDPOINT_HALT,
+        F_ENDPOINT_HALT,
         dev->endp_desc.addr & 0xf,
         0, 0);
 }

@@ -137,12 +137,12 @@ typedef struct EHCI_Op_Regs
 // ------------------------------------------------------------------------------------------------
 // Port Status and Control Registers
 
-#define PORT_CCS                        (1 << 0)    // Current Connect Status
-#define PORT_CSC                        (1 << 1)    // Connect Status Change
-#define PORT_PE                         (1 << 2)    // Port Enabled
-#define PORT_PEC                        (1 << 3)    // Port Enable Change
-#define PORT_OCA                        (1 << 4)    // Over-current Active
-#define PORT_OCC                        (1 << 5)    // Over-current Change
+#define PORT_CONNECTION                 (1 << 0)    // Current Connect Status
+#define PORT_CONNECTION_CHANGE          (1 << 1)    // Connect Status Change
+#define PORT_ENABLE                     (1 << 2)    // Port Enabled
+#define PORT_ENABLE_CHANGE              (1 << 3)    // Port Enable Change
+#define PORT_OVER_CURRENT               (1 << 4)    // Over-current Active
+#define PORT_OVER_CURRENT_CHANGE        (1 << 5)    // Over-current Change
 #define PORT_FPR                        (1 << 6)    // Force Port Resume
 #define PORT_SUSPEND                    (1 << 7)    // Suspend
 #define PORT_RESET                      (1 << 8)    // Port Reset
@@ -157,7 +157,7 @@ typedef struct EHCI_Op_Regs
 #define PORT_WKCNNT_E                   (1 << 20)   // Wake on Connect Enable
 #define PORT_WKDSCNNT_E                 (1 << 21)   // Wake on Disconnect Enable
 #define PORT_WKOC_E                     (1 << 22)   // Wake on Over-current Enable
-#define PORT_RWC                        (PORT_CSC | PORT_PEC | PORT_OCC)
+#define PORT_RWC                        (PORT_CONNECTION_CHANGE | PORT_ENABLE_CHANGE | PORT_OVER_CURRENT_CHANGE)
 
 // ------------------------------------------------------------------------------------------------
 // Transfer Descriptor
@@ -309,8 +309,49 @@ static void ehci_td_init(EHCI_TD* td, EHCI_TD* prev,
 }
 
 // ------------------------------------------------------------------------------------------------
+static void ehci_qh_init(EHCI_QH* qh, EHCI_TD* td, USB_Device* parent, bool interrupt, uint speed, uint addr, uint endp, uint max_size)
+{
+    uint ch =
+        (max_size << QH_CH_MPL_SHIFT) |
+        QH_CH_DTC |
+        (speed << QH_CH_EPS_SHIFT) |
+        (endp << QH_CH_ENDP_SHIFT) |
+        addr;
+
+    if (!interrupt)
+    {
+        ch |= 5 << QH_CH_NAK_RL_SHIFT;
+        ch |= QH_CH_H;
+    }
+
+    qh->ch = ch;
+
+    if (speed != USB_HIGH_SPEED && parent)
+    {
+        //if (!interrupt)
+        {
+            qh->ch |= QH_CH_CONTROL;
+        }
+
+        qh->caps =
+            (1 << QH_CAP_MULT_SHIFT) |
+            (parent->port << QH_CAP_PORT_SHIFT) |
+            (parent->addr << QH_CAP_HUB_ADDR_SHIFT);
+    }
+
+    // TODO: split completion mask and interrupt schedule mask
+
+    qh->next_link = (u32)(uintptr_t)td;
+    qh->token = 0;
+}
+
+// ------------------------------------------------------------------------------------------------
 static bool ehci_qh_wait(EHCI_Controller* hc, EHCI_QH* qh)
 {
+    bool result = true;
+
+    pit_wait(1);   // wait until caches have updated
+
     for (;;)
     {
         if (~qh->token & TD_TOK_ACTIVE)
@@ -322,7 +363,8 @@ static bool ehci_qh_wait(EHCI_Controller* hc, EHCI_QH* qh)
 
             if (qh->token & TD_TOK_HALTED)
             {
-                return false;
+                result = false;
+                break;
             }
 
             if (qh->token & TD_TOK_DATABUFFER)
@@ -346,7 +388,7 @@ static bool ehci_qh_wait(EHCI_Controller* hc, EHCI_QH* qh)
 
     // Mark queue as halted
     qh->token |= TD_TOK_HALTED;
-    return true;
+    return result;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -370,36 +412,26 @@ static uint ehci_reset_port(EHCI_Controller* hc, uint port)
         status = *reg;
 
         // Check if device is attached to port
-        if (~status & PORT_CCS)
+        if (~status & PORT_CONNECTION)
         {
             break;
         }
 
         // Acknowledge change in status
-        if (status & (PORT_PEC | PORT_CSC))
+        if (status & (PORT_ENABLE_CHANGE | PORT_CONNECTION_CHANGE))
         {
-            ehci_port_clr(reg, PORT_PEC | PORT_CSC);
+            ehci_port_clr(reg, PORT_ENABLE_CHANGE | PORT_CONNECTION_CHANGE);
             continue;
         }
 
         // Check if device is enabled
-        if (status & PORT_PE)
+        if (status & PORT_ENABLE)
         {
             break;
         }
     }
 
     return status;
-}
-
-// ------------------------------------------------------------------------------------------------
-static bool ehci_dev_reset(USB_Device* dev)
-{
-    EHCI_Controller* hc = (EHCI_Controller*)dev->hc;
-
-    uint status = ehci_reset_port(hc, dev->port);
-
-    return status & PORT_PE;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -460,17 +492,7 @@ static bool ehci_dev_transfer(USB_Device* dev, USB_DevReq* req, void* data)
 
     // Initialize queue head
     EHCI_QH* qh = &hc->qh[0];
-    qh->ch =
-        (5 << QH_CH_NAK_RL_SHIFT) |
-        (max_size << QH_CH_MPL_SHIFT) |
-        QH_CH_H    |
-        QH_CH_DTC |
-        (speed << QH_CH_EPS_SHIFT) |
-        (0 << QH_CH_ENDP_SHIFT) |
-        addr;
-
-    qh->next_link = (u32)(uintptr_t)&hc->td_pool[0];
-    qh->token = 0;
+    ehci_qh_init(qh, &hc->td_pool[0], dev->parent, false, speed, addr, 0, max_size);
 
     // Wait until queue has been processed
     return ehci_qh_wait(hc, qh);
@@ -498,24 +520,17 @@ static bool ehci_dev_poll(USB_Device* dev, uint len, void* data)
 
     ehci_td_init(td, prev, toggle, packet_type, packet_size, data);
 
-    dev->endp_toggle ^= 1;
-
     // Initialize queue head
     EHCI_QH* qh = &hc->qh[0];
-    qh->ch =
-        (5 << QH_CH_NAK_RL_SHIFT) |            // TODO - RL field should be zero for interrupts?
-        (max_size << QH_CH_MPL_SHIFT) |
-        QH_CH_DTC |
-        (speed << QH_CH_EPS_SHIFT) |
-        (endp << QH_CH_ENDP_SHIFT) |
-        addr;
-
-    qh->next_link = (u32)(uintptr_t)&hc->td_pool[0];
-    qh->token = 0;
+    ehci_qh_init(qh, &hc->td_pool[0], dev->parent, true, speed, addr, endp, max_size);
 
     // Wait until queue has been processed
-    ehci_qh_wait(hc, qh);
+    if (!ehci_qh_wait(hc, qh))
+    {
+        return false;
+    }
 
+    dev->endp_toggle ^= 1;
     return true;
 }
 
@@ -529,7 +544,7 @@ static void ehci_probe(EHCI_Controller* hc)
         // Reset port
         uint status = ehci_reset_port(hc, port);
 
-        if (status & PORT_PE)
+        if (status & PORT_ENABLE)
         {
             uint speed = USB_HIGH_SPEED;
 
@@ -542,7 +557,6 @@ static void ehci_probe(EHCI_Controller* hc)
                 dev->speed = speed;
                 dev->max_packet_size = 8;
 
-                dev->hc_reset = ehci_dev_reset;
                 dev->hc_transfer = ehci_dev_transfer;
                 dev->hc_poll = ehci_dev_poll;
 

@@ -56,3 +56,13 @@ void usb_print_hid_desc(USB_HidDesc* desc)
         desc->desc_type,
         desc->desc_len);
 }
+
+// ------------------------------------------------------------------------------------------------
+void usb_print_hub_desc(USB_HubDesc* desc)
+{
+    console_print(" Hub: port count=%d characteristics=0x%x power time=%d current=%d\n",
+            desc->port_count,
+            desc->chars,
+            desc->port_power_time,
+            desc->current);
+}
