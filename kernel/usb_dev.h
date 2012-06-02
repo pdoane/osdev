@@ -49,10 +49,11 @@ typedef struct USB_Device
 // Functions
 
 USB_Device* usb_dev_create();
-void usb_dev_init(USB_Device* dev);
-void usb_dev_request(USB_Device* dev,
+bool usb_dev_init(USB_Device* dev);
+bool usb_dev_request(USB_Device* dev,
     uint type, uint request,
     uint value, uint index,
     uint len, void* data);
-void usb_dev_get_langs(USB_Device* dev, u16* langs);
-void usb_dev_get_string(USB_Device* dev, char* str, uint lang_id, uint str_index);
+bool usb_dev_get_langs(USB_Device* dev, u16* langs);
+bool usb_dev_get_string(USB_Device* dev, char* str, uint lang_id, uint str_index);
+bool usb_dev_clear_halt(USB_Device* dev);

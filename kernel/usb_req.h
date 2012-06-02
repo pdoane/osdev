@@ -50,6 +50,13 @@
 #define REQ_SET_PROTOCOL                0x0b
 
 // ------------------------------------------------------------------------------------------------
+// USB Feature Selectors
+
+#define FEATURE_DEVICE_REMOTE_WAKEUP    1   // Device
+#define FEATURE_ENDPOINT_HALT           2   // Endpoint
+#define FEATURE_TEST_MODE               3   // Device
+
+// ------------------------------------------------------------------------------------------------
 // USB Device Request
 
 typedef struct USB_DevReq

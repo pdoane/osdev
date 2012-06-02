@@ -3,9 +3,8 @@
    - MSI
    - PCI Routing Tables from ACPI if needed
 - USB
-   - Keyboard LEDs
    - Hub
-   - EHCI
+   - Keyboard LEDs
    - Improved Descriptor/Queue management
    - Short Packet Detect optimization
 - Memory Management

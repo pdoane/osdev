@@ -113,6 +113,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pci", "pci", "{4A1EE61F-E19
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "usb", "usb", "{BDD7F67E-0256-4243-8AEF-596C3897217F}"
 	ProjectSection(SolutionItems) = preProject
+		kernel\ehci.c = kernel\ehci.c
+		kernel\ehci.h = kernel\ehci.h
 		kernel\uhci.c = kernel\uhci.c
 		kernel\uhci.h = kernel\uhci.h
 		kernel\usb.c = kernel\usb.c

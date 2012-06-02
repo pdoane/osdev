@@ -71,3 +71,7 @@ extern PCI_Driver pci_driver_table[];
 u8 pci_in8(uint id, uint reg);
 u16 pci_in16(uint id, uint reg);
 u32 pci_in32(uint id, uint reg);
+
+void pci_out8(uint id, uint reg, u8 data);
+void pci_out16(uint id, uint reg, u16 data);
+void pci_out32(uint id, uint reg, u32 data);

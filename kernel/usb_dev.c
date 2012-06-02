@@ -41,14 +41,17 @@ USB_Device* usb_dev_create()
 }
 
 // ------------------------------------------------------------------------------------------------
-void usb_dev_init(USB_Device* dev)
+bool usb_dev_init(USB_Device* dev)
 {
     // Get first 8 bytes of device descriptor
     USB_DeviceDesc dev_desc;
-    usb_dev_request(dev,
+    if (!usb_dev_request(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
         REQ_GET_DESC, (USB_DESC_DEVICE << 8) | 0, 0,
-        8, &dev_desc);
+        8, &dev_desc))
+    {
+        return false;
+    }
 
     dev->max_packet_size = dev_desc.max_packet_size;
 
@@ -58,18 +61,24 @@ void usb_dev_init(USB_Device* dev)
     // Set address
     uint addr = s_next_addr++;
 
-    usb_dev_request(dev,
+    if (!usb_dev_request(dev,
         RT_HOST_TO_DEV | RT_STANDARD | RT_DEV,
         REQ_SET_ADDR, addr, 0,
-        0, 0);
+        0, 0))
+    {
+        return false;
+    }
 
     dev->addr = addr;
 
     // Read entire descriptor
-    usb_dev_request(dev,
+    if (!usb_dev_request(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
         REQ_GET_DESC, (USB_DESC_DEVICE << 8) | 0, 0,
-        sizeof(USB_DeviceDesc), &dev_desc);
+        sizeof(USB_DeviceDesc), &dev_desc))
+    {
+        return false;
+    }
 
     // Dump descriptor
     usb_print_device_desc(&dev_desc);
@@ -100,10 +109,13 @@ void usb_dev_init(USB_Device* dev)
         u8 config_buf[256];
 
         // Get configuration total length
-        usb_dev_request(dev,
+        if (!usb_dev_request(dev,
             RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
             REQ_GET_DESC, (USB_DESC_CONF << 8) | conf_index, 0,
-            4, config_buf);
+            4, config_buf))
+        {
+            continue;
+        }
 
         // Only static size supported for now
         USB_ConfDesc* conf_desc = (USB_ConfDesc*)config_buf;
@@ -115,10 +127,13 @@ void usb_dev_init(USB_Device* dev)
         }
 
         // Read all configuration data
-        usb_dev_request(dev,
+        if (!usb_dev_request(dev,
             RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
             REQ_GET_DESC, (USB_DESC_CONF << 8) | conf_index, 0,
-            conf_desc->total_len, config_buf);
+            conf_desc->total_len, config_buf))
+        {
+            continue;
+        }
 
         usb_print_conf_desc(conf_desc);
 
@@ -170,10 +185,13 @@ void usb_dev_init(USB_Device* dev)
     // Configure device
     if (picked_conf_value && picked_intf_desc && picked_endp_desc)
     {
-        usb_dev_request(dev,
+        if (!usb_dev_request(dev,
             RT_HOST_TO_DEV | RT_STANDARD | RT_DEV,
             REQ_SET_CONF, picked_conf_value, 0,
-            0, 0);
+            0, 0))
+        {
+            return false;
+        }
 
         dev->intf_desc = *picked_intf_desc;
         dev->endp_desc = *picked_endp_desc;
@@ -190,10 +208,12 @@ void usb_dev_init(USB_Device* dev)
             ++driver;
         }
     }
+
+    return true;
 }
 
 // ------------------------------------------------------------------------------------------------
-void usb_dev_request(struct USB_Device* dev,
+bool usb_dev_request(struct USB_Device* dev,
     uint type, uint request,
     uint value, uint index,
     uint len, void* data)
@@ -205,26 +225,34 @@ void usb_dev_request(struct USB_Device* dev,
     req.index = index;
     req.len = len;
 
-    dev->hc_transfer(dev, &req, data);
+    return dev->hc_transfer(dev, &req, data);
 }
 
 // ------------------------------------------------------------------------------------------------
-void usb_dev_get_langs(USB_Device* dev, u16* langs)
+bool usb_dev_get_langs(USB_Device* dev, u16* langs)
 {
+    langs[0] = 0;
+
     u8 buf[256];
     USB_StringDesc* desc = (struct USB_StringDesc*)buf;
 
     // Get length
-    usb_dev_request(dev,
+    if (!usb_dev_request(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
         REQ_GET_DESC, (USB_DESC_STRING << 8) | 0, 0,
-        1, desc);
+        1, desc))
+    {
+        return false;
+    }
 
     // Get lang data
-    usb_dev_request(dev,
+    if (!usb_dev_request(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
         REQ_GET_DESC, (USB_DESC_STRING << 8) | 0, 0,
-        desc->len, desc);
+        desc->len, desc))
+    {
+        return false;
+    }
 
     uint lang_len = (desc->len - 2) / 2;
     for (uint i = 0; i < lang_len; ++i)
@@ -233,31 +261,38 @@ void usb_dev_get_langs(USB_Device* dev, u16* langs)
     }
 
     langs[lang_len] = 0;
+    return true;
 }
 
 // ------------------------------------------------------------------------------------------------
-void usb_dev_get_string(USB_Device* dev, char* str, uint lang_id, uint str_index)
+bool usb_dev_get_string(USB_Device* dev, char* str, uint lang_id, uint str_index)
 {
+    str[0] = '\0';
     if (!str_index)
     {
-        str[0] = '\0';
-        return;
+        return true;
     }
 
     u8 buf[256];
     USB_StringDesc* desc = (struct USB_StringDesc*)buf;
 
     // Get string length
-    usb_dev_request(dev,
+    if (!usb_dev_request(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
         REQ_GET_DESC, (USB_DESC_STRING << 8) | str_index, lang_id,
-        1, desc);
+        1, desc))
+    {
+        return false;
+    }
 
     // Get string data
-    usb_dev_request(dev,
+    if (!usb_dev_request(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
         REQ_GET_DESC, (USB_DESC_STRING << 8) | str_index, lang_id,
-        desc->len, desc);
+        desc->len, desc))
+    {
+        return false;
+    }
 
     // Dumb Unicode to ASCII conversion
     uint str_len = (desc->len - 2) / 2;
@@ -267,6 +302,18 @@ void usb_dev_get_string(USB_Device* dev, char* str, uint lang_id, uint str_index
     }
 
     str[str_len] = '\0';
+    return true;
+}
+
+// ------------------------------------------------------------------------------------------------
+bool usb_dev_clear_halt(USB_Device* dev)
+{
+    return usb_dev_request(dev,
+        RT_DEV_TO_HOST | RT_STANDARD | RT_ENDP,
+        REQ_CLEAR_FEATURE,
+        FEATURE_ENDPOINT_HALT,
+        dev->endp_desc.addr & 0xf,
+        0, 0);
 }
 
 // ------------------------------------------------------------------------------------------------

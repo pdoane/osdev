@@ -25,8 +25,8 @@
 #define REG_FRNUM                       0x06        // Frame Number
 #define REG_FRBASEADD                   0x08        // Frame List Base Address
 #define REG_SOFMOD                      0x0C        // Start of Frame Modify
-#define REG_PORTSC1                     0x10        // Port 1 Status/Control
-#define REG_PORTSC2                     0x12        // Port 2 Status/Control
+#define REG_PORT1                       0x10        // Port 1 Status/Control
+#define REG_PORT2                       0x12        // Port 2 Status/Control
 #define REG_LEGSUP                      0xc0        // Legacy Support
 
 // ------------------------------------------------------------------------------------------------
@@ -62,16 +62,16 @@
 // ------------------------------------------------------------------------------------------------
 // Port Status and Control Registers
 
-#define PORTSC_CCS                      (1 << 0)    // Current Connect Status
-#define PORTSC_CSC                      (1 << 1)    // Connect Status Change
-#define PORTSC_PE                       (1 << 2)    // Port Enabled
-#define PORTSC_PEC                      (1 << 3)    // Port Enable Change
-#define PORTSC_LS                       (3 << 4)    // Line Status
-#define PORTSC_RD                       (1 << 6)    // Resume Detect
-#define PORTSC_LSDA                     (1 << 8)    // Low Speed Device Attached
-#define PORTSC_PR                       (1 << 9)    // Port Reset
-#define PORTSC_SUSP                     (1 << 12)   // Suspend
-#define PORTSC_RWC                      (PORTSC_PEC | PORTSC_CSC)
+#define PORT_CCS                        (1 << 0)    // Current Connect Status
+#define PORT_CSC                        (1 << 1)    // Connect Status Change
+#define PORT_PE                         (1 << 2)    // Port Enabled
+#define PORT_PEC                        (1 << 3)    // Port Enable Change
+#define PORT_LS                         (3 << 4)    // Line Status
+#define PORT_RD                         (1 << 6)    // Resume Detect
+#define PORT_LSDA                       (1 << 8)    // Low Speed Device Attached
+#define PORT_RESET                      (1 << 9)    // Port Reset
+#define PORT_SUSP                       (1 << 12)   // Suspend
+#define PORT_RWC                        (PORT_PEC | PORT_CSC)
 
 // ------------------------------------------------------------------------------------------------
 // Transfer Descriptor
@@ -147,7 +147,7 @@ static void uhci_port_set(uint port, u16 data)
 {
     uint status = in16(port);
     status |= data;
-    status &= ~PORTSC_RWC;
+    status &= ~PORT_RWC;
     out16(port, status);
 }
 
@@ -155,9 +155,9 @@ static void uhci_port_set(uint port, u16 data)
 static void uhci_port_clr(uint port, u16 data)
 {
     uint status = in16(port);
-    status &= ~PORTSC_RWC;
+    status &= ~PORT_RWC;
     status &= ~data;
-    status |= PORTSC_RWC & data;
+    status |= PORT_RWC & data;
     out16(port, status);
 }
 
@@ -250,12 +250,12 @@ static bool uhci_qh_wait(UHCI_Controller* hc, UHCI_QH* qh)
 // ------------------------------------------------------------------------------------------------
 static uint uhci_reset_port(UHCI_Controller* hc, uint port)
 {
-    uint reg = REG_PORTSC1 + port * 2;
+    uint reg = REG_PORT1 + port * 2;
 
     // Reset the port
-    uhci_port_set(hc->io_addr + reg, PORTSC_PR);
+    uhci_port_set(hc->io_addr + reg, PORT_RESET);
     pit_wait(50);
-    uhci_port_clr(hc->io_addr + reg, PORTSC_PR);
+    uhci_port_clr(hc->io_addr + reg, PORT_RESET);
 
     // Wait 100ms for port to enable (TODO - what is appropriate length of time?)
     uint status = 0;
@@ -268,26 +268,26 @@ static uint uhci_reset_port(UHCI_Controller* hc, uint port)
         status = in16(hc->io_addr + reg);
 
         // Check if device is attached to port
-        if (~status & PORTSC_CCS)
+        if (~status & PORT_CCS)
         {
             break;
         }
 
         // Acknowledge change in status
-        if (status & (PORTSC_PEC | PORTSC_CSC))
+        if (status & (PORT_PEC | PORT_CSC))
         {
-            uhci_port_clr(hc->io_addr + reg, PORTSC_PEC | PORTSC_CSC);
+            uhci_port_clr(hc->io_addr + reg, PORT_PEC | PORT_CSC);
             continue;
         }
 
         // Check if device is enabled
-        if (status & PORTSC_PE)
+        if (status & PORT_PE)
         {
             break;
         }
 
         // Enable the port
-        uhci_port_set(hc->io_addr + reg, PORTSC_PE);
+        uhci_port_set(hc->io_addr + reg, PORT_PE);
     }
 
     return status;
@@ -300,7 +300,7 @@ static bool uhci_dev_reset(USB_Device* dev)
 
     uint status = uhci_reset_port(hc, dev->port);
 
-    return status & PORTSC_PE;
+    return status & PORT_PE;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -390,6 +390,8 @@ static bool uhci_dev_poll(USB_Device* dev, uint len, void* data)
 
     uhci_td_init(td, prev, speed, addr, endp, toggle, packet_type, packet_size, data);
 
+    dev->endp_toggle ^= 1;
+
     // Initialize queue head
     UHCI_QH* qh = &hc->qh[0];
     qh->element = (u32)(uintptr_t)&hc->td_pool[0];
@@ -410,7 +412,6 @@ static bool uhci_dev_poll(USB_Device* dev, uint len, void* data)
         }
     }
 
-    dev->endp_toggle ^= 1;
     return true;
 }
 
@@ -424,9 +425,9 @@ static void uhci_probe(UHCI_Controller* hc)
         // Reset port
         uint status = uhci_reset_port(hc, port);
 
-        if (status & PORTSC_PE)
+        if (status & PORT_PE)
         {
-            uint speed = (status & PORTSC_LSDA) ? USB_LOW_SPEED : USB_FULL_SPEED;
+            uint speed = (status & PORT_LSDA) ? USB_LOW_SPEED : USB_FULL_SPEED;
 
             USB_Device* dev = usb_dev_create();
             if (dev)
@@ -435,13 +436,16 @@ static void uhci_probe(UHCI_Controller* hc)
                 dev->hc = hc;
                 dev->port = port;
                 dev->speed = speed;
-                dev->max_packet_size = 8;   // TODO - should be higher for full speed?
+                dev->max_packet_size = 8;
 
                 dev->hc_reset = uhci_dev_reset;
                 dev->hc_transfer = uhci_dev_transfer;
                 dev->hc_poll = uhci_dev_poll;
 
-                usb_dev_init(dev);
+                if (!usb_dev_init(dev))
+                {
+                    // TODO - cleanup
+                }
             }
         }
     }
