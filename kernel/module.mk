@@ -15,6 +15,7 @@ KERNEL_SOURCES := \
 	kernel/ioapic.c \
 	kernel/ipv4.c \
 	kernel/keymap.c \
+	kernel/link.c \
 	kernel/local_apic.c \
 	kernel/mem_dump.c \
 	kernel/net.c \

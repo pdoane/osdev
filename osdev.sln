@@ -171,6 +171,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "stdlib", "stdlib", "{030391
 		kernel\types.h = kernel\types.h
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "container", "container", "{C24EBB89-B139-4C30-8C50-CD8DF486149C}"
+	ProjectSection(SolutionItems) = preProject
+		kernel\link.c = kernel\link.c
+		kernel\link.h = kernel\link.h
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -184,5 +190,6 @@ Global
 		{EC4B8992-44EC-4A6E-80EA-912B53F173B6} = {540847D6-87C3-435D-994A-C12DE71831B0}
 		{FFFF12C1-5F5D-4FF1-B826-F766CF0BCA47} = {540847D6-87C3-435D-994A-C12DE71831B0}
 		{030391D5-E8D0-45AB-AEA0-6417655B89BF} = {540847D6-87C3-435D-994A-C12DE71831B0}
+		{C24EBB89-B139-4C30-8C50-CD8DF486149C} = {540847D6-87C3-435D-994A-C12DE71831B0}
 	EndGlobalSection
 EndGlobal
