@@ -7,6 +7,7 @@ KERNEL_SOURCES := \
 	kernel/console.c \
 	kernel/ehci.c \
 	kernel/eth_8254x.c \
+	kernel/except.c \
 	kernel/format.c \
 	kernel/icmp.c \
 	kernel/idt.c \
@@ -46,7 +47,7 @@ TARGETS += kernel/kernel.bin
 KERNEL_OBJECTS := $(KERNEL_SOURCES:.c=.cross.o) $(KERNEL_ASM:.asm=.cross.o)
 
 kernel/kernel.bin: $(KERNEL_OBJECTS) kernel/linker.ld
-	$(CROSS_LD) -T kernel/linker.ld -o $@ $(KERNEL_OBJECTS)
+	$(CROSS_LD) -Map kernel/kernel.map -T kernel/linker.ld -o $@ $(KERNEL_OBJECTS)
 
 # -------------------------------------------------------------------------------------------------
 # Tests

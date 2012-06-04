@@ -87,6 +87,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "net", "net", "{A54B0484-834
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "interrupt", "interrupt", "{10A145E2-02C0-4280-AC74-F5D845EB932C}"
 	ProjectSection(SolutionItems) = preProject
+		kernel\except.c = kernel\except.c
+		kernel\except.h = kernel\except.h
 		kernel\idt.c = kernel\idt.c
 		kernel\idt.h = kernel\idt.h
 		kernel\int.h = kernel\int.h

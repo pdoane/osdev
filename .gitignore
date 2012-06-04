@@ -3,5 +3,6 @@
 *.exe
 *.exe.run
 *.img
+*.map
 *.o
 *.suo

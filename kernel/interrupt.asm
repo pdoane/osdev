@@ -10,6 +10,7 @@
 
 [EXTERN pit_ticks]
 [EXTERN local_apic_address]
+[EXTERN exception_dump]
 
 ; -------------------------------------------------------------------------------------------------
 ; Default handlers
@@ -25,7 +26,16 @@ default_interrupt_handler:
 
 %macro make_exception_handler 1
 exception%1_handler:
-        mov al, %1
+        cli
+        push byte 0
+        push byte %1
+        jmp exception_body
+%endmacro
+
+%macro make_error_exception_handler 1
+exception%1_handler:
+        cli
+        push byte %1
         jmp exception_body
 %endmacro
 
@@ -37,16 +47,16 @@ make_exception_handler 4
 make_exception_handler 5
 make_exception_handler 6
 make_exception_handler 7
-make_exception_handler 8
+make_error_exception_handler 8
 make_exception_handler 9
-make_exception_handler 10
-make_exception_handler 11
-make_exception_handler 12
-make_exception_handler 13
-make_exception_handler 14
+make_error_exception_handler 10
+make_error_exception_handler 11
+make_error_exception_handler 12
+make_error_exception_handler 13
+make_error_exception_handler 14
 make_exception_handler 15
 make_exception_handler 16
-make_exception_handler 17
+make_error_exception_handler 17
 make_exception_handler 18
 make_exception_handler 19
 
@@ -73,33 +83,17 @@ exception_handlers:
         dq exception19_handler
 
 exception_body:
-        mov rdi, 0x000b8000
-        mov rsi, rax
+        push rax
+        push rcx
+        push rdx
+        push rbx
+        push rbp
+        push rsi
+        push rdi
 
-        shl rsi, 1
-        add rsi, exception_mnemonic
-        lodsb
-        stosb
-        mov al, 0x1f
-        stosb
-
-        lodsb
-        stosb
-        mov al, 0x1f
-        stosb
-
-        mov al, '-'
-        stosb
-        mov al, 0x1f
-        stosb
-
-        mov rsi, msg_exception
-        call vga_print
+        call exception_dump
 
         jmp $
-
-msg_exception db 'Exception!', 0
-exception_mnemonic db 'DEDB  BPOFBRUDNMDF  TSNPSSGPPF  MFACMCXM'
 
 ; -------------------------------------------------------------------------------------------------
 ; Prints a string to the screen
