@@ -5,16 +5,20 @@
 #include "uhci.h"
 #include "console.h"
 #include "io.h"
+#include "link.h"
 #include "pci_classify.h"
 #include "pci_driver.h"
 #include "pit.h"
+#include "string.h"
+#include "usb_controller.h"
 #include "usb_dev.h"
 #include "vm.h"
 
 // ------------------------------------------------------------------------------------------------
 // Limits
 
-#define MAX_TRANSFER_DESCS              32
+#define MAX_QH                          8
+#define MAX_TD                          32
 
 // ------------------------------------------------------------------------------------------------
 // UHCI Controller I/O Registers
@@ -82,7 +86,11 @@ typedef struct UHCI_TD
     volatile u32 cs;
     volatile u32 token;
     volatile u32 buffer;
-    u32 scratch[4];
+
+    // internal fields
+    u32 td_next;
+    u8 active;
+    u8 pad[11];
 } UHCI_TD;
 
 // TD Link Pointer
@@ -128,7 +136,13 @@ typedef struct UHCI_QH
 {
     volatile u32 head;
     volatile u32 element;
-    u8 pad[8];
+
+    // internal fields
+    USB_Transfer* transfer;
+    Link qh_link;
+    u32 td_head;
+    u32 active;
+    u8 pad[24];
 } UHCI_QH;
 
 // ------------------------------------------------------------------------------------------------
@@ -138,9 +152,99 @@ typedef struct UHCI_Controller
 {
     uint io_addr;
     u32* frame_list;
-    UHCI_QH* qh;
+    UHCI_QH* qh_pool;
     UHCI_TD* td_pool;
+    UHCI_QH* async_qh;
 } UHCI_Controller;
+
+#if 0
+// ------------------------------------------------------------------------------------------------
+static void uhci_print_td(UHCI_TD* td)
+{
+    console_print("td=0x%08x: link=0x%08x cs=0x%08x token=0x%08x buffer=0x%08x\n",
+            td, td->link, td->cs, td->token, td->buffer);
+}
+
+// ------------------------------------------------------------------------------------------------
+static void uhci_print_qh(UHCI_QH* qh)
+{
+    console_print("qh=0x%08x: head=0x%08x element=0x%08x\n",
+            qh, qh->head, qh->element);
+}
+#endif
+
+// ------------------------------------------------------------------------------------------------
+static UHCI_TD* uhci_alloc_td(UHCI_Controller* hc)
+{
+    // TODO - better memory management
+    UHCI_TD* end = hc->td_pool + MAX_TD;
+    for (UHCI_TD* td = hc->td_pool; td != end; ++td)
+    {
+        if (!td->active)
+        {
+            //console_print("uhci_alloc_td 0x%08x\n", td);
+            td->active = 1;
+            return td;
+        }
+    }
+
+    console_print("uhci_alloc_td failed\n");
+    return 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+static UHCI_QH* uhci_alloc_qh(UHCI_Controller* hc)
+{
+    // TODO - better memory management
+    UHCI_QH* end = hc->qh_pool + MAX_QH;
+    for (UHCI_QH* qh = hc->qh_pool; qh != end; ++qh)
+    {
+        if (!qh->active)
+        {
+            //console_print("uhci_alloc_qh 0x%08x\n", qh);
+            qh->active = 1;
+            return qh;
+        }
+    }
+
+    console_print("uhci_alloc_qh failed\n");
+    return 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+static void uhci_free_td(UHCI_TD* td)
+{
+    //console_print("uhci_free_td 0x%08x\n", td);
+    td->active = 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+static void uhci_free_qh(UHCI_QH* qh)
+{
+    //console_print("uhci_free_qh 0x%08x\n", qh);
+    qh->active = 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+static void uhci_insert_qh(UHCI_Controller* hc, UHCI_QH* qh)
+{
+    UHCI_QH* list = hc->async_qh;
+    UHCI_QH* end = link_data(list->qh_link.prev, UHCI_QH, qh_link);
+
+    qh->head = TD_PTR_TERMINATE;
+    end->head = (u32)(uintptr_t)qh | TD_PTR_QH;
+
+    link_before(&list->qh_link, &qh->qh_link);
+}
+
+// ------------------------------------------------------------------------------------------------
+static void uhci_remove_qh(UHCI_QH* qh)
+{
+    UHCI_QH* prev = link_data(qh->qh_link.prev, UHCI_QH, qh_link);
+
+    prev->head = qh->head;
+    link_remove(&qh->qh_link);
+}
 
 // ------------------------------------------------------------------------------------------------
 static void uhci_port_set(uint port, u16 data)
@@ -171,9 +275,12 @@ static void uhci_td_init(UHCI_TD* td, UHCI_TD* prev,
     if (prev)
     {
         prev->link = (u32)(uintptr_t)td | TD_PTR_DEPTH;
+        prev->td_next = (u32)(uintptr_t)td;
     }
 
     td->link = TD_PTR_TERMINATE;
+    td->td_next = 0;
+
     td->cs = (3 << TD_CS_ERROR_SHIFT) | TD_CS_ACTIVE;
     if (speed == USB_LOW_SPEED)
     {
@@ -191,60 +298,93 @@ static void uhci_td_init(UHCI_TD* td, UHCI_TD* prev,
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool uhci_qh_wait(UHCI_Controller* hc, UHCI_QH* qh)
+static void uhci_qh_init(UHCI_QH* qh, USB_Transfer* t, UHCI_TD* td)
 {
-    for (;;)
-    {
-        UHCI_TD* td = (UHCI_TD*)(uintptr_t)(qh->element & ~0xf);
+    qh->transfer = t;
+    qh->td_head = (u32)(uintptr_t)td;
+    qh->element = (u32)(uintptr_t)td;
+}
 
-        if (!td)
+// ------------------------------------------------------------------------------------------------
+static void uhci_qh_process(UHCI_Controller* hc, UHCI_QH* qh)
+{
+    USB_Transfer* t = qh->transfer;
+
+    UHCI_TD* td = (UHCI_TD*)(uintptr_t)(qh->element & ~0xf);
+    if (!td)
+    {
+        t->success = true;
+        t->complete = true;
+    }
+    else if (~td->cs & TD_CS_ACTIVE)
+    {
+        if (td->cs & TD_CS_NAK)
         {
-            break;
+            console_print("NAK\n");
         }
 
-        if (~td->cs & TD_CS_ACTIVE)
+        if (td->cs & TD_CS_STALLED)
         {
-            if (td->cs & TD_CS_NAK)
-            {
-                console_print("NAK\n");
-            }
+            console_print("TD is stalled\n");
+            t->success = false;
+            t->complete = true;
+        }
 
-            if (td->cs & TD_CS_STALLED)
-            {
-                console_print("TD is stalled\n");
-                for (;;)
-                {
-                }
-            }
-
-            if (td->cs & TD_CS_DATABUFFER)
-            {
-                console_print("TD data buffer error\n");
-            }
-            if (td->cs & TD_CS_BABBLE)
-            {
-                console_print("TD babble error\n");
-            }
-            if (td->cs & TD_CS_CRC_TIMEOUT)
-            {
-                console_print("TD timeout error\n");
-            }
-            if (td->cs & TD_CS_BITSTUFF)
-            {
-                console_print("TD bitstuff error\n");
-            }
+        if (td->cs & TD_CS_DATABUFFER)
+        {
+            console_print("TD data buffer error\n");
+        }
+        if (td->cs & TD_CS_BABBLE)
+        {
+            console_print("TD babble error\n");
+        }
+        if (td->cs & TD_CS_CRC_TIMEOUT)
+        {
+            console_print("TD timeout error\n");
+        }
+        if (td->cs & TD_CS_BITSTUFF)
+        {
+            console_print("TD bitstuff error\n");
         }
     }
 
-    if (qh->element != TD_PTR_TERMINATE)
+    if (t->complete)
     {
-        console_print("Queue not complete: 0x%x\n", qh->element);
-        for (;;)
-        {
-        }
-    }
+        // Clear transfer from queue
+        qh->transfer = 0;
 
-    return true;
+        // Update endpoint toggle state
+        if (t->success && t->endp)
+        {
+            t->endp->toggle ^= 1;
+        }
+
+        // Remove queue from schedule
+        uhci_remove_qh(qh);
+
+        // Free transfer descriptors
+        UHCI_TD* td = (UHCI_TD*)(uintptr_t)qh->td_head;
+        while (td)
+        {
+            UHCI_TD* next = (UHCI_TD*)(uintptr_t)td->td_next;
+            uhci_free_td(td);
+            td = next;
+        }
+
+        // Free queue head
+        uhci_free_qh(qh);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void uhci_qh_wait(UHCI_Controller* hc, UHCI_QH* qh)
+{
+    USB_Transfer* t = qh->transfer;
+
+    while (!t->complete)
+    {
+        uhci_qh_process(hc, qh);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -294,9 +434,10 @@ static uint uhci_reset_port(UHCI_Controller* hc, uint port)
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool uhci_dev_transfer(USB_Device* dev, USB_DevReq* req, void* data)
+static void uhci_dev_control(USB_Device* dev, USB_Transfer* t)
 {
     UHCI_Controller* hc = (UHCI_Controller*)dev->hc;
+    USB_DevReq* req = t->req;
 
     // Determine transfer properties
     uint speed = dev->speed;
@@ -307,29 +448,33 @@ static bool uhci_dev_transfer(USB_Device* dev, USB_DevReq* req, void* data)
     uint len = req->len;
 
     // Create queue of transfer descriptors
+    UHCI_TD* td = uhci_alloc_td(hc);
+    if (!td)
+    {
+        return;
+    }
+
+    UHCI_TD* head = td;
     UHCI_TD* prev = 0;
-    UHCI_TD* td = &hc->td_pool[0];
 
     // Setup packet
     uint toggle = 0;
     uint packet_type = TD_PACKET_SETUP;
     uint packet_size = sizeof(USB_DevReq);
     uhci_td_init(td, prev, speed, addr, endp, toggle, packet_type, packet_size, req);
-    prev = td++;
+    prev = td;
 
     // Data in/out packets
     packet_type = type & RT_DEV_TO_HOST ? TD_PACKET_IN : TD_PACKET_OUT;
 
-    u8* it = (u8*)data;
+    u8* it = (u8*)t->data;
     u8* end = it + len;
     while (it < end)
     {
-        // Check for overflow on data size
-        uint td_index = td - hc->td_pool;
-        if (td_index + 1 >= MAX_TRANSFER_DESCS)
+        td = uhci_alloc_td(hc);
+        if (!td)
         {
-            console_print("USB Transfer too large %d %d\n", td_index, len);
-            return false;
+            return;
         }
 
         toggle ^= 1;
@@ -342,66 +487,64 @@ static bool uhci_dev_transfer(USB_Device* dev, USB_DevReq* req, void* data)
         uhci_td_init(td, prev, speed, addr, endp, toggle, packet_type, packet_size, it);
 
         it += packet_size;
-        prev = td++;
+        prev = td;
     }
 
     // Status packet
+    td = uhci_alloc_td(hc);
+    if (!td)
+    {
+        return;
+    }
+
     toggle = 1;
     packet_type = type & RT_DEV_TO_HOST ? TD_PACKET_OUT : TD_PACKET_IN;
     uhci_td_init(td, prev, speed, addr, endp, toggle, packet_type, 0, 0);
 
     // Initialize queue head
-    UHCI_QH* qh = &hc->qh[0];
-    qh->element = (u32)(uintptr_t)&hc->td_pool[0];
+    UHCI_QH* qh = uhci_alloc_qh(hc);
+    uhci_qh_init(qh, t, head);
 
     // Wait until queue has been processed
-    return uhci_qh_wait(hc, qh);
+    uhci_insert_qh(hc, qh);
+    uhci_qh_wait(hc, qh);
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool uhci_dev_poll(USB_Device* dev, uint len, void* data)
+static void uhci_dev_intr(USB_Device* dev, USB_Transfer* t)
 {
     UHCI_Controller* hc = (UHCI_Controller*)dev->hc;
 
     // Determine transfer properties
     uint speed = dev->speed;
     uint addr = dev->addr;
-    uint endp = dev->endp_desc.addr & 0xf;
-    //uint max_size = dev->endp_desc.max_packet_size;
+    uint endp = dev->endp.desc.addr & 0xf;
 
     // Create queue of transfer descriptors
-    UHCI_TD* prev = 0;
-    UHCI_TD* td = &hc->td_pool[0];
-
-    // Data in/out packets
-    uint toggle = dev->endp_toggle;
-    uint packet_type = TD_PACKET_IN;
-    uint packet_size = len;
-
-    uhci_td_init(td, prev, speed, addr, endp, toggle, packet_type, packet_size, data);
-
-    // Initialize queue head
-    UHCI_QH* qh = &hc->qh[0];
-    qh->element = (u32)(uintptr_t)&hc->td_pool[0];
-
-    // Wait until queue has been processed
-    for (;;)
+    UHCI_TD* td = uhci_alloc_td(hc);
+    if (!td)
     {
-        UHCI_TD* td = (UHCI_TD*)(uintptr_t)(qh->element & ~0xf);
-
-        if (!td)
-        {
-            break;
-        }
-        else if (td->cs & TD_CS_NAK)
-        {
-            qh->element = TD_PTR_TERMINATE;
-            return false;
-        }
+        t->success = false;
+        t->complete = true;
+        return;
     }
 
-    dev->endp_toggle ^= 1;
-    return true;
+    UHCI_TD* head = td;
+    UHCI_TD* prev = 0;
+
+    // Data in/out packets
+    uint toggle = dev->endp.toggle;
+    uint packet_type = TD_PACKET_IN;
+    uint packet_size = t->len;
+
+    uhci_td_init(td, prev, speed, addr, endp, toggle, packet_type, packet_size, t->data);
+
+    // Initialize queue head
+    UHCI_QH* qh = uhci_alloc_qh(hc);
+    uhci_qh_init(qh, t, head);
+
+    // Schedule queue
+    uhci_insert_qh(hc, qh);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -427,8 +570,8 @@ static void uhci_probe(UHCI_Controller* hc)
                 dev->speed = speed;
                 dev->max_packet_size = 8;
 
-                dev->hc_transfer = uhci_dev_transfer;
-                dev->hc_poll = uhci_dev_poll;
+                dev->hc_control = uhci_dev_control;
+                dev->hc_intr = uhci_dev_intr;
 
                 if (!usb_dev_init(dev))
                 {
@@ -436,6 +579,25 @@ static void uhci_probe(UHCI_Controller* hc)
                 }
             }
         }
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void uhci_controller_poll(USB_Controller* controller)
+{
+    UHCI_Controller* hc = (UHCI_Controller*)controller->hc;
+
+    UHCI_QH* qh = link_data(hc->async_qh->qh_link.next, UHCI_QH, qh_link);
+    UHCI_QH* end = hc->async_qh;
+    while (qh != end)
+    {
+        UHCI_QH* next = link_data(qh->qh_link.next, UHCI_QH, qh_link);
+        if (qh->transfer)
+        {
+            uhci_qh_process(hc, qh);
+        }
+
+        qh = next;
     }
 }
 
@@ -464,16 +626,24 @@ void uhci_init(uint id, PCI_DeviceInfo* info)
     UHCI_Controller* hc = vm_alloc(sizeof(UHCI_Controller));
     hc->io_addr = io_addr;
     hc->frame_list = vm_alloc(1024 * sizeof(u32));
-    hc->qh = (UHCI_QH*)vm_alloc(sizeof(UHCI_QH));
-    hc->td_pool = (UHCI_TD*)vm_alloc(sizeof(UHCI_TD) * MAX_TRANSFER_DESCS);
+    hc->qh_pool = (UHCI_QH*)vm_alloc(sizeof(UHCI_QH) * MAX_QH);
+    hc->td_pool = (UHCI_TD*)vm_alloc(sizeof(UHCI_TD) * MAX_TD);
+
+    memset(hc->qh_pool, 0, sizeof(UHCI_QH) * MAX_QH);
+    memset(hc->td_pool, 0, sizeof(UHCI_TD) * MAX_TD);
 
     // Frame list setup
-    hc->qh[0].head = TD_PTR_TERMINATE;
-    hc->qh[0].element = TD_PTR_TERMINATE;
+    UHCI_QH* qh = uhci_alloc_qh(hc);
+    qh->head = TD_PTR_TERMINATE;
+    qh->element = TD_PTR_TERMINATE;
+    qh->transfer = 0;
+    qh->qh_link.prev = &qh->qh_link;
+    qh->qh_link.next = &qh->qh_link;
 
+    hc->async_qh = qh;
     for (uint i = 0; i < 1024; ++i)
     {
-        hc->frame_list[i] = TD_PTR_QH | (u32)(uintptr_t)&hc->qh[0];
+        hc->frame_list[i] = TD_PTR_QH | (u32)(uintptr_t)qh;
     }
 
     // Disable Legacy Support
@@ -495,4 +665,12 @@ void uhci_init(uint id, PCI_DeviceInfo* info)
 
     // Probe devices
     uhci_probe(hc);
+
+    // Register controller
+    USB_Controller* controller = (USB_Controller*)vm_alloc(sizeof(USB_Controller));
+    controller->next = g_usb_controller_list;
+    controller->hc = hc;
+    controller->poll = uhci_controller_poll;
+
+    g_usb_controller_list = controller;
 }

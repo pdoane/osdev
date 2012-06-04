@@ -3,9 +3,8 @@
    - MSI
    - PCI Routing Tables from ACPI if needed
 - USB
-   - Improved Descriptor/Queue management
    - Keyboard LEDs
-   - Short Packet Detect optimization
+   - Device attach/detach
 - Memory Management
    - Physical Memory Allocator
    - Virtual Memory Allocator

@@ -9,8 +9,9 @@
 #include "vm.h"
 
 // ------------------------------------------------------------------------------------------------
-static USB_Device* s_usb_dev_list;
-static int s_next_addr = 1;
+USB_Device* g_usb_dev_list;
+
+static int s_next_addr;
 
 // ------------------------------------------------------------------------------------------------
 USB_Device* usb_dev_create()
@@ -20,7 +21,7 @@ USB_Device* usb_dev_create()
     if (dev)
     {
         dev->parent = 0;
-        dev->next = s_usb_dev_list;
+        dev->next = g_usb_dev_list;
         dev->hc = 0;
         dev->drv = 0;
 
@@ -28,13 +29,13 @@ USB_Device* usb_dev_create()
         dev->speed = 0;
         dev->addr = 0;
         dev->max_packet_size = 0;
-        dev->endp_toggle = 0;
+        dev->endp.toggle = 0;
 
-        dev->hc_transfer = 0;
-        dev->hc_poll = 0;
+        dev->hc_control = 0;
+        dev->hc_intr = 0;
         dev->drv_poll = 0;
 
-        s_usb_dev_list = dev;
+        g_usb_dev_list = dev;
     }
 
     return dev;
@@ -56,7 +57,7 @@ bool usb_dev_init(USB_Device* dev)
     dev->max_packet_size = dev_desc.max_packet_size;
 
     // Set address
-    uint addr = s_next_addr++;
+    uint addr = ++s_next_addr;
 
     if (!usb_dev_request(dev,
         RT_HOST_TO_DEV | RT_STANDARD | RT_DEV,
@@ -99,14 +100,13 @@ bool usb_dev_init(USB_Device* dev)
     }
 
     // Pick configuration and interface - grab first for now
+    u8 config_buf[256];
     uint picked_conf_value = 0;
     USB_IntfDesc* picked_intf_desc = 0;
     USB_EndpDesc* picked_endp_desc = 0;
 
     for (uint conf_index = 0; conf_index < dev_desc.conf_count; ++conf_index)
     {
-        u8 config_buf[256];
-
         // Get configuration total length
         if (!usb_dev_request(dev,
             RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
@@ -193,7 +193,7 @@ bool usb_dev_init(USB_Device* dev)
         }
 
         dev->intf_desc = *picked_intf_desc;
-        dev->endp_desc = *picked_endp_desc;
+        dev->endp.desc = *picked_endp_desc;
 
         // Initialize driver
         USB_Driver* driver = usb_driver_table;
@@ -224,7 +224,17 @@ bool usb_dev_request(struct USB_Device* dev,
     req.index = index;
     req.len = len;
 
-    return dev->hc_transfer(dev, &req, data);
+    USB_Transfer t;
+    t.endp = 0;
+    t.req = &req;
+    t.data = data;
+    t.len = len;
+    t.complete = false;
+    t.success = false;
+
+    dev->hc_control(dev, &t);
+
+    return t.success;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -311,18 +321,6 @@ bool usb_dev_clear_halt(USB_Device* dev)
         RT_DEV_TO_HOST | RT_STANDARD | RT_ENDP,
         REQ_CLEAR_FEATURE,
         F_ENDPOINT_HALT,
-        dev->endp_desc.addr & 0xf,
+        dev->endp.desc.addr & 0xf,
         0, 0);
-}
-
-// ------------------------------------------------------------------------------------------------
-void usb_poll()
-{
-    for (USB_Device* dev = s_usb_dev_list; dev; dev = dev->next)
-    {
-        if (dev->drv_poll)
-        {
-            dev->drv_poll(dev);
-        }
-    }
 }

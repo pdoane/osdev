@@ -29,6 +29,7 @@ KERNEL_SOURCES := \
 	kernel/string.c \
 	kernel/uhci.c \
 	kernel/usb.c \
+	kernel/usb_controller.c \
 	kernel/usb_desc.c \
 	kernel/usb_dev.c \
 	kernel/usb_driver.c \

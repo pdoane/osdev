@@ -5,16 +5,20 @@
 #include "ehci.h"
 #include "console.h"
 #include "io.h"
+#include "link.h"
 #include "pci_classify.h"
 #include "pci_driver.h"
 #include "pit.h"
+#include "string.h"
+#include "usb_controller.h"
 #include "usb_dev.h"
 #include "vm.h"
 
 // ------------------------------------------------------------------------------------------------
 // Limits
 
-#define MAX_TRANSFER_DESCS              32
+#define MAX_QH                          8
+#define MAX_TD                          32
 
 // ------------------------------------------------------------------------------------------------
 // PCI Configuration Registers
@@ -128,10 +132,12 @@ typedef struct EHCI_Op_Regs
 
 // ------------------------------------------------------------------------------------------------
 // Frame Index Register
+
 #define FR_MASK                         0x3fff
 
 // ------------------------------------------------------------------------------------------------
 // Configure Flag Register
+
 #define CF_PORT_ROUTE                   (1 << 0)    // Configure Flag (CF)
 
 // ------------------------------------------------------------------------------------------------
@@ -169,7 +175,11 @@ typedef struct EHCI_TD
     volatile u32 token;
     volatile u32 buffer[5];
     volatile u32 ext_buffer[5];
-    u8 pad[12];
+
+    // internal fields
+    u32 td_next;
+    u32 active;
+    u8 pad[4];
 } EHCI_TD;
 
 // TD Link Pointer
@@ -222,7 +232,13 @@ typedef struct EHCI_QH
     volatile u32 token;
     volatile u32 buffer[5];
     volatile u32 ext_buffer[5];
-    u8 pad[28];
+
+    // internal fields
+    USB_Transfer* transfer;
+    Link qh_link;
+    u32 td_head;
+    u32 active;
+    u8 pad[20];
 } EHCI_QH;
 
 // Endpoint Characteristics
@@ -257,10 +273,111 @@ typedef struct EHCI_Controller
 {
     EHCI_Cap_Regs* cap_regs;
     EHCI_Op_Regs* op_regs;
-    EHCI_QH* qh;
+    EHCI_QH* qh_pool;
     EHCI_TD* td_pool;
-    u8* config_data;
+    EHCI_QH* async_qh;
 } EHCI_Controller;
+
+#if 0
+// ------------------------------------------------------------------------------------------------
+static void ehci_print_td(EHCI_TD* td)
+{
+    console_print("td=0x%08x\n", td);
+    console_print(" link=0x%08x\n", td->link);
+    console_print(" alt_link=0x%08x\n", td->alt_link);
+    console_print(" token=0x%08x\n", td->token);
+    console_print(" buffer=0x%08x\n", td->buffer[0]);
+}
+
+// ------------------------------------------------------------------------------------------------
+static void ehci_print_qh(EHCI_QH* qh)
+{
+    console_print("qh=0x%08x\n", qh);
+    console_print(" qhlp=0x%08x\n", qh->qhlp);
+    console_print(" ch=0x%08x\n", qh->ch);
+    console_print(" caps=0x%08x\n", qh->caps);
+    console_print(" cur_link=0x%08x\n", qh->cur_link);
+    console_print(" next_link=0x%08x\n", qh->next_link);
+    console_print(" alt_link=0x%08x\n", qh->alt_link);
+    console_print(" token=0x%08x\n", qh->token);
+    console_print(" buffer=0x%08x\n", qh->buffer[0]);
+    console_print(" qh_prev=0x%08x\n", qh->qh_prev);
+    console_print(" qh_next=0x%08x\n", qh->qh_next);
+}
+#endif
+
+// ------------------------------------------------------------------------------------------------
+static EHCI_TD* ehci_alloc_td(EHCI_Controller* hc)
+{
+    // TODO - better memory management
+    EHCI_TD* end = hc->td_pool + MAX_TD;
+    for (EHCI_TD* td = hc->td_pool; td != end; ++td)
+    {
+        if (!td->active)
+        {
+            //console_print("ehci_alloc_td 0x%08x\n", td);
+            td->active = 1;
+            return td;
+        }
+    }
+
+    console_print("ehci_alloc_td failed\n");
+    return 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+static EHCI_QH* ehci_alloc_qh(EHCI_Controller* hc)
+{
+    // TODO - better memory management
+    EHCI_QH* end = hc->qh_pool + MAX_QH;
+    for (EHCI_QH* qh = hc->qh_pool; qh != end; ++qh)
+    {
+        if (!qh->active)
+        {
+            //console_print("ehci_alloc_qh 0x%08x\n", qh);
+            qh->active = 1;
+            return qh;
+        }
+    }
+
+    console_print("ehci_alloc_qh failed\n");
+    return 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+static void ehci_free_td(EHCI_TD* td)
+{
+    //console_print("ehci_free_td 0x%08x\n", td);
+    td->active = 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+static void ehci_free_qh(EHCI_QH* qh)
+{
+    //console_print("ehci_free_qh 0x%08x\n", qh);
+    qh->active = 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+static void ehci_insert_qh(EHCI_Controller* hc, EHCI_QH* qh)
+{
+    EHCI_QH* list = hc->async_qh;
+    EHCI_QH* end = link_data(list->qh_link.prev, EHCI_QH, qh_link);
+
+    qh->qhlp = (u32)(uintptr_t)list | PTR_QH;
+    end->qhlp = (u32)(uintptr_t)qh | PTR_QH;
+
+    link_before(&list->qh_link, &qh->qh_link);
+}
+
+// ------------------------------------------------------------------------------------------------
+static void ehci_remove_qh(EHCI_QH* qh)
+{
+    EHCI_QH* prev = link_data(qh->qh_link.prev, EHCI_QH, qh_link);
+
+    prev->qhlp = qh->qhlp;
+    link_remove(&qh->qh_link);
+}
 
 // ------------------------------------------------------------------------------------------------
 static void ehci_port_set(volatile u32* port_reg, u32 data)
@@ -289,28 +406,40 @@ static void ehci_td_init(EHCI_TD* td, EHCI_TD* prev,
     if (prev)
     {
         prev->link = (u32)(uintptr_t)td;
+        prev->td_next = (u32)(uintptr_t)td;
     }
 
     td->link = PTR_TERMINATE;
     td->alt_link = PTR_TERMINATE;
+    td->td_next = 0;
+
     td->token =
         (toggle << TD_TOK_D_SHIFT) |
         (len << TD_TOK_LEN_SHIFT) |
         (3 << TD_TOK_CERR_SHIFT) |
         (packet_type << TD_TOK_PID_SHIFT) |
         TD_TOK_ACTIVE;
-    td->buffer[0] = (u32)(uintptr_t)data;
-    td->ext_buffer[0] = 0;
-    for (uint i = 1; i < 5; ++i)
+
+    // Data buffer (not necessarily page aligned)
+    uintptr_t p = (uintptr_t)data;
+    td->buffer[0] = (u32)p;
+    td->ext_buffer[0] = (u32)(p >> 32);
+    p &= ~0xfff;
+
+    // Remaining pages of buffer memory.
+    for (uint i = 1; i < 4; ++i)
     {
-        td->buffer[i] = 0;
-        td->ext_buffer[i] = 0;
+        p += 0x1000;
+        td->buffer[i] = (u32)(p);
+        td->ext_buffer[i] = (u32)(p >> 32);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void ehci_qh_init(EHCI_QH* qh, EHCI_TD* td, USB_Device* parent, bool interrupt, uint speed, uint addr, uint endp, uint max_size)
+static void ehci_qh_init(EHCI_QH* qh, USB_Transfer* t, EHCI_TD* td, USB_Device* parent, bool interrupt, uint speed, uint addr, uint endp, uint max_size)
 {
+    qh->transfer = t;
+
     uint ch =
         (max_size << QH_CH_MPL_SHIFT) |
         QH_CH_DTC |
@@ -321,7 +450,6 @@ static void ehci_qh_init(EHCI_QH* qh, EHCI_TD* td, USB_Device* parent, bool inte
     if (!interrupt)
     {
         ch |= 5 << QH_CH_NAK_RL_SHIFT;
-        ch |= QH_CH_H;
     }
 
     qh->ch = ch;
@@ -341,32 +469,25 @@ static void ehci_qh_init(EHCI_QH* qh, EHCI_TD* td, USB_Device* parent, bool inte
 
     // TODO: split completion mask and interrupt schedule mask
 
+    qh->td_head = (u32)(uintptr_t)td;
     qh->next_link = (u32)(uintptr_t)td;
     qh->token = 0;
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool ehci_qh_wait(EHCI_Controller* hc, EHCI_QH* qh)
+static void ehci_qh_process(EHCI_Controller* hc, EHCI_QH* qh)
 {
-    bool result = true;
+    USB_Transfer* t = qh->transfer;
 
-    pit_wait(1);   // wait until caches have updated
-
-    for (;;)
+    if (qh->token & TD_TOK_HALTED)
+    {
+        t->success = false;
+        t->complete = true;
+    }
+    else if (qh->next_link & PTR_TERMINATE)
     {
         if (~qh->token & TD_TOK_ACTIVE)
         {
-            if (qh->next_link & PTR_TERMINATE)
-            {
-                break;
-            }
-
-            if (qh->token & TD_TOK_HALTED)
-            {
-                result = false;
-                break;
-            }
-
             if (qh->token & TD_TOK_DATABUFFER)
             {
                 console_print(" Data Buffer Error\n");
@@ -383,12 +504,49 @@ static bool ehci_qh_wait(EHCI_Controller* hc, EHCI_QH* qh)
             {
                 console_print(" Missed Micro-Frame\n");
             }
+
+            t->success = true;
+            t->complete = true;
         }
     }
 
-    // Mark queue as halted
-    qh->token |= TD_TOK_HALTED;
-    return result;
+    if (t->complete)
+    {
+        // Clear transfer from queue
+        qh->transfer = 0;
+
+        // Update endpoint toggle state
+        if (t->success && t->endp)
+        {
+            t->endp->toggle ^= 1;
+        }
+
+        // Remove queue from schedule
+        ehci_remove_qh(qh);
+
+        // Free transfer descriptors
+        EHCI_TD* td = (EHCI_TD*)(uintptr_t)qh->td_head;
+        while (td)
+        {
+            EHCI_TD* next = (EHCI_TD*)(uintptr_t)td->td_next;
+            ehci_free_td(td);
+            td = next;
+        }
+
+        // Free queue head
+        ehci_free_qh(qh);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void ehci_qh_wait(EHCI_Controller* hc, EHCI_QH* qh)
+{
+    USB_Transfer* t = qh->transfer;
+
+    while (!t->complete)
+    {
+        ehci_qh_process(hc, qh);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -435,9 +593,10 @@ static uint ehci_reset_port(EHCI_Controller* hc, uint port)
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool ehci_dev_transfer(USB_Device* dev, USB_DevReq* req, void* data)
+static void ehci_dev_control(USB_Device* dev, USB_Transfer* t)
 {
     EHCI_Controller* hc = (EHCI_Controller*)dev->hc;
+    USB_DevReq* req = t->req;
 
     // Determine transfer properties
     uint speed = dev->speed;
@@ -447,29 +606,33 @@ static bool ehci_dev_transfer(USB_Device* dev, USB_DevReq* req, void* data)
     uint len = req->len;
 
     // Create queue of transfer descriptors
+    EHCI_TD* td = ehci_alloc_td(hc);
+    if (!td)
+    {
+        return;
+    }
+
+    EHCI_TD* head = td;
     EHCI_TD* prev = 0;
-    EHCI_TD* td = &hc->td_pool[0];
 
     // Setup packet
     uint toggle = 0;
     uint packet_type = USB_PACKET_SETUP;
     uint packet_size = sizeof(USB_DevReq);
     ehci_td_init(td, prev, toggle, packet_type, packet_size, req);
-    prev = td++;
+    prev = td;
 
     // Data in/out packets
     packet_type = type & RT_DEV_TO_HOST ? USB_PACKET_IN : USB_PACKET_OUT;
 
-    u8* it = (u8*)data;
+    u8* it = (u8*)t->data;
     u8* end = it + len;
     while (it < end)
     {
-        // Check for overflow on data size
-        uint td_index = td - hc->td_pool;
-        if (td_index + 1 >= MAX_TRANSFER_DESCS)
+        td = ehci_alloc_td(hc);
+        if (!td)
         {
-            console_print("USB Transfer too large %d %d\n", td_index, len);
-            return false;
+            return;
         }
 
         toggle ^= 1;
@@ -482,24 +645,31 @@ static bool ehci_dev_transfer(USB_Device* dev, USB_DevReq* req, void* data)
         ehci_td_init(td, prev, toggle, packet_type, packet_size, it);
 
         it += packet_size;
-        prev = td++;
+        prev = td;
     }
 
     // Status packet
+    td = ehci_alloc_td(hc);
+    if (!td)
+    {
+        return;
+    }
+
     toggle = 1;
     packet_type = type & RT_DEV_TO_HOST ? USB_PACKET_OUT : USB_PACKET_IN;
     ehci_td_init(td, prev, toggle, packet_type, 0, 0);
 
     // Initialize queue head
-    EHCI_QH* qh = &hc->qh[0];
-    ehci_qh_init(qh, &hc->td_pool[0], dev->parent, false, speed, addr, 0, max_size);
+    EHCI_QH* qh = ehci_alloc_qh(hc);
+    ehci_qh_init(qh, t, head, dev->parent, false, speed, addr, 0, max_size);
 
     // Wait until queue has been processed
-    return ehci_qh_wait(hc, qh);
+    ehci_insert_qh(hc, qh);
+    ehci_qh_wait(hc, qh);
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool ehci_dev_poll(USB_Device* dev, uint len, void* data)
+static void ehci_dev_intr(USB_Device* dev, USB_Transfer* t)
 {
     EHCI_Controller* hc = (EHCI_Controller*)dev->hc;
 
@@ -507,31 +677,33 @@ static bool ehci_dev_poll(USB_Device* dev, uint len, void* data)
     uint speed = dev->speed;
     uint addr = dev->addr;
     uint max_size = dev->max_packet_size;
-    uint endp = dev->endp_desc.addr & 0xf;
+    uint endp = dev->endp.desc.addr & 0xf;
 
     // Create queue of transfer descriptors
-    EHCI_TD* prev = 0;
-    EHCI_TD* td = &hc->td_pool[0];
-
-    // Data in/out packets
-    uint toggle = dev->endp_toggle;
-    uint packet_type = USB_PACKET_IN;
-    uint packet_size = len;
-
-    ehci_td_init(td, prev, toggle, packet_type, packet_size, data);
-
-    // Initialize queue head
-    EHCI_QH* qh = &hc->qh[0];
-    ehci_qh_init(qh, &hc->td_pool[0], dev->parent, true, speed, addr, endp, max_size);
-
-    // Wait until queue has been processed
-    if (!ehci_qh_wait(hc, qh))
+    EHCI_TD* td = ehci_alloc_td(hc);
+    if (!td)
     {
-        return false;
+        t->success = false;
+        t->complete = true;
+        return;
     }
 
-    dev->endp_toggle ^= 1;
-    return true;
+    EHCI_TD* head = td;
+    EHCI_TD* prev = 0;
+
+    // Data in/out packets
+    uint toggle = dev->endp.toggle;
+    uint packet_type = USB_PACKET_IN;
+    uint packet_size = t->len;
+
+    ehci_td_init(td, prev, toggle, packet_type, packet_size, t->data);
+
+    // Initialize queue head
+    EHCI_QH* qh = ehci_alloc_qh(hc);
+    ehci_qh_init(qh, t, head, dev->parent, true, speed, addr, endp, max_size);
+
+    // Schedule queue
+    ehci_insert_qh(hc, qh);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -557,8 +729,8 @@ static void ehci_probe(EHCI_Controller* hc)
                 dev->speed = speed;
                 dev->max_packet_size = 8;
 
-                dev->hc_transfer = ehci_dev_transfer;
-                dev->hc_poll = ehci_dev_poll;
+                dev->hc_control = ehci_dev_control;
+                dev->hc_intr = ehci_dev_intr;
 
                 if (!usb_dev_init(dev))
                 {
@@ -570,11 +742,36 @@ static void ehci_probe(EHCI_Controller* hc)
 }
 
 // ------------------------------------------------------------------------------------------------
+static void ehci_controller_poll(USB_Controller* controller)
+{
+    EHCI_Controller* hc = (EHCI_Controller*)controller->hc;
+
+    EHCI_QH* qh = link_data(hc->async_qh->qh_link.next, EHCI_QH, qh_link);
+    EHCI_QH* end = hc->async_qh;
+    while (qh != end)
+    {
+        EHCI_QH* next = link_data(qh->qh_link.next, EHCI_QH, qh_link);
+        if (qh->transfer)
+        {
+            ehci_qh_process(hc, qh);
+        }
+
+        qh = next;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 void ehci_init(uint id, PCI_DeviceInfo* info)
 {
     if (!(((info->class_code << 8) | info->subclass) == PCI_SERIAL_USB &&
         info->prog_intf == PCI_SERIAL_USB_EHCI))
     {
+        return;
+    }
+
+    if (sizeof(EHCI_QH) != 128)
+    {
+        console_print("Unexpected EHCI_QH size: %d\n", sizeof(EHCI_QH));
         return;
     }
 
@@ -599,23 +796,31 @@ void ehci_init(uint id, PCI_DeviceInfo* info)
     EHCI_Controller* hc = vm_alloc(sizeof(EHCI_Controller));
     hc->cap_regs = (EHCI_Cap_Regs*)(uintptr_t)bar0;
     hc->op_regs = (EHCI_Op_Regs*)(uintptr_t)(bar0 + hc->cap_regs->cap_length);
-    hc->qh = (EHCI_QH*)vm_alloc(sizeof(EHCI_QH));
-    hc->td_pool = (EHCI_TD*)vm_alloc(sizeof(EHCI_TD) * MAX_TRANSFER_DESCS);
+    hc->qh_pool = (EHCI_QH*)vm_alloc(sizeof(EHCI_QH) * MAX_QH);
+    hc->td_pool = (EHCI_TD*)vm_alloc(sizeof(EHCI_TD) * MAX_TD);
+
+    memset(hc->qh_pool, 0, sizeof(EHCI_QH) * MAX_QH);
+    memset(hc->td_pool, 0, sizeof(EHCI_TD) * MAX_TD);
 
     // Asynchronous queue setup
-    EHCI_QH* qh = &hc->qh[0];
+    EHCI_QH* qh = ehci_alloc_qh(hc);
     qh->qhlp = (u32)(uintptr_t)qh | PTR_QH;
-    qh->ch = 0;
+    qh->ch = QH_CH_H;
     qh->caps = (1 << QH_CAP_MULT_SHIFT);
     qh->cur_link = 0;
     qh->next_link = PTR_TERMINATE;
     qh->alt_link = 0;
-    qh->token = TD_TOK_HALTED;
+    qh->token = 0;
     for (uint i = 0; i < 5; ++i)
     {
         qh->buffer[i] = 0;
         qh->ext_buffer[i] = 0;
     }
+    qh->transfer = 0;
+    qh->qh_link.prev = &qh->qh_link;
+    qh->qh_link.next = &qh->qh_link;
+
+    hc->async_qh = qh;
 
     // Check extended capabilities
     uint eecp = (hc->cap_regs->hcc_params & HCCPARAMS_EECP_MASK) >> HCCPARAMS_EECP_SHIFT;
@@ -644,7 +849,7 @@ void ehci_init(uint id, PCI_DeviceInfo* info)
     // Setup frame list
     hc->op_regs->frame_index = 0;
     hc->op_regs->periodic_list_base = (u32)(uintptr_t)0;
-    hc->op_regs->async_list_addr = (u32)(uintptr_t)&hc->qh[0];
+    hc->op_regs->async_list_addr = (u32)(uintptr_t)hc->async_qh;
     hc->op_regs->ctrl_ds_segment = 0;
 
     // Clear status
@@ -661,4 +866,12 @@ void ehci_init(uint id, PCI_DeviceInfo* info)
 
     // Probe devices
     ehci_probe(hc);
+
+    // Register controller
+    USB_Controller* controller = (USB_Controller*)vm_alloc(sizeof(USB_Controller));
+    controller->next = g_usb_controller_list;
+    controller->hc = hc;
+    controller->poll = ehci_controller_poll;
+
+    g_usb_controller_list = controller;
 }

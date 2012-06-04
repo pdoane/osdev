@@ -128,8 +128,8 @@ static void usb_hub_probe(USB_Hub* hub)
                 dev->speed = speed;
                 dev->max_packet_size = 8;
 
-                dev->hc_transfer = hub->dev->hc_transfer;
-                dev->hc_poll = hub->dev->hc_poll;
+                dev->hc_control = hub->dev->hc_control;
+                dev->hc_intr = hub->dev->hc_intr;
 
                 if (!usb_dev_init(dev))
                 {

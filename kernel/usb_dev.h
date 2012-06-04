@@ -20,6 +20,28 @@
 #define USB_HIGH_SPEED                  0x02
 
 // ------------------------------------------------------------------------------------------------
+// USB Endpoint
+
+typedef struct USB_Endpoint
+{
+    USB_EndpDesc desc;
+    uint toggle;
+} USB_Endpoint;
+
+// ------------------------------------------------------------------------------------------------
+// USB Transfer
+
+typedef struct USB_Transfer
+{
+    USB_Endpoint* endp;
+    USB_DevReq* req;
+    void* data;
+    uint len;
+    bool complete;
+    bool success;
+} USB_Transfer;
+
+// ------------------------------------------------------------------------------------------------
 // USB Device
 
 typedef struct USB_Device
@@ -33,16 +55,21 @@ typedef struct USB_Device
     uint speed;
     uint addr;
     uint max_packet_size;
-    uint endp_toggle;
+
+    USB_Endpoint endp;
 
     USB_IntfDesc intf_desc;
-    USB_EndpDesc endp_desc;
 
-    bool (*hc_transfer)(struct USB_Device* dev, USB_DevReq* req, void* data);
-    bool (*hc_poll)(struct USB_Device* dev, uint len, void* data);
+    void (*hc_control)(struct USB_Device* dev, USB_Transfer* t);
+    void (*hc_intr)(struct USB_Device* dev, USB_Transfer* t);
 
     void (*drv_poll)(struct USB_Device* dev);
 } USB_Device;
+
+// ------------------------------------------------------------------------------------------------
+// Globals
+
+extern USB_Device* g_usb_dev_list;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
