@@ -6,6 +6,7 @@ KERNEL_SOURCES := \
 	kernel/arp.c \
 	kernel/console.c \
 	kernel/ehci.c \
+	kernel/eth.c \
 	kernel/eth_8254x.c \
 	kernel/except.c \
 	kernel/format.c \
@@ -14,6 +15,7 @@ KERNEL_SOURCES := \
 	kernel/input.c \
 	kernel/ioapic.c \
 	kernel/ipv4.c \
+	kernel/ipv6.c \
 	kernel/keymap.c \
 	kernel/link.c \
 	kernel/local_apic.c \

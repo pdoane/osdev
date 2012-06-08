@@ -271,12 +271,12 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
     {
         u32 rah = mmio_read32(mmio_addr + REG_RAH);
 
-        net_local_mac[0] = (u8)(ral);
-        net_local_mac[1] = (u8)(ral >> 8);
-        net_local_mac[2] = (u8)(ral >> 16);
-        net_local_mac[3] = (u8)(ral >> 24);
-        net_local_mac[4] = (u8)(rah);
-        net_local_mac[5] = (u8)(rah >> 8);
+        net_local_mac.n[0] = (u8)(ral);
+        net_local_mac.n[1] = (u8)(ral >> 8);
+        net_local_mac.n[2] = (u8)(ral >> 16);
+        net_local_mac.n[3] = (u8)(ral >> 24);
+        net_local_mac.n[4] = (u8)(rah);
+        net_local_mac.n[5] = (u8)(rah >> 8);
     }
     else
     {
@@ -285,17 +285,18 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
         u16 mac23 = eeprom_read(mmio_addr, 1);
         u16 mac45 = eeprom_read(mmio_addr, 2);
 
-        net_local_mac[0] = (u8)(mac01);
-        net_local_mac[1] = (u8)(mac01 >> 8);
-        net_local_mac[2] = (u8)(mac23);
-        net_local_mac[3] = (u8)(mac23 >> 8);
-        net_local_mac[4] = (u8)(mac45);
-        net_local_mac[5] = (u8)(mac45 >> 8);
+        net_local_mac.n[0] = (u8)(mac01);
+        net_local_mac.n[1] = (u8)(mac01 >> 8);
+        net_local_mac.n[2] = (u8)(mac23);
+        net_local_mac.n[3] = (u8)(mac23 >> 8);
+        net_local_mac.n[4] = (u8)(mac45);
+        net_local_mac.n[5] = (u8)(mac45 >> 8);
     }
 
-    console_print("MAC = %02x:%02x:%02x:%02x:%02x:%02x\n",
-        net_local_mac[0], net_local_mac[1], net_local_mac[2],
-        net_local_mac[3], net_local_mac[4], net_local_mac[5]);
+    char mac_str[18];
+    eth_addr_to_str(mac_str, sizeof(mac_str), &net_local_mac);
+
+    console_print("MAC = %s\n", mac_str);
 
     // Set Link Up
     mmio_write32(mmio_addr + REG_CTRL, mmio_read32(mmio_addr + REG_CTRL) | CTRL_SLU);

@@ -4,6 +4,7 @@
 
 #include "ipv4.h"
 #include "console.h"
+#include "format.h"
 #include "icmp.h"
 #include "net.h"
 
@@ -13,7 +14,7 @@
 #define IP_PROTOCOL_UDP                 17
 
 // ------------------------------------------------------------------------------------------------
-void ipv4_print(u8* pkt, uint len)
+void ipv4_print(const u8* pkt, uint len)
 {
     if (!net_trace)
     {
@@ -35,8 +36,8 @@ void ipv4_print(u8* pkt, uint len)
     u8 ttl = pkt[8];
     u8 protocol = pkt[9];
     u16 checksum = (pkt[10] << 8) | pkt[11];
-    u8* src_addr = pkt + 12;
-    u8* dst_addr = pkt + 16;
+    const u8* src_addr = pkt + 12;
+    const u8* dst_addr = pkt + 16;
 
     console_print(" IPv4: version=%d ihl=%d dscp=%d ecn=%d\n",
             version, ihl, dscp, ecn);
@@ -48,7 +49,7 @@ void ipv4_print(u8* pkt, uint len)
 }
 
 // ------------------------------------------------------------------------------------------------
-void ipv4_rx(u8* pkt, uint len)
+void ipv4_rx(const u8* pkt, uint len)
 {
     ipv4_print(pkt, len);
 
@@ -102,7 +103,7 @@ void ipv4_rx(u8* pkt, uint len)
 }
 
 // ------------------------------------------------------------------------------------------------
-u16 ipv4_checksum(u8* data, uint len)
+u16 ipv4_checksum(const u8* data, uint len)
 {
     uint sum = 0;
     u16* p = (u16*)data;
@@ -125,4 +126,10 @@ u16 ipv4_checksum(u8* data, uint len)
 
     u16 temp = ~sum;
     return ((temp & 0x00ff) << 8) | ((temp & 0xff00) >> 8);
+}
+
+// ------------------------------------------------------------------------------------------------
+void ipv4_addr_to_str(char* str, size_t size, const IPv4_Addr* addr)
+{
+    snprintf(str, size, "%d.%d.%d.%d", addr->n[0], addr->n[1], addr->n[2], addr->n[3]);
 }

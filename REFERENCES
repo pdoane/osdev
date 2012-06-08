@@ -31,3 +31,12 @@ Protocol Documents:
 - RFC 826: An Ethernet Address Resolution Protocol (ARP)
 - RFC 894: A Standard for the Transmission of IP Datagrams over Ethernet Networks
 - RFC 1042: A Standard for the Transmission of IP Datagrams over IEEE 802 Networks
+
+- RFC 2373: IP Version 6 Addressing Architecture
+- RFC 2460: Internet Protocol, Version 6 (IPv6)
+- RFC 2461: Neighbor Discovery for IPv6 (NDP)
+- RFC 2463: Internet Control Message Protocol (ICMPv6) for IPv6
+- RFC 2464: Transmission of IPv6 Packets over Ethernet Networks
+- RFC 5952: A Recommendation for IPv6 Address Text Representation
+
+- http://www.iana.org/numbers.html

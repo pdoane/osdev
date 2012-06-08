@@ -10,3 +10,6 @@
    - Virtual Memory Allocator
 - PXE Network Booting
 - APIC timer
+- Network Stack
+   - Interfaces
+   - Loopback Interface

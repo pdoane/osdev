@@ -11,7 +11,7 @@ void net_driver_poll() {}
 void net_driver_tx(u8* pkt, uint len) {}
 
 // ------------------------------------------------------------------------------------------------
-NET_Driver net_driver =
+Net_Driver net_driver =
 {
     .active = false,
     .poll = net_driver_poll,

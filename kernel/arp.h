@@ -4,12 +4,15 @@
 
 #pragma once
 
-#include "types.h"
+#include "eth.h"
+#include "ipv4.h"
+
+// ------------------------------------------------------------------------------------------------
 
 void arp_init();
 
-u8* arp_lookup_mac(u8* pa);
-void arp_request(u8* tpa);
-void arp_reply(u8* tha, u8* tpa);
+const Eth_Addr* arp_lookup_mac(const IPv4_Addr* pa);
+void arp_request(const IPv4_Addr* tpa);
+void arp_reply(const Eth_Addr* tha, const IPv4_Addr* tpa);
 
-void arp_rx(u8* pkt, uint len);
+void arp_rx(const u8* pkt, uint len);

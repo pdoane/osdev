@@ -5,8 +5,9 @@
 #include "icmp.h"
 #include "arp.h"
 #include "console.h"
-#include "ipv4.h"
+#include "eth.h"
 #include "net.h"
+#include "ipv4.h"
 #include "string.h"
 
 // ------------------------------------------------------------------------------------------------
@@ -28,7 +29,7 @@
 #define ICMP_TYPE_TRACEROUTE            30
 
 // ------------------------------------------------------------------------------------------------
-void icmp_print(u8* pkt, uint len)
+void icmp_print(const u8* pkt, uint len)
 {
     if (!net_trace)
     {
@@ -51,11 +52,11 @@ void icmp_print(u8* pkt, uint len)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void icmp_echo_reply(u8* dst_ip, u16 id, u16 sequence, u8* echo_data, uint echo_data_len)
+static void icmp_echo_reply(const IPv4_Addr* dst_ip, u16 id, u16 sequence, const u8* echo_data, uint echo_data_len)
 {
     u8 data[1500];
 
-    u8* dst_mac = arp_lookup_mac(dst_ip);
+    const Eth_Addr* dst_mac = arp_lookup_mac(dst_ip);
     if (!dst_mac)
     {
         console_print(" Unknown IP, sending ARP request\n");
@@ -63,7 +64,7 @@ static void icmp_echo_reply(u8* dst_ip, u16 id, u16 sequence, u8* echo_data, uin
         return;
     }
 
-    u8* pkt = net_eth_hdr(data, dst_mac, ET_IPV4);
+    u8* pkt = eth_encode_hdr(data, dst_mac, &net_local_mac, ET_IPV4);
 
     uint icmp_packet_size = 8 + echo_data_len;
     uint ip_packet_size = 20 + icmp_packet_size;
@@ -81,8 +82,8 @@ static void icmp_echo_reply(u8* dst_ip, u16 id, u16 sequence, u8* echo_data, uin
     pkt[9] = 1;
     pkt[10] = 0;
     pkt[11] = 0;
-    memcpy(pkt + 12, net_local_ip, 4);
-    memcpy(pkt + 16, dst_ip, 4);
+    *(IPv4_Addr*)(pkt + 12) = net_local_ip;
+    *(IPv4_Addr*)(pkt + 16) = *dst_ip;
 
     uint checksum = ipv4_checksum(pkt, 20);
     pkt[10] = (checksum >> 8) & 0xff;
@@ -111,7 +112,7 @@ static void icmp_echo_reply(u8* dst_ip, u16 id, u16 sequence, u8* echo_data, uin
 }
 
 // ------------------------------------------------------------------------------------------------
-void icmp_rx(u8* pkt, uint len)
+void icmp_rx(const u8* pkt, uint len)
 {
     if (len < 20)
     {
@@ -119,8 +120,8 @@ void icmp_rx(u8* pkt, uint len)
     }
 
     uint ihl = (pkt[0]) & 0xf;
-    u8* src_ip = pkt + 12;
-    //u8* dst_ip = pkt + 16;
+    const IPv4_Addr* src_ip = (const IPv4_Addr*)(pkt + 12);
+    //const IPv4_Addr* dst_ip = (const IPv4_Addr*)(pkt + 16);
 
     // Jump to sub-packet data
     pkt += ihl << 2;

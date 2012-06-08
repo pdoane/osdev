@@ -6,6 +6,17 @@
 
 #include "types.h"
 
-void ipv4_rx(u8* pkt, uint len);
-u16 ipv4_checksum(u8* data, uint len);
-void ipv4_print(u8* pkt, uint len);
+// ------------------------------------------------------------------------------------------------
+
+typedef struct IPv4_Addr
+{
+    u8 n[4];
+} PACKED IPv4_Addr;
+
+// ------------------------------------------------------------------------------------------------
+
+void ipv4_rx(const u8* pkt, uint len);
+u16 ipv4_checksum(const u8* data, uint len);
+
+void ipv4_addr_to_str(char* str, size_t size, const IPv4_Addr* addr);
+void ipv4_print(const u8* pkt, uint len);

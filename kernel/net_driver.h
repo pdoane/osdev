@@ -7,12 +7,12 @@
 #include "types.h"
 
 // ------------------------------------------------------------------------------------------------
-typedef struct NET_Driver
+typedef struct Net_Driver
 {
     bool active;
     void (*poll)();
     void (*tx)(u8* pkt, uint len);
-} NET_Driver;
+} Net_Driver;
 
 // ------------------------------------------------------------------------------------------------
-extern NET_Driver net_driver;
+extern Net_Driver net_driver;
