@@ -6,7 +6,7 @@
 #include "console.h"
 
 // ------------------------------------------------------------------------------------------------
-const char* s_exception_desc[32] =
+const char* s_exception_desc[20] =
 {
     [0] = "Divide Error",
     [1] = "Debug",
