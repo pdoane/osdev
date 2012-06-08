@@ -11,21 +11,27 @@ include tools/module.mk
 
 # Standard Settings
 CC := gcc
-STD_CFLAGS := -I . -std=c99 -Wall -Werror-implicit-function-declaration -fno-common -mno-red-zone -O2
+COMMON_CFLAGS := -I . -std=c99
+COMMON_CFLAGS += -Wall -Werror-implicit-function-declaration
+COMMON_CFLAGS += -fno-common -fno-asynchronous-unwind-tables
+COMMON_CFLAGS += -mno-red-zone
+COMMON_CFLAGS += -O2
+
+FREESTANDING_CFLAGS := -fno-builtin -nostdlib -nostartfiles -nodefaultlibs
 
 # Cross Compiler
 CROSS_CC := x86_64-elf-gcc
-CROSS_CFLAGS := -DCROSS -fno-builtin -nostdlib -nostartfiles -nodefaultlibs $(STD_CFLAGS)
+CROSS_CFLAGS := -DCROSS $(FREESTANDING_CFLAGS) $(COMMON_CFLAGS)
 CROSS_LD := x86_64-elf-ld
 
 # Host Compiler without standard library
-HOST_CFLAGS := -DHOST -fno-builtin -nostdlib -nostartfiles -nodefaultlibs $(STD_CFLAGS)
+HOST_CFLAGS := -DHOST $(FREESTANDING_CFLAGS) $(COMMON_CFLAGS)
 
 # Host Compiler for unit testing without standard library
-TEST_CFLAGS := -DTEST -fno-builtin -nostdlib -nostartfiles -nodefaultlibs $(STD_CFLAGS)
+TEST_CFLAGS := -DTEST $(FREESTANDING_CFLAGS) $(COMMON_CFLAGS)
 
 # Host Compiler with standard library
-NATIVE_CFLAGS := -DNATIVE $(STD_CFLAGS)
+NATIVE_CFLAGS := -DNATIVE $(COMMON_CFLAGS)
 
 %.bin: %.asm
 	nasm -f bin -o $@ $<
