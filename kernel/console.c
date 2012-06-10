@@ -67,6 +67,12 @@ static void console_exec()
     char line[TEXT_COLS];
     strcpy(line, console_get_input_line());
 
+    // Skip empty commands
+    if (!line[0])
+    {
+        return;
+    }
+
     // If editing an old entry, restore it to the original state
     if (s_line_index > 0)
     {

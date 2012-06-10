@@ -37,8 +37,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "kernel source", "kernel source", "{540847D6-87C3-435D-994A-C12DE71831B0}"
 	ProjectSection(SolutionItems) = preProject
-		kernel\console.c = kernel\console.c
-		kernel\console.h = kernel\console.h
 		kernel\io.h = kernel\io.h
 		kernel\kernel.c = kernel\kernel.c
 		kernel\linker.ld = kernel\linker.ld
@@ -187,6 +185,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "container", "container", "{
 		kernel\link.h = kernel\link.h
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "console", "console", "{ACB0DADD-F8AE-4D95-A9C8-AF88125C7036}"
+	ProjectSection(SolutionItems) = preProject
+		kernel\console.c = kernel\console.c
+		kernel\console.h = kernel\console.h
+		kernel\console_cmd.c = kernel\console_cmd.c
+		kernel\console_cmd.h = kernel\console_cmd.h
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -201,5 +207,6 @@ Global
 		{FFFF12C1-5F5D-4FF1-B826-F766CF0BCA47} = {540847D6-87C3-435D-994A-C12DE71831B0}
 		{030391D5-E8D0-45AB-AEA0-6417655B89BF} = {540847D6-87C3-435D-994A-C12DE71831B0}
 		{C24EBB89-B139-4C30-8C50-CD8DF486149C} = {540847D6-87C3-435D-994A-C12DE71831B0}
+		{ACB0DADD-F8AE-4D95-A9C8-AF88125C7036} = {540847D6-87C3-435D-994A-C12DE71831B0}
 	EndGlobalSection
 EndGlobal
