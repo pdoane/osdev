@@ -4,23 +4,26 @@
 
 #pragma once
 
-#include "eth.h"
-#include "ipv4.h"
+#include "types.h"
 
 // ------------------------------------------------------------------------------------------------
-// Globals
+// Byte Order translation
 
-extern u8 net_trace;
-extern Eth_Addr net_broadcast_mac;
-extern Eth_Addr net_local_mac;
-extern IPv4_Addr net_local_ip;
-extern IPv4_Addr net_subnet_mask;
-extern IPv4_Addr net_gateway_ip;
+static inline u16 net_swap16(uint n)
+{
+    return ((n & 0x00ff) << 8) | ((n & 0xff00) >> 8);
+}
+
+static inline u32 net_swap32(uint n)
+{
+    return ((n & 0x000000ff) << 24) |
+           ((n & 0x0000ff00) << 8) |
+           ((n & 0x00ff0000) >> 8) |
+           ((n & 0xff000000) >> 24);
+}
 
 // ------------------------------------------------------------------------------------------------
+// Functions
 
 void net_init();
-
 void net_poll();
-void net_rx(u8* pkt, uint len);
-void net_tx(u8* pkt, uint len);

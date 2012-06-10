@@ -11,5 +11,4 @@
 - PXE Network Booting
 - APIC timer
 - Network Stack
-   - Interfaces
    - Loopback Interface

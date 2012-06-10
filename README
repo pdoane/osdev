@@ -78,7 +78,7 @@ Setup and Installation for Windows:
 -------------------------------------------------------------------------------
 Kernel configuration:
 
-- Update the following globals in net.c as appropriate:
+- Update the following globals in net_config.c as appropriate:
     - net_local_ip
     - net_subnet_mask
     - net_gateway_ip

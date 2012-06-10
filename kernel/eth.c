@@ -3,26 +3,28 @@
 // ------------------------------------------------------------------------------------------------
 
 #include "eth.h"
+#include "arp.h"
 #include "console.h"
-#include "format.h"
+#include "net.h"
+#include "net_config.h"
+#include "ipv4.h"
+#include "ipv6.h"
 
 // ------------------------------------------------------------------------------------------------
-bool eth_decode(Eth_Packet* ep, const u8* pkt, uint len)
+static bool eth_decode(Eth_Packet* ep, const u8* pkt, uint len)
 {
-    // Reject small packets
-    if (len < 60)
+    // Decode header
+    if (len < sizeof(Eth_Header))
     {
-        console_print("ETH: small packet\n");
         return false;
     }
 
-    // Source and destination addresses
-    ep->dst_addr = (const Eth_Addr*)(pkt);
-    ep->src_addr = (const Eth_Addr*)(pkt + 6);
+    const Eth_Header* hdr = (const Eth_Header*)pkt;
+    ep->hdr = hdr;
 
     // Determine which frame type is being used.
-    u16 n = (pkt[12] << 8) | pkt[13];
-    if (n <= 1500)
+    u16 n = net_swap16(hdr->ether_type);
+    if (n <= 1500 && len >= 22)
     {
         // 802.2/802.3 encapsulation (RFC 1042)
         u8 dsap = pkt[14];
@@ -42,38 +44,99 @@ bool eth_decode(Eth_Packet* ep, const u8* pkt, uint len)
     {
         // Ethernet encapsulation (RFC 894)
         ep->ether_type = n;
-        ep->data = pkt + 14;
-        ep->data_len = len - 14;
+        ep->data = pkt + sizeof(Eth_Header);
+        ep->data_len = len - sizeof(Eth_Header);
     }
 
     return true;
 }
 
 // ------------------------------------------------------------------------------------------------
-u8* eth_encode_hdr(u8* pkt, const Eth_Addr* dst_mac, const Eth_Addr* src_mac, u16 ether_type)
+void eth_intf_init(Net_Intf* intf)
 {
-    *(Eth_Addr*)pkt = *dst_mac;
-    *(Eth_Addr*)(pkt + 6) = *src_mac;
-    pkt[12] = (ether_type >> 8) & 0xff;
-    pkt[13] = (ether_type) & 0xff;
-    return pkt + 14;
+    console_init("eth_intf_init\n");
+    arp_request(intf, &intf->ip_addr);
 }
 
 // ------------------------------------------------------------------------------------------------
-void eth_addr_to_str(char* str, size_t size, const Eth_Addr* addr)
+void eth_rx(Net_Intf* intf, u8* pkt, uint len)
 {
-    snprintf(str, size, "%02x:%02x:%02x:%02x:%02x:%02x",
-            addr->n[0], addr->n[1], addr->n[2], addr->n[3], addr->n[4], addr->n[5]);
+    Eth_Packet ep;
+    if (!eth_decode(&ep, pkt, len))
+    {
+        // Bad packet or one we don't care about (e.g. STP packets)
+        return;
+    }
+
+    if (net_trace)
+    {
+        eth_print(&ep);
+    }
+
+    // Dispatch packet based on protocol
+    switch (ep.ether_type)
+    {
+    case ET_ARP:
+        arp_rx(intf, ep.data, ep.data_len);
+        break;
+
+    case ET_IPV4:
+        ipv4_rx(intf, ep.data, ep.data_len);
+        break;
+
+    case ET_IPV6:
+        ipv6_rx(ep.data, ep.data_len);
+        break;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+void eth_tx(Net_Intf* intf, const Eth_Addr* dst_addr, u16 ether_type, u8* buf, uint len)
+{
+    u8* pkt = buf;
+
+    Eth_Header* hdr = (Eth_Header*)pkt;
+    hdr->dst = *dst_addr;
+    hdr->src = intf->eth_addr;
+    hdr->ether_type = net_swap16(ether_type);
+
+    if (net_trace)
+    {
+        Eth_Packet ep;
+        if (eth_decode(&ep, pkt, len))
+        {
+            eth_print(&ep);
+        }
+    }
+
+    intf->tx(intf, pkt, len);
+}
+
+// ------------------------------------------------------------------------------------------------
+void eth_tx_ipv4(Net_Intf* intf, const IPv4_Addr* dst_addr, u8* buf, uint len)
+{
+    const Eth_Addr* dst_eth_addr = arp_lookup_mac(dst_addr);
+    if (!dst_eth_addr)
+    {
+        char dst_addr_str[IPV4_ADDR_STRING_SIZE];
+
+        ipv4_addr_to_str(dst_addr_str, sizeof(dst_addr_str), dst_addr);
+        console_print(" Unknown IP %s, sending ARP request\n", dst_addr_str);
+        arp_request(intf, dst_addr);
+        return;
+    }
+
+    eth_tx(intf, dst_eth_addr, ET_IPV4, buf, len);
 }
 
 // ------------------------------------------------------------------------------------------------
 void eth_print(const Eth_Packet* ep)
 {
-    char dst_str[18];
-    char src_str[18];
+    char dst_str[ETH_ADDR_STRING_SIZE];
+    char src_str[ETH_ADDR_STRING_SIZE];
 
-    eth_addr_to_str(dst_str, sizeof(dst_str), ep->dst_addr);
-    eth_addr_to_str(src_str, sizeof(src_str), ep->src_addr);
+    eth_addr_to_str(dst_str, sizeof(dst_str), &ep->hdr->dst);
+    eth_addr_to_str(src_str, sizeof(src_str), &ep->hdr->src);
 
     console_print("ETH: dst=%s src=%s et=%04x\n", dst_str, src_str, ep->ether_type);
 }

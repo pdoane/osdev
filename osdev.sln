@@ -84,8 +84,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "net", "net", "{A54B0484-834
 		kernel\ipv6.h = kernel\ipv6.h
 		kernel\net.c = kernel\net.c
 		kernel\net.h = kernel\net.h
-		kernel\net_driver.c = kernel\net_driver.c
-		kernel\net_driver.h = kernel\net_driver.h
+		kernel\net_addr.c = kernel\net_addr.c
+		kernel\net_addr.h = kernel\net_addr.h
+		kernel\net_config.c = kernel\net_config.c
+		kernel\net_config.h = kernel\net_config.h
+		kernel\net_intf.c = kernel\net_intf.c
+		kernel\net_intf.h = kernel\net_intf.h
 		kernel\smp.c = kernel\smp.c
 	EndProjectSection
 EndProject

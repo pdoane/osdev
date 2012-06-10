@@ -4,6 +4,6 @@
 
 #pragma once
 
-#include "types.h"
+#include "net_intf.h"
 
-void icmp_rx(const u8* pkt, uint len);
+void icmp_rx(Net_Intf* intf, const u8* pkt, uint len);

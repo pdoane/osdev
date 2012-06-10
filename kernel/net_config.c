@@ -1,18 +1,12 @@
 // ------------------------------------------------------------------------------------------------
-// net_driver.h
+// net_config.c
 // ------------------------------------------------------------------------------------------------
 
-#pragma once
-
-#include "types.h"
+#include "net_config.h"
 
 // ------------------------------------------------------------------------------------------------
-typedef struct Net_Driver
-{
-    bool active;
-    void (*poll)();
-    void (*tx)(u8* pkt, uint len);
-} Net_Driver;
-
-// ------------------------------------------------------------------------------------------------
-extern Net_Driver net_driver;
+u8 net_trace = 0;
+Eth_Addr net_broadcast_mac = { { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
+IPv4_Addr net_local_ip = { { 192, 168, 1, 42 } };
+IPv4_Addr net_subnet_mask = { { 255, 255, 255, 0 } };
+IPv4_Addr net_gateway_ip = { { 192, 168, 1, 1 } };

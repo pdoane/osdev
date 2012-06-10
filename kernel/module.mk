@@ -21,7 +21,9 @@ KERNEL_SOURCES := \
 	kernel/local_apic.c \
 	kernel/mem_dump.c \
 	kernel/net.c \
-	kernel/net_driver.c \
+	kernel/net_addr.c \
+	kernel/net_config.c \
+	kernel/net_intf.c \
 	kernel/pci.c \
 	kernel/pci_classify.c \
 	kernel/pci_driver.c \

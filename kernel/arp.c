@@ -4,9 +4,10 @@
 
 #include "arp.h"
 #include "console.h"
-#include "ipv4.h"
 #include "eth.h"
+#include "ipv4.h"
 #include "net.h"
+#include "net_config.h"
 #include "string.h"
 
 // ------------------------------------------------------------------------------------------------
@@ -36,16 +37,18 @@ static void arp_print(const u8* pkt, uint len)
         return;
     }
 
-    if (len < 8)
+    if (len < sizeof(ARP_Header))
     {
         return;
     }
 
-    u16 htype = (pkt[0] << 8) | pkt[1];
-    u16 ptype = (pkt[2] << 8) | pkt[3];
-    u8 hlen = pkt[4];
-    u8 plen = pkt[5];
-    u16 op = (pkt[6] << 8) | pkt[7];
+    const ARP_Header* hdr = (const ARP_Header*)pkt;
+
+    u16 htype = net_swap16(hdr->htype);
+    u16 ptype = net_swap16(hdr->ptype);
+    u8 hlen = hdr->hlen;
+    u8 plen = hdr->plen;
+    u16 op = net_swap16(hdr->op);
     console_print(" ARP: htype=0x%x ptype=0x%x hlen=%d plen=%d op=%d\n",
             htype, ptype, hlen, plen, op);
 
@@ -56,10 +59,10 @@ static void arp_print(const u8* pkt, uint len)
         const Eth_Addr* tha = (const Eth_Addr*)(pkt + 18);
         const IPv4_Addr* tpa = (const IPv4_Addr*)(pkt + 24);
 
-        char sha_str[18];
-        char spa_str[16];
-        char tha_str[18];
-        char tpa_str[16];
+        char sha_str[ETH_ADDR_STRING_SIZE];
+        char spa_str[IPV4_ADDR_STRING_SIZE];
+        char tha_str[ETH_ADDR_STRING_SIZE];
+        char tpa_str[IPV4_ADDR_STRING_SIZE];
 
         eth_addr_to_str(sha_str, sizeof(sha_str), sha);
         ipv4_addr_to_str(spa_str, sizeof(spa_str), spa);
@@ -72,69 +75,67 @@ static void arp_print(const u8* pkt, uint len)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void arp_snd(uint op, const Eth_Addr* tha, const IPv4_Addr* tpa)
+static void arp_snd(Net_Intf* intf, uint op, const Eth_Addr* tha, const IPv4_Addr* tpa)
 {
-    u8 data[256];
+    u8 buf[256];
 
-    u8* arp_pkt = eth_encode_hdr(data, tha, &net_local_mac, ET_ARP);
+    u8* pkt = buf + sizeof(Eth_Header);
 
     // HTYPE
-    arp_pkt[0] = (ARP_HTYPE_ETH >> 8) & 0xff;
-    arp_pkt[1] = (ARP_HTYPE_ETH) & 0xff;
+    pkt[0] = (ARP_HTYPE_ETH >> 8) & 0xff;
+    pkt[1] = (ARP_HTYPE_ETH) & 0xff;
 
     // PTYPE
-    arp_pkt[2] = (ET_IPV4 >> 8) & 0xff;
-    arp_pkt[3] = (ET_IPV4) & 0xff;
+    pkt[2] = (ET_IPV4 >> 8) & 0xff;
+    pkt[3] = (ET_IPV4) & 0xff;
 
     // HLEN
-    arp_pkt[4] = sizeof(Eth_Addr);
+    pkt[4] = sizeof(Eth_Addr);
 
     // PLEN
-    arp_pkt[5] = sizeof(IPv4_Addr);
+    pkt[5] = sizeof(IPv4_Addr);
 
     // Operation
-    arp_pkt[6] = (op >> 8) & 0xff;
-    arp_pkt[7] = (op) & 0xff;
+    pkt[6] = (op >> 8) & 0xff;
+    pkt[7] = (op) & 0xff;
 
     // SHA
-    *(Eth_Addr*)(arp_pkt + 8) = net_local_mac;
+    *(Eth_Addr*)(pkt + 8) = intf->eth_addr;
 
     // SPA
-    *(IPv4_Addr*)(arp_pkt + 14) = net_local_ip;
+    *(IPv4_Addr*)(pkt + 14) = intf->ip_addr;
 
     // THA
     if (op == ARP_OP_REQUEST)
     {
         Eth_Addr null = { { 0 } };
-        *(Eth_Addr*)(arp_pkt + 18) = null;
+        *(Eth_Addr*)(pkt + 18) = null;
     }
     else
     {
-        *(Eth_Addr*)(arp_pkt + 18) = *tha;
+        *(Eth_Addr*)(pkt + 18) = *tha;
     }
 
     // TPA
-    *(IPv4_Addr*)(arp_pkt + 24) = *tpa;
+    *(IPv4_Addr*)(pkt + 24) = *tpa;
 
     // Print
-    arp_print(arp_pkt, 28);
+    arp_print(pkt, 28);
 
     // Transmit packet
-    uint len = 14 + 28;
-
-    net_tx(data, len);
+    eth_tx(intf, tha, ET_ARP, buf, pkt + 28 - buf);
 }
 
 // ------------------------------------------------------------------------------------------------
-void arp_request(const IPv4_Addr* tpa)
+void arp_request(Net_Intf* intf, const IPv4_Addr* tpa)
 {
-    arp_snd(ARP_OP_REQUEST, &net_broadcast_mac, tpa);
+    arp_snd(intf, ARP_OP_REQUEST, &net_broadcast_mac, tpa);
 }
 
 // ------------------------------------------------------------------------------------------------
-void arp_reply(const Eth_Addr* tha, const IPv4_Addr* tpa)
+void arp_reply(Net_Intf* intf, const Eth_Addr* tha, const IPv4_Addr* tpa)
 {
-    arp_snd(ARP_OP_REPLY, tha, tpa);
+    arp_snd(intf, ARP_OP_REPLY, tha, tpa);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -206,19 +207,21 @@ const Eth_Addr* arp_lookup_mac(const IPv4_Addr* pa)
 }
 
 // ------------------------------------------------------------------------------------------------
-void arp_rx(const u8* pkt, uint len)
+void arp_rx(Net_Intf* intf, const u8* pkt, uint len)
 {
     arp_print(pkt, len);
 
-    // Decode Base Header
-    if (len < 8)
+    // Decode Header
+    if (len < sizeof(ARP_Header))
     {
         return;
     }
 
-    u16 htype = (pkt[0] << 8) | pkt[1];
-    u16 ptype = (pkt[2] << 8) | pkt[3];
-    u16 op = (pkt[6] << 8) | pkt[7];
+    const ARP_Header* hdr = (const ARP_Header*)pkt;
+
+    u16 htype = net_swap16(hdr->htype);
+    u16 ptype = net_swap16(hdr->ptype);
+    u16 op = net_swap16(hdr->op);
 
     // Skip packets that are not Ethernet, IPv4, or well-formed
     if (htype != ARP_HTYPE_ETH || ptype != ET_IPV4 || len < 28)
@@ -247,10 +250,10 @@ void arp_rx(const u8* pkt, uint len)
     }
 
     // Check if this ARP packet is targeting our IP
-    if (tpa->n[0] == net_local_ip.n[0] &&
-        tpa->n[1] == net_local_ip.n[1] &&
-        tpa->n[2] == net_local_ip.n[2] &&
-        tpa->n[3] == net_local_ip.n[3])
+    if (tpa->n[0] == intf->ip_addr.n[0] &&
+        tpa->n[1] == intf->ip_addr.n[1] &&
+        tpa->n[2] == intf->ip_addr.n[2] &&
+        tpa->n[3] == intf->ip_addr.n[3])
     {
         // Add a new entry if we didn't update earlier.
         if (!merge)
@@ -266,7 +269,7 @@ void arp_rx(const u8* pkt, uint len)
         // Respond to requests.
         if (op == ARP_OP_REQUEST)
         {
-            arp_reply(sha, spa);
+            arp_reply(intf, sha, spa);
         }
     }
 }

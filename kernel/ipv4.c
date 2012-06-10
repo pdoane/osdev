@@ -4,79 +4,32 @@
 
 #include "ipv4.h"
 #include "console.h"
-#include "format.h"
+#include "eth.h"
 #include "icmp.h"
 #include "net.h"
+#include "net_config.h"
 
 // ------------------------------------------------------------------------------------------------
-#define IP_PROTOCOL_ICMP                1
-#define IP_PROTOCOL_TCP                 6
-#define IP_PROTOCOL_UDP                 17
-
-// ------------------------------------------------------------------------------------------------
-void ipv4_print(const u8* pkt, uint len)
-{
-    if (!net_trace)
-    {
-        return;
-    }
-
-    if (len < 20)
-    {
-        return;
-    }
-
-    uint version = (pkt[0] >> 4) & 0xf;
-    uint ihl = (pkt[0]) & 0xf;
-    uint dscp = (pkt[1] >> 2) & 0x3f;
-    uint ecn = (pkt[1]) & 0x3;
-    u16 packet_len = (pkt[2] << 8) | pkt[3];
-    u16 id = (pkt[4] << 8) | pkt[5];
-    u16 fragment = ((pkt[6] << 8) | pkt[7]) & 0x1fff;
-    u8 ttl = pkt[8];
-    u8 protocol = pkt[9];
-    u16 checksum = (pkt[10] << 8) | pkt[11];
-    const u8* src_addr = pkt + 12;
-    const u8* dst_addr = pkt + 16;
-
-    console_print(" IPv4: version=%d ihl=%d dscp=%d ecn=%d\n",
-            version, ihl, dscp, ecn);
-    console_print(" IPv4: len=%d, id=%d, fragment=%d, ttl=%d, protocol=%d, checksum=%d\n",
-            packet_len, id, fragment, ttl, protocol, checksum);
-    console_print(" IPv4: source=%d.%d.%d.%d, dest=%d.%d.%d.%d\n",
-            src_addr[0], src_addr[1], src_addr[2], src_addr[3],
-            dst_addr[0], dst_addr[1], dst_addr[2], dst_addr[3]);
-}
-
-// ------------------------------------------------------------------------------------------------
-void ipv4_rx(const u8* pkt, uint len)
+void ipv4_rx(Net_Intf* intf, const u8* pkt, uint len)
 {
     ipv4_print(pkt, len);
 
-    // Validate packet length
-    if (len < 20)
+    // Validate packet header
+    if (len < sizeof(IPv4_Header))
     {
         return;
     }
 
-    // Validate packet header
-    uint version = (pkt[0] >> 4) & 0xf;
+    const IPv4_Header* hdr = (const IPv4_Header*)pkt;
+
+    uint version = (hdr->ver_ihl >> 4) & 0xf;
     if (version != 4)
     {
         return;
     }
 
-    //uint ihl = (pkt[0]) & 0xf;
-    //uint dscp = (pkt[1] >> 2) & 0x3f;
-    //uint ecn = (pkt[1]) & 0x3;
-    //u16 packet_len = (pkt[2] << 8) | pkt[3];
-    //u16 id = (pkt[4] << 8) | pkt[5];
-    u16 fragment = ((pkt[6] << 8) | pkt[7]) & 0x1fff;
-    //u8 ttl = pkt[8];
-    u8 protocol = pkt[9];
-    //u16 checksum = (pkt[10] << 8) | pkt[11];
-    //u8* src_addr = pkt + 12;
-    //u8* dst_addr = pkt + 16;
+    // Fragments
+    u16 fragment = net_swap16(hdr->offset) & 0x1fff;
 
     // Fragments are not handled yet
     if (fragment)
@@ -88,10 +41,10 @@ void ipv4_rx(const u8* pkt, uint len)
     //u8* data = pkt + (ihl << 2);
 
     // Dispatch based on protocol
-    switch (protocol)
+    switch (hdr->protocol)
     {
     case IP_PROTOCOL_ICMP:
-        icmp_rx(pkt, len);  // Send the base IPv4 packet
+        icmp_rx(intf, pkt, len);  // Send the base IPv4 packet
         break;
 
     case IP_PROTOCOL_TCP:
@@ -100,6 +53,33 @@ void ipv4_rx(const u8* pkt, uint len)
     case IP_PROTOCOL_UDP:
         break;
     }
+}
+
+// ------------------------------------------------------------------------------------------------
+void ipv4_tx(Net_Intf* intf, const IPv4_Addr* dst_addr, u8 protocol, u8* buf, uint len)
+{
+    uint ip_packet_size = len - sizeof(Eth_Header);
+
+    // IPv4 Header
+    u8* pkt = buf + sizeof(Eth_Header);
+    IPv4_Header* hdr = (IPv4_Header*)pkt;
+    hdr->ver_ihl = (4 << 4) | 5;
+    hdr->tos = 0;
+    hdr->len = net_swap16(ip_packet_size);
+    hdr->id = net_swap16(0);
+    hdr->offset = net_swap16(0);
+    hdr->ttl = 64;
+    hdr->protocol = protocol;
+    hdr->checksum = 0;
+    hdr->src = intf->ip_addr;
+    hdr->dst = *dst_addr;
+
+    uint checksum = ipv4_checksum(pkt, sizeof(IPv4_Header));
+    hdr->checksum = net_swap16(checksum);
+
+    ipv4_print(pkt, ip_packet_size);
+
+    eth_tx_ipv4(intf, dst_addr, buf, len);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -129,7 +109,40 @@ u16 ipv4_checksum(const u8* data, uint len)
 }
 
 // ------------------------------------------------------------------------------------------------
-void ipv4_addr_to_str(char* str, size_t size, const IPv4_Addr* addr)
+void ipv4_print(const u8* pkt, uint len)
 {
-    snprintf(str, size, "%d.%d.%d.%d", addr->n[0], addr->n[1], addr->n[2], addr->n[3]);
+    if (!net_trace)
+    {
+        return;
+    }
+
+    if (len < sizeof(IPv4_Header))
+    {
+        return;
+    }
+
+    const IPv4_Header* hdr = (const IPv4_Header*)pkt;
+
+    uint version = (hdr->ver_ihl >> 4) & 0xf;
+    uint ihl = (hdr->ver_ihl) & 0xf;
+    uint dscp = (hdr->tos >> 2) & 0x3f;
+    uint ecn = (hdr->tos) & 0x3;
+    u16 packet_len = net_swap16(hdr->len);
+    u16 id = net_swap16(hdr->id);
+    u16 fragment = net_swap16(hdr->offset) & 0x1fff;
+    u8 ttl = hdr->ttl;
+    u8 protocol = hdr->protocol;
+    u16 checksum = net_swap16(hdr->checksum);
+
+    char src_addr_str[IPV4_ADDR_STRING_SIZE];
+    char dst_addr_str[IPV4_ADDR_STRING_SIZE];
+    ipv4_addr_to_str(src_addr_str, sizeof(src_addr_str), &hdr->src);
+    ipv4_addr_to_str(dst_addr_str, sizeof(dst_addr_str), &hdr->dst);
+
+    console_print(" IPv4: version=%d ihl=%d dscp=%d ecn=%d\n",
+            version, ihl, dscp, ecn);
+    console_print(" IPv4: len=%d, id=%d, fragment=%d, ttl=%d, protocol=%d, checksum=%d\n",
+            packet_len, id, fragment, ttl, protocol, checksum);
+    console_print(" IPv4: dst=%s src=%s\n",
+            dst_addr_str, src_addr_str);
 }

@@ -5,8 +5,8 @@
 #include "eth_8254x.h"
 #include "console.h"
 #include "io.h"
-#include "net.h"
-#include "net_driver.h"
+#include "eth.h"
+#include "net_config.h"
 #include "pci_driver.h"
 #include "string.h"
 #include "vm.h"
@@ -182,7 +182,7 @@ static u16 eeprom_read(u8* mmio_addr, u8 eeprom_addr)
 
 
 // ------------------------------------------------------------------------------------------------
-static void eth_8254x_poll()
+static void eth_8254x_poll(Net_Intf* intf)
 {
     RX_Desc* desc = &dev.rx_descs[dev.rx_read];
 
@@ -197,7 +197,7 @@ static void eth_8254x_poll()
         }
         else
         {
-            net_rx(pkt, len);
+            eth_rx(intf, pkt, len);
         }
 
         desc->status = 0;
@@ -210,7 +210,7 @@ static void eth_8254x_poll()
 }
 
 // ------------------------------------------------------------------------------------------------
-static void eth_8254x_tx(u8* pkt, uint len)
+static void eth_8254x_tx(Net_Intf* intf, u8* pkt, uint len)
 {
     TX_Desc* desc = &dev.tx_descs[dev.tx_write];
 
@@ -266,17 +266,18 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
     //u8 irq = pci_in8(id, PCI_CONFIG_INTERRUPT_LINE);
 
     // MAC address
+    Eth_Addr local_addr;
     u32 ral = mmio_read32(mmio_addr + REG_RAL);   // Try Receive Address Register first
     if (ral)
     {
         u32 rah = mmio_read32(mmio_addr + REG_RAH);
 
-        net_local_mac.n[0] = (u8)(ral);
-        net_local_mac.n[1] = (u8)(ral >> 8);
-        net_local_mac.n[2] = (u8)(ral >> 16);
-        net_local_mac.n[3] = (u8)(ral >> 24);
-        net_local_mac.n[4] = (u8)(rah);
-        net_local_mac.n[5] = (u8)(rah >> 8);
+        local_addr.n[0] = (u8)(ral);
+        local_addr.n[1] = (u8)(ral >> 8);
+        local_addr.n[2] = (u8)(ral >> 16);
+        local_addr.n[3] = (u8)(ral >> 24);
+        local_addr.n[4] = (u8)(rah);
+        local_addr.n[5] = (u8)(rah >> 8);
     }
     else
     {
@@ -285,16 +286,16 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
         u16 mac23 = eeprom_read(mmio_addr, 1);
         u16 mac45 = eeprom_read(mmio_addr, 2);
 
-        net_local_mac.n[0] = (u8)(mac01);
-        net_local_mac.n[1] = (u8)(mac01 >> 8);
-        net_local_mac.n[2] = (u8)(mac23);
-        net_local_mac.n[3] = (u8)(mac23 >> 8);
-        net_local_mac.n[4] = (u8)(mac45);
-        net_local_mac.n[5] = (u8)(mac45 >> 8);
+        local_addr.n[0] = (u8)(mac01);
+        local_addr.n[1] = (u8)(mac01 >> 8);
+        local_addr.n[2] = (u8)(mac23);
+        local_addr.n[3] = (u8)(mac23 >> 8);
+        local_addr.n[4] = (u8)(mac45);
+        local_addr.n[5] = (u8)(mac45 >> 8);
     }
 
     char mac_str[18];
-    eth_addr_to_str(mac_str, sizeof(mac_str), &net_local_mac);
+    eth_addr_to_str(mac_str, sizeof(mac_str), &local_addr);
 
     console_print("MAC = %s\n", mac_str);
 
@@ -369,7 +370,16 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
         | TCTL_RTLC
         );
 
-    net_driver.active = true;
-    net_driver.poll = eth_8254x_poll;
-    net_driver.tx = eth_8254x_tx;
+    // Create net interface
+    Net_Intf* intf = net_intf_create();
+    intf->eth_addr = local_addr;
+    intf->ip_addr = net_local_ip;
+    intf->subnet_mask = net_subnet_mask;
+    intf->gateway_addr = net_gateway_ip;
+    intf->name = "eth";
+    intf->init = eth_intf_init;
+    intf->poll = eth_8254x_poll;
+    intf->tx = eth_8254x_tx;
+
+    net_intf_add(intf);
 }

@@ -3,11 +3,10 @@
 // ------------------------------------------------------------------------------------------------
 
 #include "icmp.h"
-#include "arp.h"
 #include "console.h"
 #include "eth.h"
-#include "net.h"
 #include "ipv4.h"
+#include "net_config.h"
 #include "string.h"
 
 // ------------------------------------------------------------------------------------------------
@@ -52,67 +51,35 @@ void icmp_print(const u8* pkt, uint len)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void icmp_echo_reply(const IPv4_Addr* dst_ip, u16 id, u16 sequence, const u8* echo_data, uint echo_data_len)
+static void icmp_echo_reply(Net_Intf* intf, const IPv4_Addr* dst_addr,
+    u16 id, u16 sequence, const u8* echo_data, uint echo_data_len)
 {
-    u8 data[1500];
+    u8 buf[1500];
 
-    const Eth_Addr* dst_mac = arp_lookup_mac(dst_ip);
-    if (!dst_mac)
-    {
-        console_print(" Unknown IP, sending ARP request\n");
-        arp_request(dst_ip);
-        return;
-    }
+    u8* pkt = buf + sizeof(IPv4_Header) + sizeof(Eth_Header);
 
-    u8* pkt = eth_encode_hdr(data, dst_mac, &net_local_mac, ET_IPV4);
+    pkt[0] = ICMP_TYPE_ECHO_REPLY;
+    pkt[1] = 0;
+    pkt[2] = 0;
+    pkt[3] = 0;
+    pkt[4] = (id >> 8) & 0xff;
+    pkt[5] = (id) & 0xff;
+    pkt[6] = (sequence >> 8) & 0xff;
+    pkt[7] = (sequence) & 0xff;
+    memcpy(pkt + 8, echo_data, echo_data_len);
 
     uint icmp_packet_size = 8 + echo_data_len;
-    uint ip_packet_size = 20 + icmp_packet_size;
+    uint checksum = ipv4_checksum(pkt, icmp_packet_size);
+    pkt[2] = (checksum >> 8) & 0xff;
+    pkt[3] = (checksum) & 0xff;
 
-    // IPv4 Header
-    pkt[0] = (4 << 4) | 5;
-    pkt[1] = 0;
-    pkt[2] = (ip_packet_size >> 8) & 0xff;
-    pkt[3] = (ip_packet_size) & 0xff;
-    pkt[4] = 0;
-    pkt[5] = 0;
-    pkt[6] = 0;
-    pkt[7] = 0;
-    pkt[8] = 64;
-    pkt[9] = 1;
-    pkt[10] = 0;
-    pkt[11] = 0;
-    *(IPv4_Addr*)(pkt + 12) = net_local_ip;
-    *(IPv4_Addr*)(pkt + 16) = *dst_ip;
+    icmp_print(pkt, icmp_packet_size);
 
-    uint checksum = ipv4_checksum(pkt, 20);
-    pkt[10] = (checksum >> 8) & 0xff;
-    pkt[11] = (checksum) & 0xff;
-
-    // ICMP
-    pkt[20] = ICMP_TYPE_ECHO_REPLY;
-    pkt[21] = 0;
-    pkt[22] = 0;
-    pkt[23] = 0;
-    pkt[24] = (id >> 8) & 0xff;
-    pkt[25] = (id) & 0xff;
-    pkt[26] = (sequence >> 8) & 0xff;
-    pkt[27] = (sequence) & 0xff;
-    memcpy(pkt + 28, echo_data, echo_data_len);
-
-    checksum = ipv4_checksum(pkt + 20, icmp_packet_size);
-    pkt[22] = (checksum >> 8) & 0xff;
-    pkt[23] = (checksum) & 0xff;
-
-    icmp_print(pkt + 20, icmp_packet_size);
-    ipv4_print(pkt, ip_packet_size);
-
-    uint len = 14 + ip_packet_size;
-    net_tx(data, len);
+    ipv4_tx(intf, dst_addr, IP_PROTOCOL_ICMP, buf, pkt + icmp_packet_size - buf);
 }
 
 // ------------------------------------------------------------------------------------------------
-void icmp_rx(const u8* pkt, uint len)
+void icmp_rx(Net_Intf* intf, const u8* pkt, uint len)
 {
     if (len < 20)
     {
@@ -142,6 +109,6 @@ void icmp_rx(const u8* pkt, uint len)
 
     if (type == ICMP_TYPE_ECHO_REQUEST)
     {
-        icmp_echo_reply(src_ip, id, sequence, pkt + 8, len - 8);
+        icmp_echo_reply(intf, src_ip, id, sequence, pkt + 8, len - 8);
     }
 }
