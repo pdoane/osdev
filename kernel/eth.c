@@ -6,7 +6,6 @@
 #include "arp.h"
 #include "console.h"
 #include "net.h"
-#include "net_config.h"
 #include "ipv4.h"
 #include "ipv6.h"
 

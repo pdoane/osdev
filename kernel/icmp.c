@@ -6,7 +6,7 @@
 #include "console.h"
 #include "eth.h"
 #include "ipv4.h"
-#include "net_config.h"
+#include "net.h"
 #include "string.h"
 
 // ------------------------------------------------------------------------------------------------
@@ -75,7 +75,7 @@ static void icmp_echo_reply(Net_Intf* intf, const IPv4_Addr* dst_addr,
 
     icmp_print(pkt, icmp_packet_size);
 
-    ipv4_tx(intf, dst_addr, IP_PROTOCOL_ICMP, buf, pkt + icmp_packet_size - buf);
+    ipv4_tx(dst_addr, IP_PROTOCOL_ICMP, buf, pkt + icmp_packet_size - buf);
 }
 
 // ------------------------------------------------------------------------------------------------

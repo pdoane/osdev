@@ -15,8 +15,6 @@ typedef struct Net_Intf
     Link link;
     Eth_Addr eth_addr;
     IPv4_Addr ip_addr;
-    IPv4_Addr subnet_mask;
-    IPv4_Addr gateway_addr;
     const char* name;
 
     void (*init)(struct Net_Intf* intf);

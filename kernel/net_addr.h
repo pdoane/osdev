@@ -21,10 +21,19 @@ typedef struct Eth_Addr
 
 typedef struct IPv4_Addr
 {
-    u8 n[4];
+    union
+    {
+        u8 n[4];
+        u32 bits;
+    } u;
 } PACKED IPv4_Addr;
 
 #define IPV4_ADDR_STRING_SIZE           16
+
+// ------------------------------------------------------------------------------------------------
+// Globals
+
+extern Eth_Addr broadcast_eth_addr;
 
 // ------------------------------------------------------------------------------------------------
 // Functions

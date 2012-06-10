@@ -7,7 +7,11 @@
 #include "eth.h"
 #include "icmp.h"
 #include "net.h"
-#include "net_config.h"
+#include "string.h"
+#include "vm.h"
+
+// ------------------------------------------------------------------------------------------------
+Link g_ipv4_route_table = { &g_ipv4_route_table, &g_ipv4_route_table };
 
 // ------------------------------------------------------------------------------------------------
 void ipv4_rx(Net_Intf* intf, const u8* pkt, uint len)
@@ -56,7 +60,7 @@ void ipv4_rx(Net_Intf* intf, const u8* pkt, uint len)
 }
 
 // ------------------------------------------------------------------------------------------------
-void ipv4_tx(Net_Intf* intf, const IPv4_Addr* dst_addr, u8 protocol, u8* buf, uint len)
+static void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* dst_addr, const IPv4_Addr* ip_addr, u8 protocol, u8* buf, uint len)
 {
     uint ip_packet_size = len - sizeof(Eth_Header);
 
@@ -72,7 +76,7 @@ void ipv4_tx(Net_Intf* intf, const IPv4_Addr* dst_addr, u8 protocol, u8* buf, ui
     hdr->protocol = protocol;
     hdr->checksum = 0;
     hdr->src = intf->ip_addr;
-    hdr->dst = *dst_addr;
+    hdr->dst = *ip_addr;
 
     uint checksum = ipv4_checksum(pkt, sizeof(IPv4_Header));
     hdr->checksum = net_swap16(checksum);
@@ -80,6 +84,100 @@ void ipv4_tx(Net_Intf* intf, const IPv4_Addr* dst_addr, u8 protocol, u8* buf, ui
     ipv4_print(pkt, ip_packet_size);
 
     eth_tx_ipv4(intf, dst_addr, buf, len);
+}
+
+// ------------------------------------------------------------------------------------------------
+void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, u8* buf, uint len)
+{
+    // Find an appropriate interface to route dst_addr
+    const IPv4_Route* route = ipv4_find_route(dst_addr);
+    const IPv4_Addr* ip_addr = dst_addr;
+
+    if (route)
+    {
+        // Use gateway if appropriate for the route
+        if (route->gateway.u.bits)
+        {
+            dst_addr = &route->gateway;
+        }
+
+        ipv4_tx_intf(route->intf, dst_addr, ip_addr, protocol, buf, len);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+const IPv4_Route* ipv4_find_route(const IPv4_Addr* dst)
+{
+    Link* it = g_ipv4_route_table.next;
+    Link* end = &g_ipv4_route_table;
+
+    while (it != end)
+    {
+        IPv4_Route* route = link_data(it, IPv4_Route, link);
+
+        if ((dst->u.bits & route->mask.u.bits) == route->mask.u.bits)
+        {
+            return route;
+        }
+
+        it = it->next;
+    }
+
+    console_print("Failed to route IPv4 address\n");
+    return 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+void ipv4_add_route(const IPv4_Addr* dst, const IPv4_Addr* mask, const IPv4_Addr* gateway, Net_Intf* intf)
+{
+    IPv4_Route* route = vm_alloc(sizeof(IPv4_Route));
+    link_init(&route->link);
+    route->dst = *dst;
+    route->mask = *mask;
+    if (gateway)
+    {
+        route->gateway = *gateway;
+    }
+    else
+    {
+        route->gateway.u.bits = 0;
+    }
+
+    route->intf = intf;
+
+    link_before(&g_ipv4_route_table, &route->link);
+}
+
+// ------------------------------------------------------------------------------------------------
+void ipv4_print_route_table()
+{
+    Link* it = g_ipv4_route_table.next;
+    Link* end = &g_ipv4_route_table;
+
+    console_print("%-15s  %-15s  %-15s  %s\n", "Destination", "Netmask", "Gateway", "Interface");
+    while (it != end)
+    {
+        IPv4_Route* route = link_data(it, IPv4_Route, link);
+
+        char dst_str[IPV4_ADDR_STRING_SIZE];
+        char mask_str[IPV4_ADDR_STRING_SIZE];
+        char gateway_str[IPV4_ADDR_STRING_SIZE];
+
+        ipv4_addr_to_str(dst_str, sizeof(dst_str), &route->dst);
+        ipv4_addr_to_str(mask_str, sizeof(mask_str), &route->mask);
+        if (route->gateway.u.bits)
+        {
+            ipv4_addr_to_str(gateway_str, sizeof(gateway_str), &route->gateway);
+        }
+        else
+        {
+            strcpy(gateway_str, "On-link");
+        }
+
+        console_print("%-15s  %-15s  %-15s  %s\n", dst_str, mask_str, gateway_str, route->intf->name);
+
+        it = it->next;
+    }
 }
 
 // ------------------------------------------------------------------------------------------------

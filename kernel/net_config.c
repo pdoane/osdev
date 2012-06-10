@@ -5,8 +5,6 @@
 #include "net_config.h"
 
 // ------------------------------------------------------------------------------------------------
-u8 net_trace = 0;
-Eth_Addr net_broadcast_mac = { { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
-IPv4_Addr net_local_ip = { { 192, 168, 1, 42 } };
-IPv4_Addr net_subnet_mask = { { 255, 255, 255, 0 } };
-IPv4_Addr net_gateway_ip = { { 192, 168, 1, 1 } };
+IPv4_Addr net_local_ip = { { { 192, 168, 1, 42 } } };
+IPv4_Addr net_subnet_mask = { { { 255, 255, 255, 0 } } };
+IPv4_Addr net_gateway_ip = { { { 192, 168, 1, 1 } } };

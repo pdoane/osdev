@@ -7,7 +7,6 @@
 #include "eth.h"
 #include "ipv4.h"
 #include "net.h"
-#include "net_config.h"
 #include "string.h"
 
 // ------------------------------------------------------------------------------------------------
@@ -129,7 +128,7 @@ static void arp_snd(Net_Intf* intf, uint op, const Eth_Addr* tha, const IPv4_Add
 // ------------------------------------------------------------------------------------------------
 void arp_request(Net_Intf* intf, const IPv4_Addr* tpa)
 {
-    arp_snd(intf, ARP_OP_REQUEST, &net_broadcast_mac, tpa);
+    arp_snd(intf, ARP_OP_REQUEST, &broadcast_eth_addr, tpa);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -146,10 +145,7 @@ static void arp_add(const Eth_Addr* ha, const IPv4_Addr* pa)
     ARP_Entry* end = entry + ARP_CACHE_SIZE;
     for (; entry != end; ++entry)
     {
-        if ((entry->pa.n[0] == 0 &&
-             entry->pa.n[1] == 0 &&
-             entry->pa.n[2] == 0 &&
-             entry->pa.n[3] == 0))
+        if (!entry->pa.u.bits)
         {
             break;
         }
@@ -182,10 +178,7 @@ static ARP_Entry* arp_lookup(const IPv4_Addr* pa)
     ARP_Entry* end = entry + ARP_CACHE_SIZE;
     for (; entry != end; ++entry)
     {
-        if (entry->pa.n[0] == pa->n[0] &&
-            entry->pa.n[1] == pa->n[1] &&
-            entry->pa.n[2] == pa->n[2] &&
-            entry->pa.n[3] == pa->n[3])
+        if (entry->pa.u.bits == pa->u.bits)
         {
             return entry;
         }
@@ -250,10 +243,7 @@ void arp_rx(Net_Intf* intf, const u8* pkt, uint len)
     }
 
     // Check if this ARP packet is targeting our IP
-    if (tpa->n[0] == intf->ip_addr.n[0] &&
-        tpa->n[1] == intf->ip_addr.n[1] &&
-        tpa->n[2] == intf->ip_addr.n[2] &&
-        tpa->n[3] == intf->ip_addr.n[3])
+    if (tpa->u.bits == intf->ip_addr.u.bits)
     {
         // Add a new entry if we didn't update earlier.
         if (!merge)
