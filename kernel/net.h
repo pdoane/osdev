@@ -7,6 +7,14 @@
 #include "types.h"
 
 // ------------------------------------------------------------------------------------------------
+// Packet Header Management
+
+// Allow for up to 128 bytes to be used in the packet header for various protocols.  This allows
+// for IPv4 and TCP to both use all but one optional field.
+
+#define MAX_PACKET_HEADER       128
+
+// ------------------------------------------------------------------------------------------------
 // Byte Order translation
 
 static inline u16 net_swap16(uint n)

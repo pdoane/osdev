@@ -11,4 +11,8 @@
 - PXE Network Booting
 - APIC timer
 - Network Stack
-   - Loopback Interface
+   - Link layer indicates broadcast packet
+- ARP
+   - Flush out-of-date entries
+   - Prevent ARP flooding
+   - Save packet during discovery

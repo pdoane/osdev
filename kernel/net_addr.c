@@ -6,7 +6,8 @@
 #include "format.h"
 
 // ------------------------------------------------------------------------------------------------
-Eth_Addr broadcast_eth_addr = { { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
+Eth_Addr null_eth_addr                  = { { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+Eth_Addr broadcast_eth_addr             = { { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
 
 // ------------------------------------------------------------------------------------------------
 void eth_addr_to_str(char* str, size_t size, const Eth_Addr* addr)

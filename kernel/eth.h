@@ -37,10 +37,9 @@ typedef struct Eth_Packet
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void eth_intf_init(Net_Intf* intf);
+void eth_init_intf(Net_Intf* intf);
 
 void eth_rx(Net_Intf* intf, u8* pkt, uint len);
-void eth_tx(Net_Intf* intf, const Eth_Addr* dst_addr, u16 ether_type, u8* buf, uint len);
-void eth_tx_ipv4(Net_Intf* intf, const IPv4_Addr* dst_addr, u8* buf, uint len);
+void eth_tx_intf(Net_Intf* intf, const void* dst_addr, u16 ether_type, u8* pkt, uint len);
 
 void eth_print(const Eth_Packet* ep);

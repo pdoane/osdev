@@ -4,7 +4,6 @@
 
 #include "icmp.h"
 #include "console.h"
-#include "eth.h"
 #include "ipv4.h"
 #include "net.h"
 #include "string.h"
@@ -46,8 +45,11 @@ void icmp_print(const u8* pkt, uint len)
     u16 id = (pkt[4] << 8) | pkt[5];
     u16 sequence = (pkt[6] << 8) | pkt[7];
 
-    console_print("  ICMP: type=%d code=%d checksum=%d id=%d sequence=%d\n",
-            type, code, checksum, id, sequence);
+    uint checksum2 = ipv4_checksum(pkt, len);
+
+    console_print("  ICMP: type=%d code=%d id=%d sequence=%d len=%d checksum=%d%c\n",
+            type, code, id, sequence, len, checksum,
+            checksum2 ? '!' : ' ');
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -56,7 +58,7 @@ static void icmp_echo_reply(Net_Intf* intf, const IPv4_Addr* dst_addr,
 {
     u8 buf[1500];
 
-    u8* pkt = buf + sizeof(IPv4_Header) + sizeof(Eth_Header);
+    u8* pkt = buf + MAX_PACKET_HEADER;
 
     pkt[0] = ICMP_TYPE_ECHO_REPLY;
     pkt[1] = 0;
@@ -75,7 +77,7 @@ static void icmp_echo_reply(Net_Intf* intf, const IPv4_Addr* dst_addr,
 
     icmp_print(pkt, icmp_packet_size);
 
-    ipv4_tx(dst_addr, IP_PROTOCOL_ICMP, buf, pkt + icmp_packet_size - buf);
+    ipv4_tx(dst_addr, IP_PROTOCOL_ICMP, pkt, icmp_packet_size);
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -211,7 +211,7 @@ static void eth_8254x_poll(Net_Intf* intf)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void eth_8254x_tx(Net_Intf* intf, u8* pkt, uint len)
+static void eth_8254x_tx(u8* pkt, uint len)
 {
     TX_Desc* desc = &dev.tx_descs[dev.tx_write];
 
@@ -376,9 +376,10 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
     intf->eth_addr = local_addr;
     intf->ip_addr = net_local_ip;
     intf->name = "eth";
-    intf->init = eth_intf_init;
+    intf->init = eth_init_intf;
     intf->poll = eth_8254x_poll;
-    intf->tx = eth_8254x_tx;
+    intf->tx = eth_tx_intf;
+    intf->dev_tx = eth_8254x_tx;
 
     net_intf_add(intf);
 
@@ -389,7 +390,7 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
     host_mask.u.bits = 0xffffffff;
     subnet_addr.u.bits = net_local_ip.u.bits & net_subnet_mask.u.bits;
 
-    ipv4_add_route(&net_local_ip, &host_mask, 0, intf);
-    ipv4_add_route(&subnet_addr, &net_subnet_mask, 0, intf);
     ipv4_add_route(&zero_addr, &zero_addr, &net_gateway_ip, intf);
+    ipv4_add_route(&subnet_addr, &net_subnet_mask, 0, intf);
+    ipv4_add_route(&net_local_ip, &host_mask, 0, intf);
 }

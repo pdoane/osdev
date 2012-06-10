@@ -60,16 +60,16 @@ void ipv4_rx(Net_Intf* intf, const u8* pkt, uint len)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* dst_addr, const IPv4_Addr* ip_addr, u8 protocol, u8* buf, uint len)
+static void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* dst_addr, const IPv4_Addr* ip_addr, u8 protocol, u8* pkt, uint len)
 {
-    uint ip_packet_size = len - sizeof(Eth_Header);
-
     // IPv4 Header
-    u8* pkt = buf + sizeof(Eth_Header);
+    pkt -= sizeof(IPv4_Header);
+    len += sizeof(IPv4_Header);
+
     IPv4_Header* hdr = (IPv4_Header*)pkt;
     hdr->ver_ihl = (4 << 4) | 5;
     hdr->tos = 0;
-    hdr->len = net_swap16(ip_packet_size);
+    hdr->len = net_swap16(len);
     hdr->id = net_swap16(0);
     hdr->offset = net_swap16(0);
     hdr->ttl = 64;
@@ -81,13 +81,13 @@ static void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* dst_addr, const IPv4_A
     uint checksum = ipv4_checksum(pkt, sizeof(IPv4_Header));
     hdr->checksum = net_swap16(checksum);
 
-    ipv4_print(pkt, ip_packet_size);
+    ipv4_print(pkt, len);
 
-    eth_tx_ipv4(intf, dst_addr, buf, len);
+    intf->tx(intf, dst_addr, ET_IPV4, pkt, len);
 }
 
 // ------------------------------------------------------------------------------------------------
-void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, u8* buf, uint len)
+void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, uint len)
 {
     // Find an appropriate interface to route dst_addr
     const IPv4_Route* route = ipv4_find_route(dst_addr);
@@ -101,7 +101,7 @@ void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, u8* buf, uint len)
             dst_addr = &route->gateway;
         }
 
-        ipv4_tx_intf(route->intf, dst_addr, ip_addr, protocol, buf, len);
+        ipv4_tx_intf(route->intf, dst_addr, ip_addr, protocol, pkt, len);
     }
 }
 
@@ -115,7 +115,7 @@ const IPv4_Route* ipv4_find_route(const IPv4_Addr* dst)
     {
         IPv4_Route* route = link_data(it, IPv4_Route, link);
 
-        if ((dst->u.bits & route->mask.u.bits) == route->mask.u.bits)
+        if ((dst->u.bits & route->mask.u.bits) == route->dst.u.bits)
         {
             return route;
         }
@@ -145,7 +145,7 @@ void ipv4_add_route(const IPv4_Addr* dst, const IPv4_Addr* mask, const IPv4_Addr
 
     route->intf = intf;
 
-    link_before(&g_ipv4_route_table, &route->link);
+    link_after(&g_ipv4_route_table, &route->link);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -232,6 +232,8 @@ void ipv4_print(const u8* pkt, uint len)
     u8 protocol = hdr->protocol;
     u16 checksum = net_swap16(hdr->checksum);
 
+    uint checksum2 = ipv4_checksum(pkt, sizeof(IPv4_Header));
+
     char src_addr_str[IPV4_ADDR_STRING_SIZE];
     char dst_addr_str[IPV4_ADDR_STRING_SIZE];
     ipv4_addr_to_str(src_addr_str, sizeof(src_addr_str), &hdr->src);
@@ -239,8 +241,9 @@ void ipv4_print(const u8* pkt, uint len)
 
     console_print(" IPv4: version=%d ihl=%d dscp=%d ecn=%d\n",
             version, ihl, dscp, ecn);
-    console_print(" IPv4: len=%d, id=%d, fragment=%d, ttl=%d, protocol=%d, checksum=%d\n",
-            packet_len, id, fragment, ttl, protocol, checksum);
+    console_print(" IPv4: len=%d, id=%d, fragment=%d, ttl=%d, protocol=%d, checksum=%d%c\n",
+            packet_len, id, fragment, ttl, protocol, checksum,
+            checksum2 ? '!' : ' ');
     console_print(" IPv4: dst=%s src=%s\n",
             dst_addr_str, src_addr_str);
 }

@@ -20,6 +20,7 @@ KERNEL_SOURCES := \
 	kernel/keymap.c \
 	kernel/link.c \
 	kernel/local_apic.c \
+	kernel/loopback.c \
 	kernel/mem_dump.c \
 	kernel/net.c \
 	kernel/net_addr.c \

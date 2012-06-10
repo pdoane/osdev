@@ -78,7 +78,7 @@ static void arp_snd(Net_Intf* intf, uint op, const Eth_Addr* tha, const IPv4_Add
 {
     u8 buf[256];
 
-    u8* pkt = buf + sizeof(Eth_Header);
+    u8* pkt = buf + MAX_PACKET_HEADER;
 
     // HTYPE
     pkt[0] = (ARP_HTYPE_ETH >> 8) & 0xff;
@@ -107,8 +107,7 @@ static void arp_snd(Net_Intf* intf, uint op, const Eth_Addr* tha, const IPv4_Add
     // THA
     if (op == ARP_OP_REQUEST)
     {
-        Eth_Addr null = { { 0 } };
-        *(Eth_Addr*)(pkt + 18) = null;
+        *(Eth_Addr*)(pkt + 18) = null_eth_addr;
     }
     else
     {
@@ -122,7 +121,7 @@ static void arp_snd(Net_Intf* intf, uint op, const Eth_Addr* tha, const IPv4_Add
     arp_print(pkt, 28);
 
     // Transmit packet
-    eth_tx(intf, tha, ET_ARP, buf, pkt + 28 - buf);
+    intf->tx(intf, tha, ET_ARP, pkt, 28);
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -22,21 +22,33 @@ USB Controller Interfaces:
 - Universal Host Controller Interface (UHCI) Design Guide
 - Enhanced Host Controller Interface (EHCI) Specification for Universal Serial Bus
 
-Protocol Documents:
+Link Layer:
 
-- RFC 768: User Datagram Protocol (UDP)
-- RFC 791: Internet Protocol (IP)
-- RFC 792: Internet Control Message Protocol (ICMP)
-- RFC 793: Transmission Control Protocol (TCP)
 - RFC 826: An Ethernet Address Resolution Protocol (ARP)
 - RFC 894: A Standard for the Transmission of IP Datagrams over Ethernet Networks
 - RFC 1042: A Standard for the Transmission of IP Datagrams over IEEE 802 Networks
+- RFC 2461: Neighbor Discovery for IPv6 (NDP)
+- RFC 2464: Transmission of IPv6 Packets over Ethernet Networks
 
+IPv4 Layer:
+
+- RFC 791: Internet Protocol (IP)
+- RFC 792: Internet Control Message Protocol (ICMP)
 - RFC 2373: IP Version 6 Addressing Architecture
 - RFC 2460: Internet Protocol, Version 6 (IPv6)
-- RFC 2461: Neighbor Discovery for IPv6 (NDP)
 - RFC 2463: Internet Control Message Protocol (ICMPv6) for IPv6
-- RFC 2464: Transmission of IPv6 Packets over Ethernet Networks
+
+Transport Layer:
+
+- RFC 768: User Datagram Protocol (UDP)
+- RFC 793: Transmission Control Protocol (TCP)
+
+Best Practices:
+
+- RFC 1122: Requirements for Internet Hosts -- Communication Layers
+- RFC 1123: Requirements for Internet Hosts -- Application and Support
 - RFC 5952: A Recommendation for IPv6 Address Text Representation
+
+Registries:
 
 - http://www.iana.org/numbers.html
