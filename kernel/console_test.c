@@ -4,10 +4,16 @@
 
 #include "test/test.h"
 #include "console.h"
+#include "console_cmd.h"
 #include "keycode.h"
 #include "vga.h"
 
 u16 vga_text_base[80*25];
+
+ConsoleCmd console_cmd_table[] =
+{
+    { 0, 0 },
+};
 
 // ------------------------------------------------------------------------------------------------
 void vga_text_setcursor(uint offset)

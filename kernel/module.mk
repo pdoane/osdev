@@ -5,6 +5,7 @@ KERNEL_SOURCES := \
 	kernel/acpi.c \
 	kernel/arp.c \
 	kernel/console.c \
+	kernel/console_cmd.c \
 	kernel/ehci.c \
 	kernel/eth.c \
 	kernel/eth_8254x.c \
