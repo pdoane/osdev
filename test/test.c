@@ -81,6 +81,16 @@ void assert_eq_str(const char* expr, const char* result, const char* expected, c
 }
 
 // ------------------------------------------------------------------------------------------------
+void assert_eq_int(const char* expr, long long result, long long expected, const char* file, unsigned line)
+{
+    if (result != expected)
+    {
+        fprintf(stderr, "%s(%d): %s => %lld != %lld\n", file, line, expr, result, expected);
+        exit(EXIT_FAILURE);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 void assert_eq_uint(const char* expr, unsigned long long result, unsigned long long expected, const char* file, unsigned line)
 {
     if (result != expected)

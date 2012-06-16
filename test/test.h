@@ -15,6 +15,7 @@ void assert_eq_hex(const char* expr, unsigned short result, unsigned short expec
 void assert_eq_mem(const char* expr, void* result, void* expected, size_t len, const char* file, unsigned line);
 void assert_eq_ptr(const char* expr, void* result, void* expected, const char* file, unsigned line);
 void assert_eq_str(const char* expr, const char* result, const char* expected, const char* file, unsigned line);
+void assert_eq_int(const char* expr, long long result, long long expected, const char* file, unsigned line);
 void assert_eq_uint(const char* expr, unsigned long long result, unsigned long long expected, const char* file, unsigned line);
 
 #define ASSERT_TRUE(expr)       assert_true(#expr, expr, __FILE__, __LINE__)
@@ -27,6 +28,7 @@ void assert_eq_uint(const char* expr, unsigned long long result, unsigned long l
 #define ASSERT_EQ_MEM(x, y, n)  assert_eq_mem(#x, x, y, n, __FILE__, __LINE__)
 #define ASSERT_EQ_PTR(x, y)     assert_eq_ptr(#x, x, y, __FILE__, __LINE__)
 #define ASSERT_EQ_STR(x, y)     assert_eq_str(#x, x, y, __FILE__, __LINE__)
+#define ASSERT_EQ_INT(x, y)     assert_eq_int(#x, x, y, __FILE__, __LINE__)
 #define ASSERT_EQ_UINT(x, y)    assert_eq_uint(#x, x, y, __FILE__, __LINE__)
 
 // ------------------------------------------------------------------------------------------------

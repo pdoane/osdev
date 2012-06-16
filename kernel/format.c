@@ -20,6 +20,18 @@ typedef struct Formatter
 } Formatter;
 
 // ------------------------------------------------------------------------------------------------
+static bool is_space(char c)
+{
+    return c == ' ' || c == '\t' || c == '\r' || c== '\n' || c == '\f' || c == '\v';
+}
+
+// ------------------------------------------------------------------------------------------------
+static bool is_digit(char c)
+{
+    return c >= '0' && c <= '9';
+}
+
+// ------------------------------------------------------------------------------------------------
 static void output_char(Formatter* f, char c)
 {
     if (f->p < f->end)
@@ -96,7 +108,7 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
 
         // Parse width
         f.width = -1;
-        if (c >= '0' && c <= '9')
+        if (is_digit(c))
         {
             int width = 0;
             do
@@ -104,7 +116,7 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
                 width = width * 10 + c - '0';
                 c = *fmt++;
             }
-            while (c >= '0' && c <= '9');
+            while (is_digit(c));
 
             f.width = width;
         }
@@ -281,4 +293,105 @@ int snprintf(char* str, size_t size, const char* fmt, ...)
     va_end(args);
 
     return len;
+}
+
+// ------------------------------------------------------------------------------------------------
+int vscanf(const char* str, const char* fmt, va_list args)
+{
+    int count = 0;
+
+    for (;;)
+    {
+        // Read next character
+        char c = *fmt++;
+        if (!c)
+        {
+            break;
+        }
+        if (is_space(c))
+        {
+            // Whitespace
+            while (is_space(*str))
+            {
+                ++str;
+            }
+        }
+        else if (c != '%')
+        {
+match_literal:
+            // Non-format character
+            if (*str == '\0')
+            {
+                goto end_of_input;
+            }
+
+            if (*str != c)
+            {
+                goto match_failure;
+            }
+
+            ++str;
+        }
+        else
+        {
+            // Parse type specifider
+            c = *fmt++;
+
+            // Process type specifier
+            char type = c;
+            switch (type)
+            {
+            case '%':
+                goto match_literal;
+
+            case 'd':
+                {
+                    int sign = 1;
+
+                    c = *str++;
+                    if (c == '\0')
+                        goto end_of_input;
+
+                    if (c == '-')
+                    {
+                        sign = -1;
+                        c = *str++;
+                    }
+
+                    int n = 0;
+                    while (is_digit(c))
+                    {
+                        n = n * 10 + c - '0';
+                        c = *str++;
+                    }
+
+                    n *= sign;
+                    --str;
+
+                    int* result = va_arg(args, int*);
+                    *result = n;
+                    ++count;
+                }
+                break;
+            }
+        }
+    }
+
+match_failure:
+    return count;
+
+end_of_input:
+    return count ? count : -1;
+}
+
+// ------------------------------------------------------------------------------------------------
+int sscanf(const char* str, const char* fmt, ...)
+{
+    va_list args;
+
+    va_start(args, fmt);
+    int count = vscanf(str, fmt, args);
+    va_end(args);
+
+    return count;
 }

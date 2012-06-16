@@ -7,7 +7,7 @@
 #include <string.h>
 
 // ------------------------------------------------------------------------------------------------
-int main(int argc, const char** argv)
+static void test_print()
 {
     char buf[32];
 
@@ -95,6 +95,50 @@ int main(int argc, const char** argv)
     // multiple format characters
     ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%c %c", 'a', 'b'), 3);
     ASSERT_EQ_STR(buf, "a b");
+}
+
+// ------------------------------------------------------------------------------------------------
+static void test_scan()
+{
+    int n[4];
+
+    char* emptyFmt = "";    // workaround warning
+    ASSERT_EQ_INT(sscanf("", emptyFmt), 0);
+    //ASSERT_EQ_INT(sscanf("", "%d", &n[0]), -1);
+
+    ASSERT_EQ_INT(sscanf("1", emptyFmt), 0);
+
+    ASSERT_EQ_INT(sscanf("1", "%d", &n[0]), 1);
+    ASSERT_EQ_INT(n[0], 1);
+    ASSERT_EQ_INT(sscanf("2", " %d ", &n[0]), 1);
+    ASSERT_EQ_INT(n[0], 2);
+    ASSERT_EQ_INT(sscanf("  3 ", " %d ", &n[0]), 1);
+    ASSERT_EQ_INT(n[0], 3);
+
+    ASSERT_EQ_INT(sscanf("", "."), -1);
+    ASSERT_EQ_INT(sscanf(",", "."), 0);
+    ASSERT_EQ_INT(sscanf("1,", "%d.", &n[0]), 1);
+
+    ASSERT_EQ_INT(sscanf("%1", "%%%d", &n[0]), 1);
+    ASSERT_EQ_INT(n[0], 1);
+
+    ASSERT_EQ_INT(sscanf("!1", "%%%d", &n[0]), 0);
+
+    ASSERT_EQ_INT(sscanf("4", "%d %d", &n[0], &n[1]), 1);
+    ASSERT_EQ_INT(n[0], 4);
+
+    ASSERT_EQ_INT(sscanf("1.2.3.4", "%d.%d.%d.%d", &n[0], &n[1], &n[2], &n[3]), 4);
+    ASSERT_EQ_INT(n[0], 1);
+    ASSERT_EQ_INT(n[1], 2);
+    ASSERT_EQ_INT(n[2], 3);
+    ASSERT_EQ_INT(n[3], 4);
+}
+
+// ------------------------------------------------------------------------------------------------
+int main(int argc, const char** argv)
+{
+    test_print();
+    test_scan();
 
     return EXIT_SUCCESS;
 }

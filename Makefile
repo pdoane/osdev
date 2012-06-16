@@ -17,7 +17,7 @@ COMMON_CFLAGS += -fno-common -fno-asynchronous-unwind-tables
 COMMON_CFLAGS += -mno-red-zone
 COMMON_CFLAGS += -O2
 
-FREESTANDING_CFLAGS := -fno-builtin -nostdlib -nostartfiles -nodefaultlibs
+FREESTANDING_CFLAGS := -fno-builtin
 
 # Cross Compiler
 CROSS_CC := x86_64-elf-gcc
