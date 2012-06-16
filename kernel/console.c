@@ -101,20 +101,63 @@ static void console_exec()
     s_line_index = 0;
     s_cursor = 0;
 
-    // Execute command
-    ConsoleCmd* cmd = console_cmd_table;
-    while (cmd->name)
+    // Split command line arguments
+    uint argc = 0;
+    const char* argv[16];
+
+    bool in_arg = false;
+    char* p = line;
+    for (;;)
     {
-        if (strcmp(cmd->name, line) == 0)
+        char ch = *p;
+        if (!ch)
         {
-            cmd->exec(line);
-            return;
+            break;
         }
 
-        ++cmd;
+        bool is_space = ch == ' ' || ch == '\t';
+        if (in_arg)
+        {
+            if (is_space)
+            {
+                *p = '\0';
+                in_arg = false;
+            }
+        }
+        else
+        {
+            if (!is_space)
+            {
+                if (argc < 16)
+                {
+                    argv[argc] = p;
+                    ++argc;
+                }
+
+                in_arg = true;
+            }
+        }
+
+        ++p;
     }
 
-    console_print("Unknown command\n");
+    // Execute command
+    if (argc > 0)
+    {
+        ConsoleCmd* cmd = console_cmd_table;
+        while (cmd->name)
+        {
+            if (strcmp(cmd->name, argv[0]) == 0)
+            {
+                cmd->exec(argc, argv);
+                return;
+            }
+
+            ++cmd;
+        }
+
+        console_print("Unknown command %s\n", argv[0]);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------

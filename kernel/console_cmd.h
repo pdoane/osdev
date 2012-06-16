@@ -9,7 +9,7 @@
 typedef struct ConsoleCmd
 {
     const char* name;
-    void (*exec)(const char* line);
+    void (*exec)(uint argc, const char** argv);
 } ConsoleCmd;
 
 extern ConsoleCmd console_cmd_table[];
