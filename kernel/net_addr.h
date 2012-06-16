@@ -41,3 +41,5 @@ extern Eth_Addr broadcast_eth_addr;
 
 void eth_addr_to_str(char* str, size_t size, const Eth_Addr* addr);
 void ipv4_addr_to_str(char* str, size_t size, const IPv4_Addr* addr);
+
+bool str_to_ipv4_addr(IPv4_Addr* addr, const char* str);

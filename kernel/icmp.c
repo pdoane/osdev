@@ -53,14 +53,42 @@ void icmp_print(const u8* pkt, uint len)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void icmp_echo_reply(Net_Intf* intf, const IPv4_Addr* dst_addr,
-    u16 id, u16 sequence, const u8* echo_data, uint echo_data_len)
+static void icmp_echo_reply(const IPv4_Addr* dst_addr, u16 id, u16 sequence,
+    const u8* echo_data, uint echo_data_len)
 {
     u8 buf[1500];
 
     u8* pkt = buf + MAX_PACKET_HEADER;
 
     pkt[0] = ICMP_TYPE_ECHO_REPLY;
+    pkt[1] = 0;
+    pkt[2] = 0;
+    pkt[3] = 0;
+    pkt[4] = (id >> 8) & 0xff;
+    pkt[5] = (id) & 0xff;
+    pkt[6] = (sequence >> 8) & 0xff;
+    pkt[7] = (sequence) & 0xff;
+    memcpy(pkt + 8, echo_data, echo_data_len);
+
+    uint icmp_packet_size = 8 + echo_data_len;
+    uint checksum = ipv4_checksum(pkt, icmp_packet_size);
+    pkt[2] = (checksum >> 8) & 0xff;
+    pkt[3] = (checksum) & 0xff;
+
+    icmp_print(pkt, icmp_packet_size);
+
+    ipv4_tx(dst_addr, IP_PROTOCOL_ICMP, pkt, icmp_packet_size);
+}
+
+// ------------------------------------------------------------------------------------------------
+void icmp_echo_request(const IPv4_Addr* dst_addr, u16 id, u16 sequence,
+    const u8* echo_data, uint echo_data_len)
+{
+    u8 buf[1500];
+
+    u8* pkt = buf + MAX_PACKET_HEADER;
+
+    pkt[0] = ICMP_TYPE_ECHO_REQUEST;
     pkt[1] = 0;
     pkt[2] = 0;
     pkt[3] = 0;
@@ -89,7 +117,7 @@ void icmp_rx(Net_Intf* intf, const u8* pkt, uint len)
     }
 
     uint ihl = (pkt[0]) & 0xf;
-    const IPv4_Addr* src_ip = (const IPv4_Addr*)(pkt + 12);
+    const IPv4_Addr* src_addr = (const IPv4_Addr*)(pkt + 12);
     //const IPv4_Addr* dst_ip = (const IPv4_Addr*)(pkt + 16);
 
     // Jump to sub-packet data
@@ -111,6 +139,17 @@ void icmp_rx(Net_Intf* intf, const u8* pkt, uint len)
 
     if (type == ICMP_TYPE_ECHO_REQUEST)
     {
-        icmp_echo_reply(intf, src_ip, id, sequence, pkt + 8, len - 8);
+        char src_addr_str[IPV4_ADDR_STRING_SIZE];
+        ipv4_addr_to_str(src_addr_str, sizeof(src_addr_str), src_addr);
+
+        console_print("Echo request from %s\n", src_addr_str);
+        icmp_echo_reply(src_addr, id, sequence, pkt + 8, len - 8);
+    }
+    else if (type == ICMP_TYPE_ECHO_REPLY)
+    {
+        char src_addr_str[IPV4_ADDR_STRING_SIZE];
+        ipv4_addr_to_str(src_addr_str, sizeof(src_addr_str), src_addr);
+
+        console_print("Echo reply from %s\n", src_addr_str);
     }
 }

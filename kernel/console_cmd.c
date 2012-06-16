@@ -4,6 +4,7 @@
 
 #include "console_cmd.h"
 #include "console.h"
+#include "icmp.h"
 #include "io.h"
 #include "ipv4.h"
 #include "pit.h"
@@ -42,6 +43,25 @@ static void cmd_lsroute(uint argc, const char** argv)
 }
 
 // ------------------------------------------------------------------------------------------------
+static void cmd_ping(uint argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        console_print("Usage: ping <dest ipv4 address>\n");
+        return;
+    }
+
+    IPv4_Addr dst_addr;
+    if (!str_to_ipv4_addr(&dst_addr, argv[1]))
+    {
+        console_print("Failed to parse destination address\n");
+        return;
+    }
+
+    icmp_echo_request(&dst_addr, 1, 2, 0, 0);
+}
+
+// ------------------------------------------------------------------------------------------------
 static void cmd_reboot(uint argc, const char** argv)
 {
     out8(0x64, 0xfe);   // Send reboot command to keyboard controller
@@ -60,6 +80,7 @@ ConsoleCmd console_cmd_table[] =
     { "hello", cmd_hello },
     { "help", cmd_help },
     { "lsroute", cmd_lsroute },
+    { "ping", cmd_ping },
     { "reboot", cmd_reboot },
     { "ticks", cmd_ticks },
     { 0, 0 },

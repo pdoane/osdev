@@ -21,3 +21,9 @@ void ipv4_addr_to_str(char* str, size_t size, const IPv4_Addr* addr)
 {
     snprintf(str, size, "%d.%d.%d.%d", addr->u.n[0], addr->u.n[1], addr->u.n[2], addr->u.n[3]);
 }
+
+// ------------------------------------------------------------------------------------------------
+bool str_to_ipv4_addr(IPv4_Addr* addr, const char* str)
+{
+    return sscanf(str, "%d.%d.%d.%d", &addr->u.n[0], &addr->u.n[1], &addr->u.n[2], &addr->u.n[3]) == 4;
+}
