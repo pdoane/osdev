@@ -9,6 +9,27 @@
 #include "io.h"
 #include "ipv4.h"
 #include "pit.h"
+#include "rtc.h"
+
+// ------------------------------------------------------------------------------------------------
+static void cmd_datetime(uint argc, const char** argv)
+{
+    static const char* week_days[] =
+    {
+        "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
+    };
+
+    static const char* months[] =
+    {
+        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    };
+
+    RTC_Time t;
+    rtc_get_time(&t);
+
+    console_print("%s, %02d %s %d %02d:%02d:%02d",
+        week_days[t.week_day], t.day, months[t.month - 1], t.year, t.hour, t.min, t.sec);
+}
 
 // ------------------------------------------------------------------------------------------------
 static void cmd_echo(uint argc, const char** argv)
@@ -91,6 +112,7 @@ static void cmd_ticks(uint argc, const char** argv)
 // ------------------------------------------------------------------------------------------------
 ConsoleCmd console_cmd_table[] =
 {
+    { "datetime", cmd_datetime },
     { "echo", cmd_echo },
     { "hello", cmd_hello },
     { "help", cmd_help },
