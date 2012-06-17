@@ -52,6 +52,8 @@ extern Link g_ipv4_route_table;
 
 void ipv4_rx(Net_Intf* intf, const u8* pkt, uint len);
 void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, uint len);
+void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
+    const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, uint len);
 
 const IPv4_Route* ipv4_find_route(const IPv4_Addr* dst);
 void ipv4_add_route(const IPv4_Addr* dst, const IPv4_Addr* mask, const IPv4_Addr* gateway, Net_Intf* intf);

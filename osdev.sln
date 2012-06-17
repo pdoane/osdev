@@ -70,6 +70,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "net", "net", "{A54B0484-834
 	ProjectSection(SolutionItems) = preProject
 		kernel\arp.c = kernel\arp.c
 		kernel\arp.h = kernel\arp.h
+		kernel\dhcp.c = kernel\dhcp.c
+		kernel\dhcp.h = kernel\dhcp.h
+		kernel\dns.c = kernel\dns.c
+		kernel\dns.h = kernel\dns.h
 		kernel\eth.c = kernel\eth.c
 		kernel\eth.h = kernel\eth.h
 		kernel\eth_8254x.c = kernel\eth_8254x.c
@@ -86,11 +90,13 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "net", "net", "{A54B0484-834
 		kernel\net.h = kernel\net.h
 		kernel\net_addr.c = kernel\net_addr.c
 		kernel\net_addr.h = kernel\net_addr.h
-		kernel\net_config.c = kernel\net_config.c
-		kernel\net_config.h = kernel\net_config.h
 		kernel\net_intf.c = kernel\net_intf.c
 		kernel\net_intf.h = kernel\net_intf.h
+		kernel\net_port.c = kernel\net_port.c
+		kernel\net_port.h = kernel\net_port.h
 		kernel\smp.c = kernel\smp.c
+		kernel\udp.c = kernel\udp.c
+		kernel\udp.h = kernel\udp.h
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "interrupt", "interrupt", "{10A145E2-02C0-4280-AC74-F5D845EB932C}"

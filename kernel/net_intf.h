@@ -17,7 +17,6 @@ typedef struct Net_Intf
     IPv4_Addr ip_addr;
     const char* name;
 
-    void (*init)(struct Net_Intf* intf);
     void (*poll)(struct Net_Intf* intf);
     void (*tx)(struct Net_Intf* intf, const void* dst_addr, u16 ether_type, u8* pkt, uint len);
     void (*dev_tx)(u8* pkt, uint len);

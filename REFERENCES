@@ -54,6 +54,12 @@ DNS:
 - RFC 1034: Domain Names - Concepts and Facilities
 - RFC 1035: Domain Names - Implementation and Specification
 
+DHCP:
+
+- RFC 951: Bootstrap Protocol (BOOTP)
+- RFC 2131: Dynamic Host Configuration Protocol
+- RFC 2132: DHCP Options and BOOTP Vendor Extensions
+
 Registries:
 
 - http://www.iana.org/numbers.html

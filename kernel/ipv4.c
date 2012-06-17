@@ -64,7 +64,8 @@ void ipv4_rx(Net_Intf* intf, const u8* pkt, uint len)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* dst_addr, const IPv4_Addr* ip_addr, u8 protocol, u8* pkt, uint len)
+void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
+    const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, uint len)
 {
     // IPv4 Header
     pkt -= sizeof(IPv4_Header);
@@ -80,14 +81,14 @@ static void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* dst_addr, const IPv4_A
     hdr->protocol = protocol;
     hdr->checksum = 0;
     hdr->src = intf->ip_addr;
-    hdr->dst = *ip_addr;
+    hdr->dst = *dst_addr;
 
     uint checksum = ipv4_checksum(pkt, sizeof(IPv4_Header));
     hdr->checksum = net_swap16(checksum);
 
     ipv4_print(pkt, len);
 
-    intf->tx(intf, dst_addr, ET_IPV4, pkt, len);
+    intf->tx(intf, next_addr, ET_IPV4, pkt, len);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -95,17 +96,17 @@ void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, uint len)
 {
     // Find an appropriate interface to route dst_addr
     const IPv4_Route* route = ipv4_find_route(dst_addr);
-    const IPv4_Addr* ip_addr = dst_addr;
+    const IPv4_Addr* next_addr = dst_addr;
 
     if (route)
     {
         // Use gateway if appropriate for the route
         if (route->gateway.u.bits)
         {
-            dst_addr = &route->gateway;
+            next_addr = &route->gateway;
         }
 
-        ipv4_tx_intf(route->intf, dst_addr, ip_addr, protocol, pkt, len);
+        ipv4_tx_intf(route->intf, next_addr, dst_addr, protocol, pkt, len);
     }
 }
 
@@ -149,7 +150,23 @@ void ipv4_add_route(const IPv4_Addr* dst, const IPv4_Addr* mask, const IPv4_Addr
 
     route->intf = intf;
 
-    link_after(&g_ipv4_route_table, &route->link);
+    // Insert route at appropriate priority in the touble.
+    Link* it = g_ipv4_route_table.next;
+    Link* end = &g_ipv4_route_table;
+
+    while (it != end)
+    {
+        IPv4_Route* it_route = link_data(it, IPv4_Route, link);
+
+        if (it_route->mask.u.bits > mask->u.bits)
+        {
+            break;
+        }
+
+        it = it->next;
+    }
+
+    link_after(it, &route->link);
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -177,7 +177,7 @@ static ARP_Entry* arp_lookup(const IPv4_Addr* pa)
     ARP_Entry* end = entry + ARP_CACHE_SIZE;
     for (; entry != end; ++entry)
     {
-        if (entry->pa.u.bits == pa->u.bits)
+        if (ipv4_addr_eq(&entry->pa, pa))
         {
             return entry;
         }
@@ -242,7 +242,7 @@ void arp_rx(Net_Intf* intf, const u8* pkt, uint len)
     }
 
     // Check if this ARP packet is targeting our IP
-    if (tpa->u.bits == intf->ip_addr.u.bits)
+    if (ipv4_addr_eq(tpa, &intf->ip_addr))
     {
         // Add a new entry if we didn't update earlier.
         if (!merge)

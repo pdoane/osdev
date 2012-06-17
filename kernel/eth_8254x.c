@@ -7,7 +7,6 @@
 #include "io.h"
 #include "ipv4.h"
 #include "eth.h"
-#include "net_config.h"
 #include "pci_driver.h"
 #include "string.h"
 #include "vm.h"
@@ -374,23 +373,11 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
     // Create net interface
     Net_Intf* intf = net_intf_create();
     intf->eth_addr = local_addr;
-    intf->ip_addr = net_local_ip;
+    intf->ip_addr = null_ipv4_addr;
     intf->name = "eth";
-    intf->init = eth_init_intf;
     intf->poll = eth_8254x_poll;
     intf->tx = eth_tx_intf;
     intf->dev_tx = eth_8254x_tx;
 
     net_intf_add(intf);
-
-    // Add routing entries
-    IPv4_Addr zero_addr, host_mask, subnet_addr;
-
-    zero_addr.u.bits = 0;
-    host_mask.u.bits = 0xffffffff;
-    subnet_addr.u.bits = net_local_ip.u.bits & net_subnet_mask.u.bits;
-
-    ipv4_add_route(&zero_addr, &zero_addr, &net_gateway_ip, intf);
-    ipv4_add_route(&subnet_addr, &net_subnet_mask, 0, intf);
-    ipv4_add_route(&net_local_ip, &host_mask, 0, intf);
 }

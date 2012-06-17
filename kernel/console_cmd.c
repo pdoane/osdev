@@ -40,22 +40,15 @@ static void cmd_help(uint argc, const char** argv)
 // ------------------------------------------------------------------------------------------------
 static void cmd_host(uint argc, const char** argv)
 {
-    if (argc != 3)
+    if (argc != 2)
     {
-        console_print("Usage: host <dns ipv4 address> <host name>\n");
+        console_print("Usage: host <host name>\n");
         return;
     }
 
-    IPv4_Addr dns_addr;
-    if (!str_to_ipv4_addr(&dns_addr, argv[1]))
-    {
-        console_print("Failed to parse DNS address\n");
-        return;
-    }
+    const char* host_name = argv[1];
 
-    const char* host_name = argv[2];
-
-    dns_query_host(&dns_addr, host_name, 0);
+    dns_query_host(host_name, 0);
 }
 
 // ------------------------------------------------------------------------------------------------

@@ -24,15 +24,26 @@ typedef struct DNS_Header
 } PACKED DNS_Header;
 
 // ------------------------------------------------------------------------------------------------
+// Globals
+
+IPv4_Addr dns_server;
+
+// ------------------------------------------------------------------------------------------------
 void dns_rx(Net_Intf* intf, const u8* pkt, uint len)
 {
     dns_print(pkt, len);
 }
 
 // ------------------------------------------------------------------------------------------------
-void dns_query_host(const IPv4_Addr* dns_addr, const char* host, uint id)
+void dns_query_host(const char* host, uint id)
 {
-    u8 buf[1500];
+    // Skip request if not configured
+    if (ipv4_addr_eq(&dns_server, &null_ipv4_addr))
+    {
+        return;
+    }
+
+    u8 buf[MAX_PACKET_SIZE];
 
     u8* pkt = buf + MAX_PACKET_HEADER;
 
@@ -84,7 +95,7 @@ void dns_query_host(const IPv4_Addr* dns_addr, const char* host, uint id)
 
     dns_print(pkt, len);
 
-    udp_tx(dns_addr, PORT_DNS, src_port, pkt, len);
+    udp_tx(&dns_server, PORT_DNS, src_port, pkt, len);
 }
 
 // ------------------------------------------------------------------------------------------------

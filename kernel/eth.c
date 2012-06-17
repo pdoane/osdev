@@ -51,13 +51,6 @@ static bool eth_decode(Eth_Packet* ep, const u8* pkt, uint len)
 }
 
 // ------------------------------------------------------------------------------------------------
-void eth_init_intf(Net_Intf* intf)
-{
-    // Broadcast gratiuitous ARP
-    arp_request(intf, &intf->ip_addr);
-}
-
-// ------------------------------------------------------------------------------------------------
 void eth_rx(Net_Intf* intf, u8* pkt, uint len)
 {
     Eth_Packet ep;
@@ -102,14 +95,27 @@ void eth_tx_intf(Net_Intf* intf, const void* dst_addr, u16 ether_type, u8* pkt, 
         break;
 
     case ET_IPV4:
-        dst_eth_addr = arp_lookup_mac(dst_addr);
-        if (!dst_eth_addr)
         {
-            char dst_addr_str[IPV4_ADDR_STRING_SIZE];
+            const IPv4_Addr* dst_ipv4_addr = (const IPv4_Addr*)dst_addr;
 
-            ipv4_addr_to_str(dst_addr_str, sizeof(dst_addr_str), dst_addr);
-            console_print(" Unknown IP %s, sending ARP request\n", dst_addr_str);
-            arp_request(intf, dst_addr);
+            if (ipv4_addr_eq(dst_ipv4_addr, &broadcast_ipv4_addr))
+            {
+                // IP Broadcast -> Ethernet Broacast
+                dst_eth_addr = &broadcast_eth_addr;
+            }
+            else
+            {
+                // Lookup Ethernet address in ARP cache
+                dst_eth_addr = arp_lookup_mac(dst_ipv4_addr);
+                if (!dst_eth_addr)
+                {
+                    char dst_addr_str[IPV4_ADDR_STRING_SIZE];
+
+                    ipv4_addr_to_str(dst_addr_str, sizeof(dst_addr_str), dst_ipv4_addr);
+                    console_print(" Unknown IP %s, sending ARP request\n", dst_addr_str);
+                    arp_request(intf, dst_ipv4_addr);
+                }
+            }
         }
         break;
 

@@ -6,6 +6,7 @@ KERNEL_SOURCES := \
 	kernel/arp.c \
 	kernel/console.c \
 	kernel/console_cmd.c \
+	kernel/dhcp.c \
 	kernel/dns.c \
 	kernel/ehci.c \
 	kernel/eth.c \
@@ -25,7 +26,6 @@ KERNEL_SOURCES := \
 	kernel/mem_dump.c \
 	kernel/net.c \
 	kernel/net_addr.c \
-	kernel/net_config.c \
 	kernel/net_intf.c \
 	kernel/net_port.c \
 	kernel/pci.c \

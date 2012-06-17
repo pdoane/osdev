@@ -1,14 +1,13 @@
 // ------------------------------------------------------------------------------------------------
-// net_config.h
+// dhcp.h
 // ------------------------------------------------------------------------------------------------
 
 #pragma once
 
-#include "net_addr.h"
+#include "net_intf.h"
 
 // ------------------------------------------------------------------------------------------------
-// Globals
+void dhcp_rx(Net_Intf* intf, const u8* pkt, uint len);
+void dhcp_discover(Net_Intf* intf);
 
-extern IPv4_Addr net_local_ip;
-extern IPv4_Addr net_subnet_mask;
-extern IPv4_Addr net_gateway_ip;
+void dhcp_print(const u8* pkt, uint len);

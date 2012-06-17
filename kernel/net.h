@@ -13,6 +13,7 @@
 // for IPv4 and TCP to both use all but one optional field.
 
 #define MAX_PACKET_HEADER       128
+#define MAX_PACKET_SIZE         1500
 
 // ------------------------------------------------------------------------------------------------
 // Byte Order translation

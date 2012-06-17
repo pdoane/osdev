@@ -10,11 +10,6 @@
 #include "net_intf.h"
 
 // ------------------------------------------------------------------------------------------------
-static void loop_init(Net_Intf* intf)
-{
-}
-
-// ------------------------------------------------------------------------------------------------
 static void loop_poll(Net_Intf* intf)
 {
 }
@@ -50,7 +45,6 @@ void loopback_init()
     intf->eth_addr = null_eth_addr;
     intf->ip_addr = ip_addr;
     intf->name = "loop";
-    intf->init = loop_init;
     intf->poll = loop_poll;
     intf->tx = loop_tx;
     intf->dev_tx = 0;

@@ -56,7 +56,7 @@ void icmp_print(const u8* pkt, uint len)
 static void icmp_echo_reply(const IPv4_Addr* dst_addr, u16 id, u16 sequence,
     const u8* echo_data, uint echo_data_len)
 {
-    u8 buf[1500];
+    u8 buf[MAX_PACKET_SIZE];
 
     u8* pkt = buf + MAX_PACKET_HEADER;
 
@@ -84,7 +84,7 @@ static void icmp_echo_reply(const IPv4_Addr* dst_addr, u16 id, u16 sequence,
 void icmp_echo_request(const IPv4_Addr* dst_addr, u16 id, u16 sequence,
     const u8* echo_data, uint echo_data_len)
 {
-    u8 buf[1500];
+    u8 buf[MAX_PACKET_SIZE];
 
     u8* pkt = buf + MAX_PACKET_HEADER;
 

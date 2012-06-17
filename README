@@ -76,22 +76,12 @@ Setup and Installation for Windows:
   - Add QEMU and /usr/local/cross/bin to the PATH variable in .bash_profile
 
 -------------------------------------------------------------------------------
-Kernel configuration:
-
-- Update the following globals in net_config.c as appropriate:
-    - net_local_ip
-    - net_subnet_mask
-    - net_gateway_ip
-
--------------------------------------------------------------------------------
 What to expect:
 
-- The ethernet driver is initialized in promiscuous mode, so it will display
-  all packets on the LAN.
+- Type 'help' to see available commands.
 
-- The network stack will reply to ICMP requests (i.e. ping).
-
-- There is rudimentary console support, but no commands yet.
+- The ARP layer does not save outgoing packets when performing a query.
+  Network commands may need to be issued twice to get started.
 
 -------------------------------------------------------------------------------
 Emulator steps:

@@ -4,7 +4,7 @@
 
 #include "net.h"
 #include "arp.h"
-#include "console.h"
+#include "dhcp.h"
 #include "loopback.h"
 
 // ------------------------------------------------------------------------------------------------
@@ -24,7 +24,11 @@ void net_init()
     {
         Net_Intf* intf = link_data(it, Net_Intf, link);
 
-        intf->init(intf);
+        // Check if interface needs IP address dynamically assigned
+        if (!intf->ip_addr.u.bits)
+        {
+            dhcp_discover(intf);
+        }
 
         it = it->next;
     }

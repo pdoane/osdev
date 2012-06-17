@@ -4,6 +4,7 @@
 
 #include "udp.h"
 #include "console.h"
+#include "dhcp.h"
 #include "dns.h"
 #include "ipv4.h"
 #include "net.h"
@@ -33,6 +34,10 @@ void udp_rx(Net_Intf* intf, const u8* pkt, uint len)
     case PORT_DNS:
         dns_rx(intf, data, data_len);
         break;
+
+    case PORT_BOOTP_SERVER:
+        dhcp_rx(intf, data, data_len);
+        break;
     }
 }
 
@@ -55,6 +60,24 @@ void udp_tx(const IPv4_Addr* dst_addr, uint dst_port, uint src_port, u8* pkt, ui
 }
 
 // ------------------------------------------------------------------------------------------------
+void udp_tx_intf(Net_Intf* intf, const IPv4_Addr* dst_addr, uint dst_port, uint src_port, u8* pkt, uint len)
+{
+    // UDP Header
+    pkt -= sizeof(UDP_Header);
+    len += sizeof(UDP_Header);
+
+    UDP_Header* hdr = (UDP_Header*)pkt;
+    hdr->src_port = net_swap16(src_port);
+    hdr->dst_port = net_swap16(dst_port);
+    hdr->len = net_swap16(len);
+    hdr->checksum = 0;  // don't compute checksum yet
+
+    udp_print(pkt, len);
+
+    ipv4_tx_intf(intf, dst_addr, dst_addr, IP_PROTOCOL_UDP, pkt, len);
+}
+
+// ------------------------------------------------------------------------------------------------
 void udp_print(const u8* pkt, uint len)
 {
     if (!net_trace)
@@ -74,6 +97,6 @@ void udp_print(const u8* pkt, uint len)
     u16 packet_len = net_swap16(hdr->len);
     u16 checksum = net_swap16(hdr->checksum);
 
-    console_print("  UDP: src=%d dst=%d len=%d checksum=%d%c\n",
+    console_print("  UDP: src=%d dst=%d len=%d checksum=%d\n",
         src_port, dst_port, packet_len, checksum);
 }

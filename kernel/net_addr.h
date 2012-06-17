@@ -33,11 +33,17 @@ typedef struct IPv4_Addr
 // ------------------------------------------------------------------------------------------------
 // Globals
 
-extern Eth_Addr null_eth_addr;
-extern Eth_Addr broadcast_eth_addr;
+extern const Eth_Addr null_eth_addr;
+extern const Eth_Addr broadcast_eth_addr;
+
+extern const IPv4_Addr null_ipv4_addr;
+extern const IPv4_Addr broadcast_ipv4_addr;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
+
+bool eth_addr_eq(const Eth_Addr* x, const Eth_Addr* y);
+bool ipv4_addr_eq(const IPv4_Addr* x, const IPv4_Addr* y);
 
 void eth_addr_to_str(char* str, size_t size, const Eth_Addr* addr);
 void ipv4_addr_to_str(char* str, size_t size, const IPv4_Addr* addr);

@@ -10,3 +10,5 @@
 // Internet Ports
 
 #define PORT_DNS                        53
+#define PORT_BOOTP_SERVER               67
+#define PORT_BOOTP_CLIENT               68
