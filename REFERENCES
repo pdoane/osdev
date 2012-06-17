@@ -49,6 +49,11 @@ Best Practices:
 - RFC 1123: Requirements for Internet Hosts -- Application and Support
 - RFC 5952: A Recommendation for IPv6 Address Text Representation
 
+DNS:
+
+- RFC 1034: Domain Names - Concepts and Facilities
+- RFC 1035: Domain Names - Implementation and Specification
+
 Registries:
 
 - http://www.iana.org/numbers.html

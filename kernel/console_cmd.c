@@ -4,6 +4,7 @@
 
 #include "console_cmd.h"
 #include "console.h"
+#include "dns.h"
 #include "icmp.h"
 #include "io.h"
 #include "ipv4.h"
@@ -34,6 +35,27 @@ static void cmd_help(uint argc, const char** argv)
 
         ++cmd;
     }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void cmd_host(uint argc, const char** argv)
+{
+    if (argc != 3)
+    {
+        console_print("Usage: host <dns ipv4 address> <host name>\n");
+        return;
+    }
+
+    IPv4_Addr dns_addr;
+    if (!str_to_ipv4_addr(&dns_addr, argv[1]))
+    {
+        console_print("Failed to parse DNS address\n");
+        return;
+    }
+
+    const char* host_name = argv[2];
+
+    dns_query_host(&dns_addr, host_name, 0);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -79,6 +101,7 @@ ConsoleCmd console_cmd_table[] =
     { "echo", cmd_echo },
     { "hello", cmd_hello },
     { "help", cmd_help },
+    { "host", cmd_host },
     { "lsroute", cmd_lsroute },
     { "ping", cmd_ping },
     { "reboot", cmd_reboot },

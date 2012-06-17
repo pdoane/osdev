@@ -6,6 +6,7 @@ KERNEL_SOURCES := \
 	kernel/arp.c \
 	kernel/console.c \
 	kernel/console_cmd.c \
+	kernel/dns.c \
 	kernel/ehci.c \
 	kernel/eth.c \
 	kernel/eth_8254x.c \
@@ -26,6 +27,7 @@ KERNEL_SOURCES := \
 	kernel/net_addr.c \
 	kernel/net_config.c \
 	kernel/net_intf.c \
+	kernel/net_port.c \
 	kernel/pci.c \
 	kernel/pci_classify.c \
 	kernel/pci_driver.c \
@@ -33,6 +35,7 @@ KERNEL_SOURCES := \
 	kernel/pit.c \
 	kernel/smp.c \
 	kernel/string.c \
+	kernel/udp.c \
 	kernel/uhci.c \
 	kernel/usb.c \
 	kernel/usb_controller.c \

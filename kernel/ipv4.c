@@ -8,6 +8,7 @@
 #include "icmp.h"
 #include "net.h"
 #include "string.h"
+#include "udp.h"
 #include "vm.h"
 
 // ------------------------------------------------------------------------------------------------
@@ -42,7 +43,9 @@ void ipv4_rx(Net_Intf* intf, const u8* pkt, uint len)
     }
 
     // Jump to packet data
-    //u8* data = pkt + (ihl << 2);
+    uint ihl = (hdr->ver_ihl) & 0xf;
+    const u8* data = pkt + (ihl << 2);
+    uint data_len = len - (ihl << 2);
 
     // Dispatch based on protocol
     switch (hdr->protocol)
@@ -55,6 +58,7 @@ void ipv4_rx(Net_Intf* intf, const u8* pkt, uint len)
         break;
 
     case IP_PROTOCOL_UDP:
+        udp_rx(intf, data, data_len);
         break;
     }
 }
