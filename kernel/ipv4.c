@@ -150,7 +150,7 @@ void ipv4_add_route(const IPv4_Addr* dst, const IPv4_Addr* mask, const IPv4_Addr
 
     route->intf = intf;
 
-    // Insert route at appropriate priority in the touble.
+    // Insert route at appropriate priority in the table.
     Link* it = g_ipv4_route_table.next;
     Link* end = &g_ipv4_route_table;
 
