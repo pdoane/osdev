@@ -61,6 +61,11 @@ DHCP:
 - RFC 2131: Dynamic Host Configuration Protocol
 - RFC 2132: DHCP Options and BOOTP Vendor Extensions
 
+NTP:
+
+- RFC 5905: Network Time Protocol Version 4: Protocol and Algorithms Specification (NTP)
+
+
 Registries:
 
 - http://www.iana.org/numbers.html

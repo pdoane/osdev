@@ -76,6 +76,11 @@ Setup and Installation for Windows:
   - Add QEMU and /usr/local/cross/bin to the PATH variable in .bash_profile
 
 -------------------------------------------------------------------------------
+Configuration:
+
+- tz_local in time.c
+
+-------------------------------------------------------------------------------
 What to expect:
 
 - Type 'help' to see available commands.

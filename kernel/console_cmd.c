@@ -8,27 +8,20 @@
 #include "icmp.h"
 #include "io.h"
 #include "ipv4.h"
+#include "ntp.h"
 #include "pit.h"
 #include "rtc.h"
 
 // ------------------------------------------------------------------------------------------------
 static void cmd_datetime(uint argc, const char** argv)
 {
-    static const char* week_days[] =
-    {
-        "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
-    };
+    char buf[TIME_STRING_SIZE];
 
-    static const char* months[] =
-    {
-        "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-    };
+    DateTime dt;
+    rtc_get_time(&dt);
+    format_time(buf, sizeof(buf), &dt);
 
-    RTC_Time t;
-    rtc_get_time(&t);
-
-    console_print("%s, %02d %s %d %02d:%02d:%02d",
-        week_days[t.week_day], t.day, months[t.month - 1], t.year, t.hour, t.min, t.sec);
+    console_print("%s\n", buf);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -98,6 +91,25 @@ static void cmd_ping(uint argc, const char** argv)
 }
 
 // ------------------------------------------------------------------------------------------------
+static void cmd_synctime(uint argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        console_print("Usage: synctime <dest ipv4 address>\n");
+        return;
+    }
+
+    IPv4_Addr dst_addr;
+    if (!str_to_ipv4_addr(&dst_addr, argv[1]))
+    {
+        console_print("Failed to parse destination address\n");
+        return;
+    }
+
+    ntp_tx(&dst_addr);
+}
+
+// ------------------------------------------------------------------------------------------------
 static void cmd_reboot(uint argc, const char** argv)
 {
     out8(0x64, 0xfe);   // Send reboot command to keyboard controller
@@ -120,6 +132,7 @@ ConsoleCmd console_cmd_table[] =
     { "lsroute", cmd_lsroute },
     { "ping", cmd_ping },
     { "reboot", cmd_reboot },
+    { "synctime", cmd_synctime },
     { "ticks", cmd_ticks },
     { 0, 0 },
 };

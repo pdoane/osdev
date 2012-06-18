@@ -91,7 +91,7 @@ void dns_query_host(const char* host, uint id)
 
     uint len = q - pkt;
 
-    uint src_port = 3141;   // TODO - bind to random port
+    uint src_port = PORT_EPHEMERAL;
 
     dns_print(pkt, len);
 

@@ -3,6 +3,7 @@
 // ------------------------------------------------------------------------------------------------
 
 #include "rtc.h"
+#include "console.h"
 #include "pit.h"
 #include "io.h"
 
@@ -46,22 +47,26 @@ static u8 rtc_read(u8 addr)
 }
 
 // ------------------------------------------------------------------------------------------------
-/*
 static void rtc_write(u8 addr, u8 val)
 {
     out8(IO_RTC_INDEX, addr);
     out8(IO_RTC_TARGET, val);
 }
-*/
 
 // ------------------------------------------------------------------------------------------------
-static uint bcd_to_bin(u8 val)
+static u8 bcd_to_bin(u8 val)
 {
     return (val & 0xf) + (val >> 4) * 10;
 }
 
 // ------------------------------------------------------------------------------------------------
-void rtc_get_time(RTC_Time* time)
+static u8 bin_to_bcd(u8 val)
+{
+    return ((val / 10) << 4) + (val % 10);
+}
+
+// ------------------------------------------------------------------------------------------------
+void rtc_get_time(DateTime* dt)
 {
     // Wait if update is in progress
     if (rtc_read(REG_A) & REGA_UIP)
@@ -81,12 +86,6 @@ void rtc_get_time(RTC_Time* time)
     // Get Data configuration
     u8 regb = rtc_read(REG_B);
 
-    // 12->24 hour conversion
-    if (~regb & REGB_HOURFORM && hour & 0x80)
-    {
-        hour += 12;
-    }
-
     // BCD conversion
     if (~regb & REGB_DM)
     {
@@ -105,11 +104,60 @@ void rtc_get_time(RTC_Time* time)
     week_day--;
 
     // Write results
-    time->sec = sec;
-    time->min = min;
-    time->hour = hour;
-    time->week_day = week_day;
-    time->day = day;
-    time->month = month;
-    time->year = year;
+    dt->sec = sec;
+    dt->min = min;
+    dt->hour = hour;
+    dt->day = day;
+    dt->month = month;
+    dt->year = year;
+    dt->week_day = week_day;
+    dt->tz_offset = tz_local;
+}
+
+// ------------------------------------------------------------------------------------------------
+void rtc_set_time(const DateTime* dt)
+{
+    u8 sec = dt->sec;
+    u8 min = dt->min;
+    u8 hour = dt->hour;
+    u8 day = dt->day;
+    u8 month = dt->month;
+    u8 year = dt->year - 2000;
+    u8 week_day = dt->week_day + 1;
+
+    // Validate data
+    if (sec >= 60 || min >= 60 || hour >= 24 || day > 31 || month > 12 || year >= 100 || week_day > 7)
+    {
+        console_print("rtc_set_time: bad data\n");
+        return;
+    }
+
+    // Get Data configuration
+    u8 regb = rtc_read(REG_B);
+
+    // BCD conversion
+    if (~regb & REGB_DM)
+    {
+        sec = bin_to_bcd(sec);
+        min = bin_to_bcd(min);
+        hour = bin_to_bcd(hour);
+        day = bin_to_bcd(day);
+        month = bin_to_bcd(month);
+        year = bin_to_bcd(year);
+    }
+
+    // Wait if update is in progress
+    if (rtc_read(REG_A) & REGA_UIP)
+    {
+        pit_wait(3);    // up to 488us before update occurs + 1984us to complete
+    }
+
+    // Write Registers
+    rtc_write(REG_SEC, sec);
+    rtc_write(REG_MIN, min);
+    rtc_write(REG_HOUR, hour);
+    rtc_write(REG_WEEK_DAY, week_day);
+    rtc_write(REG_DAY, day);
+    rtc_write(REG_MONTH, month);
+    rtc_write(REG_YEAR, year);
 }

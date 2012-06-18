@@ -28,12 +28,14 @@ KERNEL_SOURCES := \
 	kernel/net_addr.c \
 	kernel/net_intf.c \
 	kernel/net_port.c \
+	kernel/ntp.c \
 	kernel/pci.c \
 	kernel/pci_classify.c \
 	kernel/pci_driver.c \
 	kernel/pic.c \
 	kernel/pit.c \
 	kernel/rtc.c \
+	kernel/time.c \
 	kernel/smp.c \
 	kernel/string.c \
 	kernel/udp.c \

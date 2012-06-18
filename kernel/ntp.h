@@ -1,11 +1,13 @@
 // ------------------------------------------------------------------------------------------------
-// rtc.h
+// ntp.h
 // ------------------------------------------------------------------------------------------------
 
 #pragma once
 
-#include "time.h"
+#include "net_intf.h"
 
 // ------------------------------------------------------------------------------------------------
-void rtc_get_time(DateTime* dt);
-void rtc_set_time(const DateTime* dt);
+void ntp_rx(Net_Intf* intf, const u8* pkt, uint len);
+void ntp_tx(const IPv4_Addr* dst_addr);
+
+void ntp_print(const u8* pkt, uint len);

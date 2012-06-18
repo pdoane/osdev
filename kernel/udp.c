@@ -9,6 +9,7 @@
 #include "ipv4.h"
 #include "net.h"
 #include "net_port.h"
+#include "ntp.h"
 
 // ------------------------------------------------------------------------------------------------
 void udp_rx(Net_Intf* intf, const u8* pkt, uint len)
@@ -37,6 +38,10 @@ void udp_rx(Net_Intf* intf, const u8* pkt, uint len)
 
     case PORT_BOOTP_SERVER:
         dhcp_rx(intf, data, data_len);
+        break;
+
+    case PORT_NTP:
+        ntp_rx(intf, data, data_len);
         break;
     }
 }
