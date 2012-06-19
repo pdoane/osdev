@@ -46,9 +46,9 @@ load_file:
 ; -------------------------------------------------------------------------------------------------
 ; Reads a sector using LBA
 ; in:  eax = logical sector #
-;      bx = destination buffer
+;      es:bx = destination buffer
 ; out: eax = next sector #
-;      bx = destination buffer + sector size
+;      es:bx = destination buffer + sector size
 read_sector:
         push si
         push di
@@ -61,7 +61,7 @@ read_sector:
         push byte 0                 ; High-32 bit sector to read
         push byte 0                 ; High-32 bit sector to read
         push eax                    ; Low-32 bit sector to read
-        push byte 0                 ; Destination Segment
+        push es                     ; Destination Segment
         push bx                     ; Destination Offset
         push byte 1                 ; Number of sectors
         push byte 16                ; Size of parameter block
@@ -86,9 +86,13 @@ read_sector:
         jmp .retry
 
 .read_ok:
-        ; increment to next sector
-        inc eax
+        inc eax                     ; Increment to next sector
         add bx, 0x200
+        jnc .exit
+
+        mov dx, es                  ; Increment to next segment
+        add dh, 0x10
+        mov es, dx
 
 .exit:
         pop dx
@@ -132,12 +136,15 @@ read_cluster:
 .next_cluster:
         pop ax                      ; Restore original cluster #
 
+        push es
         push bx
         shl ax, 1
         div word[bpb_bytes_per_sector]          ; Remainder stored in dx
         add ax, [bpb_reserved_sector_count]
         add ax, [bpb_hidden_sector_count]
 
+        xor bx, bx
+        mov es, bx
         mov bx, temp_sector
         call read_sector
 
@@ -145,6 +152,7 @@ read_cluster:
         add bx, dx
         mov ax, [bx]
         pop bx
+        pop es
 
 .exit:
         pop dx
