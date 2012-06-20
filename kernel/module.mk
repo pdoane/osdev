@@ -49,7 +49,8 @@ KERNEL_SOURCES := \
 	kernel/usb_kbd.c \
 	kernel/usb_mouse.c \
 	kernel/vga.c \
-	kernel/vm.c
+	kernel/vm.c \
+	kernel/gfx/gfx.c
 
 KERNEL_ASM := \
 	kernel/interrupt.asm

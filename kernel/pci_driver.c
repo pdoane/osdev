@@ -8,6 +8,7 @@
 #include "ehci.h"
 #include "eth_8254x.h"
 #include "uhci.h"
+#include "gfx/gfx.h"
 
 // ------------------------------------------------------------------------------------------------
 PCI_Driver pci_driver_table[] =
@@ -15,6 +16,7 @@ PCI_Driver pci_driver_table[] =
     { eth_8254x_init },
     { uhci_init },
     { ehci_init },
+	{ gfx_init },
     { 0 },
 };
 

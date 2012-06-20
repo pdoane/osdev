@@ -203,6 +203,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "console", "console", "{ACB0
 		kernel\console_cmd.h = kernel\console_cmd.h
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "gfx", "gfx", "{15A583A9-BD50-4314-B113-61F5C8C124BB}"
+	ProjectSection(SolutionItems) = preProject
+		kernel\gfx\gfx.c = kernel\gfx\gfx.c
+		kernel\gfx\gfx.h = kernel\gfx\gfx.h
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -218,5 +224,6 @@ Global
 		{030391D5-E8D0-45AB-AEA0-6417655B89BF} = {540847D6-87C3-435D-994A-C12DE71831B0}
 		{C24EBB89-B139-4C30-8C50-CD8DF486149C} = {540847D6-87C3-435D-994A-C12DE71831B0}
 		{ACB0DADD-F8AE-4D95-A9C8-AF88125C7036} = {540847D6-87C3-435D-994A-C12DE71831B0}
+		{15A583A9-BD50-4314-B113-61F5C8C124BB} = {540847D6-87C3-435D-994A-C12DE71831B0}
 	EndGlobalSection
 EndGlobal
