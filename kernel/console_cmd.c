@@ -11,6 +11,7 @@
 #include "ntp.h"
 #include "pit.h"
 #include "rtc.h"
+#include "gfx/gfx.h"
 
 // ------------------------------------------------------------------------------------------------
 static void cmd_datetime(uint argc, const char** argv)
@@ -122,6 +123,14 @@ static void cmd_ticks(uint argc, const char** argv)
 }
 
 // ------------------------------------------------------------------------------------------------
+static void cmd_gfx(uint argc, const char** argv)
+{
+    console_print("Starting 3D graphics...\n");
+	gfx_start();
+}
+
+
+// ------------------------------------------------------------------------------------------------
 ConsoleCmd console_cmd_table[] =
 {
     { "datetime", cmd_datetime },
@@ -134,5 +143,6 @@ ConsoleCmd console_cmd_table[] =
     { "reboot", cmd_reboot },
     { "synctime", cmd_synctime },
     { "ticks", cmd_ticks },
+	{ "gfx", cmd_gfx },
     { 0, 0 },
 };
