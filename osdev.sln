@@ -8,6 +8,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{B8D3EDD8
 		tools\fat16_test.c = tools\fat16_test.c
 		tools\img_edit.c = tools\img_edit.c
 		tools\module.mk = tools\module.mk
+		tools\os_helper.c = tools\os_helper.c
 		tools\read_boot.c = tools\read_boot.c
 		tools\set_boot.c = tools\set_boot.c
 	EndProjectSection
