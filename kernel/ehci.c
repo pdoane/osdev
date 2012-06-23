@@ -257,7 +257,9 @@ typedef struct EHCI_QH
 #define QH_CH_NAK_RL_SHIFT              28
 
 // Endpoint Capabilities
+#define QH_CAP_INT_SCHED_SHIFT          0
 #define QH_CAP_INT_SCHED_MASK           0x000000ff  // Interrupt Schedule Mask
+#define QH_CAP_SPLIT_C_SHIFT            8
 #define QH_CAP_SPLIT_C_MASK             0x0000ff00  // Split Completion Mask
 #define QH_CAP_HUB_ADDR_SHIFT           16
 #define QH_CAP_HUB_ADDR_MASK            0x007f0000  // Hub Address
@@ -273,9 +275,11 @@ typedef struct EHCI_Controller
 {
     EHCI_Cap_Regs* cap_regs;
     EHCI_Op_Regs* op_regs;
+    u32* frame_list;
     EHCI_QH* qh_pool;
     EHCI_TD* td_pool;
     EHCI_QH* async_qh;
+    EHCI_QH* periodic_qh;
 } EHCI_Controller;
 
 #if 0
@@ -359,12 +363,22 @@ static void ehci_free_qh(EHCI_QH* qh)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void ehci_insert_qh(EHCI_Controller* hc, EHCI_QH* qh)
+static void ehci_insert_async_qh(EHCI_QH* list, EHCI_QH* qh)
 {
-    EHCI_QH* list = hc->async_qh;
     EHCI_QH* end = link_data(list->qh_link.prev, EHCI_QH, qh_link);
 
     qh->qhlp = (u32)(uintptr_t)list | PTR_QH;
+    end->qhlp = (u32)(uintptr_t)qh | PTR_QH;
+
+    link_before(&list->qh_link, &qh->qh_link);
+}
+
+// ------------------------------------------------------------------------------------------------
+static void ehci_insert_periodic_qh(EHCI_QH* list, EHCI_QH* qh)
+{
+    EHCI_QH* end = link_data(list->qh_link.prev, EHCI_QH, qh_link);
+
+    qh->qhlp = PTR_TERMINATE;
     end->qhlp = (u32)(uintptr_t)qh | PTR_QH;
 
     link_before(&list->qh_link, &qh->qh_link);
@@ -446,28 +460,39 @@ static void ehci_qh_init(EHCI_QH* qh, USB_Transfer* t, EHCI_TD* td, USB_Device* 
         (speed << QH_CH_EPS_SHIFT) |
         (endp << QH_CH_ENDP_SHIFT) |
         addr;
+    uint caps =
+        (1 << QH_CAP_MULT_SHIFT);
 
     if (!interrupt)
     {
         ch |= 5 << QH_CH_NAK_RL_SHIFT;
     }
 
-    qh->ch = ch;
-
     if (speed != USB_HIGH_SPEED && parent)
     {
-        //if (!interrupt)
+        if (interrupt)
         {
-            qh->ch |= QH_CH_CONTROL;
+            // split completion mask - complete on frames 2, 3, or 4
+            caps |= (0x1c << QH_CAP_SPLIT_C_SHIFT);
+        }
+        else
+        {
+            ch |= QH_CH_CONTROL;
         }
 
-        qh->caps =
-            (1 << QH_CAP_MULT_SHIFT) |
+        caps |=
             (parent->port << QH_CAP_PORT_SHIFT) |
             (parent->addr << QH_CAP_HUB_ADDR_SHIFT);
     }
 
-    // TODO: split completion mask and interrupt schedule mask
+    if (interrupt)
+    {
+        // interrupt schedule mask - start on frame 0
+        caps |= (0x01 << QH_CAP_INT_SCHED_SHIFT);
+    }
+
+    qh->ch = ch;
+    qh->caps = caps;
 
     qh->td_head = (u32)(uintptr_t)td;
     qh->next_link = (u32)(uintptr_t)td;
@@ -664,7 +689,7 @@ static void ehci_dev_control(USB_Device* dev, USB_Transfer* t)
     ehci_qh_init(qh, t, head, dev->parent, false, speed, addr, 0, max_size);
 
     // Wait until queue has been processed
-    ehci_insert_qh(hc, qh);
+    ehci_insert_async_qh(hc->async_qh, qh);
     ehci_qh_wait(hc, qh);
 }
 
@@ -703,7 +728,7 @@ static void ehci_dev_intr(USB_Device* dev, USB_Transfer* t)
     ehci_qh_init(qh, t, head, dev->parent, true, speed, addr, endp, max_size);
 
     // Schedule queue
-    ehci_insert_qh(hc, qh);
+    ehci_insert_periodic_qh(hc->periodic_qh, qh);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -742,22 +767,32 @@ static void ehci_probe(EHCI_Controller* hc)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void ehci_controller_poll(USB_Controller* controller)
+static void ehci_controller_poll_list(EHCI_Controller* hc, Link* list)
 {
-    EHCI_Controller* hc = (EHCI_Controller*)controller->hc;
+    Link* it = list->next;
+    Link* end = list;
 
-    EHCI_QH* qh = link_data(hc->async_qh->qh_link.next, EHCI_QH, qh_link);
-    EHCI_QH* end = hc->async_qh;
-    while (qh != end)
+    while (it != end)
     {
-        EHCI_QH* next = link_data(qh->qh_link.next, EHCI_QH, qh_link);
+        EHCI_QH* qh = link_data(it, EHCI_QH, qh_link);
+        Link* next = it->next;
+
         if (qh->transfer)
         {
             ehci_qh_process(hc, qh);
         }
 
-        qh = next;
+        it = next;
     }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void ehci_controller_poll(USB_Controller* controller)
+{
+    EHCI_Controller* hc = (EHCI_Controller*)controller->hc;
+
+    ehci_controller_poll_list(hc, &hc->async_qh->qh_link);
+    ehci_controller_poll_list(hc, &hc->periodic_qh->qh_link);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -796,6 +831,7 @@ void ehci_init(uint id, PCI_DeviceInfo* info)
     EHCI_Controller* hc = vm_alloc(sizeof(EHCI_Controller));
     hc->cap_regs = (EHCI_Cap_Regs*)(uintptr_t)bar0;
     hc->op_regs = (EHCI_Op_Regs*)(uintptr_t)(bar0 + hc->cap_regs->cap_length);
+    hc->frame_list = (u32*)vm_alloc(1024 * sizeof(u32));
     hc->qh_pool = (EHCI_QH*)vm_alloc(sizeof(EHCI_QH) * MAX_QH);
     hc->td_pool = (EHCI_TD*)vm_alloc(sizeof(EHCI_TD) * MAX_TD);
 
@@ -806,7 +842,7 @@ void ehci_init(uint id, PCI_DeviceInfo* info)
     EHCI_QH* qh = ehci_alloc_qh(hc);
     qh->qhlp = (u32)(uintptr_t)qh | PTR_QH;
     qh->ch = QH_CH_H;
-    qh->caps = (1 << QH_CAP_MULT_SHIFT);
+    qh->caps = 0;
     qh->cur_link = 0;
     qh->next_link = PTR_TERMINATE;
     qh->alt_link = 0;
@@ -821,6 +857,30 @@ void ehci_init(uint id, PCI_DeviceInfo* info)
     qh->qh_link.next = &qh->qh_link;
 
     hc->async_qh = qh;
+
+    // Periodic list queue setup
+    qh = ehci_alloc_qh(hc);
+    qh->qhlp = PTR_TERMINATE;
+    qh->ch = 0;
+    qh->caps = 0;
+    qh->cur_link = 0;
+    qh->next_link = PTR_TERMINATE;
+    qh->alt_link = 0;
+    qh->token = 0;
+    for (uint i = 0; i < 5; ++i)
+    {
+        qh->buffer[i] = 0;
+        qh->ext_buffer[i] = 0;
+    }
+    qh->transfer = 0;
+    qh->qh_link.prev = &qh->qh_link;
+    qh->qh_link.next = &qh->qh_link;
+
+    hc->periodic_qh = qh;
+    for (uint i = 0; i < 1024; ++i)
+    {
+        hc->frame_list[i] = PTR_QH | (u32)(uintptr_t)qh;
+    }
 
     // Check extended capabilities
     uint eecp = (hc->cap_regs->hcc_params & HCCPARAMS_EECP_MASK) >> HCCPARAMS_EECP_SHIFT;
@@ -848,7 +908,7 @@ void ehci_init(uint id, PCI_DeviceInfo* info)
 
     // Setup frame list
     hc->op_regs->frame_index = 0;
-    hc->op_regs->periodic_list_base = (u32)(uintptr_t)0;
+    hc->op_regs->periodic_list_base = (u32)(uintptr_t)hc->frame_list;
     hc->op_regs->async_list_addr = (u32)(uintptr_t)hc->async_qh;
     hc->op_regs->ctrl_ds_segment = 0;
 
@@ -856,7 +916,7 @@ void ehci_init(uint id, PCI_DeviceInfo* info)
     hc->op_regs->usb_sts = 0x3f;
 
     // Enable controller
-    hc->op_regs->usb_cmd = (8 << CMD_ITC_SHIFT) | CMD_ASE | CMD_RS;
+    hc->op_regs->usb_cmd = (8 << CMD_ITC_SHIFT) | CMD_PSE | CMD_ASE | CMD_RS;
     while (hc->op_regs->usb_sts & STS_HCHALTED) // TODO - remove after dynamic port detection
         ;
 
