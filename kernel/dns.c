@@ -43,9 +43,8 @@ void dns_query_host(const char* host, uint id)
         return;
     }
 
-    u8 buf[MAX_PACKET_SIZE];
-
-    u8* pkt = buf + MAX_PACKET_HEADER;
+    NetBuf* buf = net_alloc_packet();
+    u8* pkt = (u8*)(buf + 1);
 
     DNS_Header* hdr = (DNS_Header*)pkt;
     hdr->id = net_swap16(id);

@@ -7,12 +7,13 @@
 #include "io.h"
 #include "ipv4.h"
 #include "eth.h"
+#include "net.h"
 #include "pci_driver.h"
 #include "string.h"
 #include "vm.h"
 
 #define RX_DESC_COUNT                   32
-#define TX_DESC_COUNT                   32
+#define TX_DESC_COUNT                   8
 
 #define PACKET_SIZE                     2048
 
@@ -180,7 +181,6 @@ static u16 eeprom_read(u8* mmio_addr, u8 eeprom_addr)
     return val >> EERD_DATA_SHIFT;
 }
 
-
 // ------------------------------------------------------------------------------------------------
 static void eth_8254x_poll(Net_Intf* intf)
 {
@@ -214,18 +214,32 @@ static void eth_8254x_tx(u8* pkt, uint len)
 {
     TX_Desc* desc = &dev.tx_descs[dev.tx_write];
 
+    // Check for available tx descriptor
+    if (desc->status & TSTA_DD)
+    {
+        // Free packet that was sent with this descriptor.
+        // TODO - free packets earlier?
+
+        if (desc->addr)
+       {
+            NetBuf* buf = (NetBuf*)((uintptr_t)desc->addr & ~0xfff);  // buffer starts page aligned
+            net_free_packet(buf);
+        }
+    }
+    else
+    {
+        // TODO - report overflow
+        console_print("Net overflow\n");
+        return;
+    }
+
+    // Write new tx descriptor
     desc->addr = (u64)pkt;
     desc->len = len;
     desc->cmd = CMD_EOP | CMD_IFCS | CMD_RS;
 
     dev.tx_write = (dev.tx_write + 1) & (TX_DESC_COUNT - 1);
     mmio_write32(dev.mmio_addr + REG_TDT, dev.tx_write);
-
-    while (~desc->status & TSTA_DD)
-    {
-        // TODO - wait
-        //console_print("%x\n", desc->sta);
-    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -352,8 +366,13 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
 
     // Transmit Setup
     TX_Desc* tx_desc = tx_descs;
-    //TX_Desc* tx_end = tx_desc + TX_DESC_COUNT;
+    TX_Desc* tx_end = tx_desc + TX_DESC_COUNT;
     memset(tx_desc, 0, TX_DESC_COUNT * 16);
+
+    for (; tx_desc != tx_end; ++tx_desc)
+    {
+        tx_desc->status = TSTA_DD;      // mark descriptor as 'complete'
+    }
 
     dev.tx_write = 0;
 

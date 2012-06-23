@@ -200,8 +200,8 @@ static void dhcp_request(Net_Intf* intf, const DHCP_Header* hdr, const DHCP_Opti
     ipv4_addr_to_str(requested_ip_addr_str, sizeof(requested_ip_addr_str), requested_ip_addr);
     console_print("DHCP requesting lease for %s\n", requested_ip_addr_str);
 
-    u8 buf[MAX_PACKET_SIZE];
-    u8* pkt = buf + MAX_PACKET_HEADER;
+    NetBuf* buf = net_alloc_packet();
+    u8* pkt = (u8*)(buf + 1);
 
     // Header
     u8* p = dhcp_build_header(pkt, xid, &intf->eth_addr, DHCP_REQUEST);
@@ -331,8 +331,8 @@ void dhcp_discover(Net_Intf* intf)
 {
     console_print("DHCP discovery\n");
 
-    u8 buf[MAX_PACKET_SIZE];
-    u8* pkt = buf + MAX_PACKET_HEADER;
+    NetBuf* buf = net_alloc_packet();
+    u8* pkt = (u8*)(buf + 1);
 
     // Header
     uint xid = 0;

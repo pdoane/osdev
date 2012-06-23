@@ -15,4 +15,3 @@
 - ARP
    - Flush out-of-date entries
    - Prevent ARP flooding
-   - Save packet during discovery

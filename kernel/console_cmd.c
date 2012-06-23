@@ -144,9 +144,9 @@ static void cmd_rlog(uint argc, const char** argv)
         return;
     }
 
-    u8 buf[MAX_PACKET_SIZE];
+    NetBuf* buf = net_alloc_packet();
+    u8* pkt = (u8*)(buf + 1);
 
-    u8* pkt = buf + MAX_PACKET_HEADER;
     strcpy((char*)pkt, msg);
 
     udp_tx(&dst_addr, PORT_OSHELPER, PORT_OSHELPER, pkt, len);

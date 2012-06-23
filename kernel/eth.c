@@ -109,11 +109,8 @@ void eth_tx_intf(Net_Intf* intf, const void* dst_addr, u16 ether_type, u8* pkt, 
                 dst_eth_addr = arp_lookup_mac(dst_ipv4_addr);
                 if (!dst_eth_addr)
                 {
-                    char dst_addr_str[IPV4_ADDR_STRING_SIZE];
-
-                    ipv4_addr_to_str(dst_addr_str, sizeof(dst_addr_str), dst_ipv4_addr);
-                    console_print(" Unknown IP %s, sending ARP request\n", dst_addr_str);
-                    arp_request(intf, dst_ipv4_addr);
+                    arp_request(intf, dst_ipv4_addr, ether_type, pkt, len);
+                    return;
                 }
             }
         }

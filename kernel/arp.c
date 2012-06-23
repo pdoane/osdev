@@ -24,6 +24,12 @@ typedef struct ARP_Entry
 {
     Eth_Addr ha;
     IPv4_Addr pa;
+
+    // deferred packet to send
+    Net_Intf* intf;
+    u16 ether_type;
+    u8* pkt;
+    uint len;
 } ARP_Entry;
 
 static ARP_Entry arp_cache[ARP_CACHE_SIZE];
@@ -76,9 +82,8 @@ static void arp_print(const u8* pkt, uint len)
 // ------------------------------------------------------------------------------------------------
 static void arp_snd(Net_Intf* intf, uint op, const Eth_Addr* tha, const IPv4_Addr* tpa)
 {
-    u8 buf[256];
-
-    u8* pkt = buf + MAX_PACKET_HEADER;
+    NetBuf* buf = net_alloc_packet();
+    u8* pkt = (u8*)(buf + 1);
 
     // HTYPE
     pkt[0] = (ARP_HTYPE_ETH >> 8) & 0xff;
@@ -125,19 +130,23 @@ static void arp_snd(Net_Intf* intf, uint op, const Eth_Addr* tha, const IPv4_Add
 }
 
 // ------------------------------------------------------------------------------------------------
-void arp_request(Net_Intf* intf, const IPv4_Addr* tpa)
+static ARP_Entry* arp_lookup(const IPv4_Addr* pa)
 {
-    arp_snd(intf, ARP_OP_REQUEST, &broadcast_eth_addr, tpa);
+    ARP_Entry* entry = arp_cache;
+    ARP_Entry* end = entry + ARP_CACHE_SIZE;
+    for (; entry != end; ++entry)
+    {
+        if (ipv4_addr_eq(&entry->pa, pa))
+        {
+            return entry;
+        }
+    }
+
+    return 0;
 }
 
 // ------------------------------------------------------------------------------------------------
-void arp_reply(Net_Intf* intf, const Eth_Addr* tha, const IPv4_Addr* tpa)
-{
-    arp_snd(intf, ARP_OP_REPLY, tha, tpa);
-}
-
-// ------------------------------------------------------------------------------------------------
-static void arp_add(const Eth_Addr* ha, const IPv4_Addr* pa)
+static ARP_Entry* arp_add(const Eth_Addr* ha, const IPv4_Addr* pa)
 {
     // TODO - handle overflow
     ARP_Entry* entry = arp_cache;
@@ -154,7 +163,43 @@ static void arp_add(const Eth_Addr* ha, const IPv4_Addr* pa)
     {
         entry->ha = *ha;
         entry->pa = *pa;
+        return entry;
     }
+
+    console_print("Ran out of ARP entries\n");
+    return 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+void arp_request(Net_Intf* intf, const IPv4_Addr* tpa, u16 ether_type, u8* pkt, uint len)
+{
+    ARP_Entry* entry = arp_lookup(tpa);
+    if (!entry)
+    {
+        entry = arp_add(&null_eth_addr, tpa);
+    }
+
+    if (entry)
+    {
+        // Drop any packet already queued
+        if (entry->pkt)
+        {
+            NetBuf* buf = (NetBuf*)((uintptr_t)entry->pkt & ~0xfff);  // buffer starts page aligned
+            net_free_packet(buf);
+        }
+
+        entry->intf = intf;
+        entry->ether_type = ether_type;
+        entry->pkt = pkt;
+        entry->len = len;
+        arp_snd(intf, ARP_OP_REQUEST, &broadcast_eth_addr, tpa);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+void arp_reply(Net_Intf* intf, const Eth_Addr* tha, const IPv4_Addr* tpa)
+{
+    arp_snd(intf, ARP_OP_REPLY, tha, tpa);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -168,22 +213,6 @@ void arp_init()
         memset(&entry->ha, 0, sizeof(Eth_Addr));
         memset(&entry->pa, 0, sizeof(IPv4_Addr));
     }
-}
-
-// ------------------------------------------------------------------------------------------------
-static ARP_Entry* arp_lookup(const IPv4_Addr* pa)
-{
-    ARP_Entry* entry = arp_cache;
-    ARP_Entry* end = entry + ARP_CACHE_SIZE;
-    for (; entry != end; ++entry)
-    {
-        if (ipv4_addr_eq(&entry->pa, pa))
-        {
-            return entry;
-        }
-    }
-
-    return 0;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -239,6 +268,17 @@ void arp_rx(Net_Intf* intf, const u8* pkt, uint len)
 
         entry->ha = *sha;
         merge = true;
+
+        // Send deferred packet
+        if (entry->pkt)
+        {
+            eth_tx_intf(entry->intf, spa, entry->ether_type, entry->pkt, entry->len);
+
+            entry->intf = 0;
+            entry->ether_type = 0;
+            entry->pkt = 0;
+            entry->len = 0;
+        }
     }
 
     // Check if this ARP packet is targeting our IP

@@ -66,8 +66,8 @@ void ntp_rx(Net_Intf* intf, const u8* pkt, uint len)
 // ------------------------------------------------------------------------------------------------
 void ntp_tx(const IPv4_Addr* dst_addr)
 {
-    u8 buf[MAX_PACKET_SIZE];
-    u8* pkt = buf + MAX_PACKET_HEADER;
+    NetBuf* buf = net_alloc_packet();
+    u8* pkt = (u8*)(buf + 1);
 
     NTP_Header* hdr = (NTP_Header*)pkt;
     hdr->mode = (NTP_VERSION << 3) | MODE_CLIENT;
