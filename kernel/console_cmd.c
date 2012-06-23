@@ -8,9 +8,13 @@
 #include "icmp.h"
 #include "io.h"
 #include "ipv4.h"
+#include "net.h"
+#include "net_port.h"
 #include "ntp.h"
 #include "pit.h"
+#include "string.h"
 #include "rtc.h"
+#include "udp.h"
 #include "gfx/gfx.h"
 
 // ------------------------------------------------------------------------------------------------
@@ -117,6 +121,38 @@ static void cmd_reboot(uint argc, const char** argv)
 }
 
 // ------------------------------------------------------------------------------------------------
+static void cmd_rlog(uint argc, const char** argv)
+{
+    if (argc != 3)
+    {
+        console_print("Usage: rlog <dest ipv4 address> <message>\n");
+        return;
+    }
+
+    IPv4_Addr dst_addr;
+    if (!str_to_ipv4_addr(&dst_addr, argv[1]))
+    {
+        console_print("Failed to parse destination address\n");
+        return;
+    }
+
+    const char* msg = argv[2];
+    uint len = strlen(msg) + 1;
+    if (len > 1024)
+    {
+        console_print("Message too long\n");
+        return;
+    }
+
+    u8 buf[MAX_PACKET_SIZE];
+
+    u8* pkt = buf + MAX_PACKET_HEADER;
+    strcpy((char*)pkt, msg);
+
+    udp_tx(&dst_addr, PORT_OSHELPER, PORT_OSHELPER, pkt, len);
+}
+
+// ------------------------------------------------------------------------------------------------
 static void cmd_ticks(uint argc, const char** argv)
 {
     console_print("%d\n", pit_ticks);
@@ -141,6 +177,7 @@ ConsoleCmd console_cmd_table[] =
     { "lsroute", cmd_lsroute },
     { "ping", cmd_ping },
     { "reboot", cmd_reboot },
+    { "rlog", cmd_rlog },
     { "synctime", cmd_synctime },
     { "ticks", cmd_ticks },
 	{ "gfx", cmd_gfx },
