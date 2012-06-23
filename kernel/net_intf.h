@@ -15,6 +15,7 @@ typedef struct Net_Intf
     Link link;
     Eth_Addr eth_addr;
     IPv4_Addr ip_addr;
+    IPv4_Addr broadcast_addr;
     const char* name;
 
     void (*poll)(struct Net_Intf* intf);

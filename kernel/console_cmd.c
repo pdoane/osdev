@@ -123,20 +123,13 @@ static void cmd_reboot(uint argc, const char** argv)
 // ------------------------------------------------------------------------------------------------
 static void cmd_rlog(uint argc, const char** argv)
 {
-    if (argc != 3)
+    if (argc != 2)
     {
-        console_print("Usage: rlog <dest ipv4 address> <message>\n");
+        console_print("Usage: rlog <message>\n");
         return;
     }
 
-    IPv4_Addr dst_addr;
-    if (!str_to_ipv4_addr(&dst_addr, argv[1]))
-    {
-        console_print("Failed to parse destination address\n");
-        return;
-    }
-
-    const char* msg = argv[2];
+    const char* msg = argv[1];
     uint len = strlen(msg) + 1;
     if (len > 1024)
     {
@@ -144,12 +137,26 @@ static void cmd_rlog(uint argc, const char** argv)
         return;
     }
 
-    NetBuf* buf = net_alloc_packet();
-    u8* pkt = (u8*)(buf + 1);
+    // For each interface, broadcast a packet
+    Link* it = g_net_intf_list.next;
+    Link* end = &g_net_intf_list;
 
-    strcpy((char*)pkt, msg);
+    while (it != end)
+    {
+        Net_Intf* intf = link_data(it, Net_Intf, link);
 
-    udp_tx(&dst_addr, PORT_OSHELPER, PORT_OSHELPER, pkt, len);
+        if (!ipv4_addr_eq(&intf->broadcast_addr, &null_ipv4_addr))
+        {
+            NetBuf* buf = net_alloc_packet();
+            u8* pkt = (u8*)(buf + 1);
+
+            strcpy((char*)pkt, msg);
+
+            udp_tx(&intf->broadcast_addr, PORT_OSHELPER, PORT_OSHELPER, pkt, len);
+        }
+
+        it = it->next;
+    }
 }
 
 // ------------------------------------------------------------------------------------------------

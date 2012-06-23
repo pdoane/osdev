@@ -259,6 +259,12 @@ static void dhcp_ack(Net_Intf* intf, const DHCP_Header* hdr, const DHCP_Options*
     IPv4_Addr host_mask = { { { 0xff, 0xff, 0xff, 0xff } } };
     ipv4_add_route(&intf->ip_addr, &host_mask, 0, intf);
 
+    // Record broadcast address
+    if (opt->subnet_mask)
+    {
+        intf->broadcast_addr.u.bits = intf->ip_addr.u.bits | ~opt->subnet_mask->u.bits;
+    }
+
     // Set DNS server
     if (opt->dns_list)
     {

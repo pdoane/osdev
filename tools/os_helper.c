@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 
 // ------------------------------------------------------------------------------------------------
-#define MYPORT "4950"
+#define PORT 4950
 #define MAXBUFLEN 2048
 
 // ------------------------------------------------------------------------------------------------
@@ -27,48 +27,34 @@ static void sockaddr_to_str(char* buf, size_t len, struct sockaddr *sa)
 // ------------------------------------------------------------------------------------------------
 int main(void)
 {
-    // Get addresses
-    struct addrinfo hints;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;      // IPv4 only
-    hints.ai_socktype = SOCK_DGRAM;
-    hints.ai_flags = AI_PASSIVE;
+    struct sockaddr_storage storage;
+    struct sockaddr* addr = (struct sockaddr *)&storage;
 
-    struct addrinfo *servinfo;
-    int rc = getaddrinfo(NULL, MYPORT, &hints, &servinfo);
-    if (rc != 0)
+    // Create socket
+    int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (sockfd == -1)
     {
-        fprintf(stderr, "Failed to get addresses: %s\n", gai_strerror(rc));
+        perror("Failed to create socket");
         return EXIT_FAILURE;
     }
 
-    // Create socket
-    int sockfd = -1;
-    for (struct addrinfo *p = servinfo; p != NULL; p = p->ai_next)
+    // Enable broadcast
+    int val = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_BROADCAST, &val, sizeof(val)))
     {
-        sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-        if (sockfd == -1)
-        {
-            perror("Failed to create socket");
-            continue;
-        }
-
-        if (bind(sockfd, p->ai_addr, p->ai_addrlen) == -1)
-        {
-            close(sockfd);
-            sockfd = -1;
-            perror("Failed to bind socket");
-            continue;
-        }
-
-        break;
+        perror("Failed to enable broadcast");
+        return EXIT_FAILURE;
     }
 
-    freeaddrinfo(servinfo);
+    // Bind
+    struct sockaddr_in* ipv4_addr = (struct sockaddr_in*)addr;
+    ipv4_addr->sin_family = AF_INET;
+    ipv4_addr->sin_port = htons(PORT);
+    ipv4_addr->sin_addr.s_addr = 0;
 
-    if (sockfd == -1)
+    if (bind(sockfd, addr, sizeof(struct sockaddr_in)) == -1)
     {
-        fprintf(stderr, "Failed to bind socket\n");
+        perror("Failed to bind socket");
         return EXIT_FAILURE;
     }
 
@@ -78,8 +64,6 @@ int main(void)
     for (;;)
     {
         char buf[MAXBUFLEN];
-        struct sockaddr_storage storage;
-        struct sockaddr* addr = (struct sockaddr *)&storage;
 
         socklen_t addr_len = sizeof(storage);
         int rx_count = recvfrom(sockfd, buf, MAXBUFLEN , 0, addr, &addr_len);

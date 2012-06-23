@@ -98,7 +98,8 @@ void eth_tx_intf(Net_Intf* intf, const void* dst_addr, u16 ether_type, u8* pkt, 
         {
             const IPv4_Addr* dst_ipv4_addr = (const IPv4_Addr*)dst_addr;
 
-            if (ipv4_addr_eq(dst_ipv4_addr, &broadcast_ipv4_addr))
+            if (ipv4_addr_eq(dst_ipv4_addr, &broadcast_ipv4_addr) ||
+                ipv4_addr_eq(dst_ipv4_addr, &intf->broadcast_addr))
             {
                 // IP Broadcast -> Ethernet Broacast
                 dst_eth_addr = &broadcast_eth_addr;
