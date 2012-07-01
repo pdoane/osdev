@@ -5,6 +5,7 @@
 #include "usb/mouse.h"
 #include "usb/registry.h"
 #include "console/console.h"
+#include "input/input.h"
 #include "mem/vm.h"
 
 // ------------------------------------------------------------------------------------------------
@@ -25,6 +26,8 @@ static void usb_mouse_process(USB_Mouse* mouse)
         data[0] & 0x4 ? 'M' : ' ',
         (i8)data[1],
         (i8)data[2]);
+
+    mouse_event((i8)data[1], (i8)data[2]);
 }
 
 // ------------------------------------------------------------------------------------------------

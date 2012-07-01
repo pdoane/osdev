@@ -11,6 +11,7 @@
 #include "mem/vm.h"
 #include "pci/driver.h"
 #include "stdlib/string.h"
+#include "time/pit.h"
 
 #define RX_DESC_COUNT                   32
 #define TX_DESC_COUNT                   8
@@ -214,29 +215,26 @@ static void eth_8254x_tx(u8* pkt, uint len)
 {
     TX_Desc* desc = &dev.tx_descs[dev.tx_write];
 
-    // Check for available tx descriptor
-    if (desc->status & TSTA_DD)
+    // Wait until packet is sent
+    while (!(desc->status & 0xf))
     {
-        // Free packet that was sent with this descriptor.
-        // TODO - free packets earlier?
-
-        if (desc->addr)
-       {
-            NetBuf* buf = (NetBuf*)((uintptr_t)desc->addr & ~0xfff);  // buffer starts page aligned
-            net_free_packet(buf);
-        }
+        pit_wait(1);
     }
-    else
+
+    // Free packet that was sent with this descriptor.
+    // TODO - free packets earlier?
+
+    if (desc->addr)
     {
-        // TODO - report overflow
-        console_print("Net overflow\n");
-        return;
+        NetBuf* buf = (NetBuf*)((uintptr_t)desc->addr & ~0xfff);  // buffer starts page aligned
+        net_free_packet(buf);
     }
 
     // Write new tx descriptor
     desc->addr = (u64)pkt;
     desc->len = len;
     desc->cmd = CMD_EOP | CMD_IFCS | CMD_RS;
+    desc->status = 0;
 
     dev.tx_write = (dev.tx_write + 1) & (TX_DESC_COUNT - 1);
     mmio_write32(dev.mmio_addr + REG_TDT, dev.tx_write);
@@ -259,21 +257,15 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
     console_print("Initializing Intel Gigabit Ethernet\n");
 
     // Base I/O Address
-    u32 bar0 = pci_in32(id, PCI_CONFIG_BAR0);
-    if (bar0 & 0x1)
+    PCI_Bar bar;
+    pci_get_bar(&bar, id, 0);
+    if (bar.flags & PCI_BAR_IO)
     {
         // Only Memory Mapped I/O supported
         return;
     }
-    if (bar0 & 0x4)
-    {
-        // TODO - support 64-bit pointer
-        return;
-    }
 
-    bar0 &= ~0xf;    // clear low 4 bits
-
-    u8* mmio_addr = (u8*)(uintptr_t)bar0;
+    u8* mmio_addr = (u8*)bar.u.address;
     dev.mmio_addr = mmio_addr;
 
     // IRQ

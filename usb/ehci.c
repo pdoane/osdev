@@ -813,24 +813,18 @@ void ehci_init(uint id, PCI_DeviceInfo* info)
     console_print ("Initializing EHCI\n");
 
     // Base I/O Address
-    u32 bar0 = pci_in32(id, PCI_CONFIG_BAR0);
-    if (bar0 & 0x1)
+    PCI_Bar bar;
+    pci_get_bar(&bar, id, 0);
+    if (bar.flags & PCI_BAR_IO)
     {
         // Only Memory Mapped I/O supported
         return;
     }
-    if (bar0 & 0x4)
-    {
-        // TODO - support 64-bit pointer
-        return;
-    }
-
-    bar0 &= ~0xf;    // clear low 4 bits
 
     // Controller initialization
     EHCI_Controller* hc = vm_alloc(sizeof(EHCI_Controller));
-    hc->cap_regs = (EHCI_Cap_Regs*)(uintptr_t)bar0;
-    hc->op_regs = (EHCI_Op_Regs*)(uintptr_t)(bar0 + hc->cap_regs->cap_length);
+    hc->cap_regs = (EHCI_Cap_Regs*)(uintptr_t)bar.u.address;
+    hc->op_regs = (EHCI_Op_Regs*)(uintptr_t)(bar.u.address + hc->cap_regs->cap_length);
     hc->frame_list = (u32*)vm_alloc(1024 * sizeof(u32));
     hc->qh_pool = (EHCI_QH*)vm_alloc(sizeof(EHCI_QH) * MAX_QH);
     hc->td_pool = (EHCI_TD*)vm_alloc(sizeof(EHCI_TD) * MAX_TD);

@@ -613,14 +613,15 @@ void uhci_init(uint id, PCI_DeviceInfo* info)
     console_print ("Initializing UHCI\n");
 
     // Base I/O Address
-    u32 bar4 = pci_in32 (id, PCI_CONFIG_BAR4);
-    if (~bar4 & 1)
+    PCI_Bar bar;
+    pci_get_bar(&bar, id, 4);
+    if (~bar.flags & PCI_BAR_IO)
     {
         // Only Port I/O supported
         return;
     }
 
-    uint io_addr = bar4 & ~0x3;
+    uint io_addr = bar.u.port;
 
     // Controller initialization
     UHCI_Controller* hc = vm_alloc(sizeof(UHCI_Controller));

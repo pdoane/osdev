@@ -5,6 +5,7 @@
 #include "acpi/acpi.h"
 #include "console/console.h"
 #include "cpu/smp.h"
+#include "gfx/gfx.h"
 #include "gfx/vga.h"
 #include "intr/intr.h"
 #include "mem/vm.h"
@@ -37,6 +38,7 @@ int kmain()
     {
         usb_poll();
         net_poll();
+        gfx_poll();
     }
 
     return 0;

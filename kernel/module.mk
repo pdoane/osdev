@@ -32,6 +32,7 @@ KERNEL_SOURCES := \
 	net/net.c \
 	net/ntp.c \
 	net/port.c \
+	net/rlog.c \
 	net/udp.c \
 	pci/driver.c \
 	pci/pci.c \

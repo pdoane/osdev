@@ -8,6 +8,10 @@
 #include "console/console.h"
 
 // ------------------------------------------------------------------------------------------------
+int g_mouse_x;
+int g_mouse_y;
+
+// ------------------------------------------------------------------------------------------------
 #define KBD_LSHIFT                      0x01
 #define KBD_RSHIFT                      0x02
 #define KBD_CAPS_LOCK                   0x04
@@ -98,5 +102,32 @@ void input_event(uint code, uint val)
         {
             s_flags &= ~KBD_RSHIFT;
         }
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+void mouse_event(int dx, int dy)
+{
+    g_mouse_x += dx;
+    g_mouse_y += dy;
+
+    if (g_mouse_x < 0)
+    {
+        g_mouse_x = 0;
+    }
+
+    if (g_mouse_x > 720)
+    {
+        g_mouse_x = 720;
+    }
+
+    if (g_mouse_y < 0)
+    {
+        g_mouse_y = 0;
+    }
+
+    if (g_mouse_y > 400)
+    {
+        g_mouse_y = 400;
     }
 }

@@ -10,8 +10,9 @@
 #include "net/icmp.h"
 #include "net/ipv4.h"
 #include "net/net.h"
-#include "net/port.h"
 #include "net/ntp.h"
+#include "net/port.h"
+#include "net/rlog.h"
 #include "net/udp.h"
 #include "stdlib/string.h"
 #include "time/pit.h"
@@ -130,33 +131,7 @@ static void cmd_rlog(uint argc, const char** argv)
     }
 
     const char* msg = argv[1];
-    uint len = strlen(msg) + 1;
-    if (len > 1024)
-    {
-        console_print("Message too long\n");
-        return;
-    }
-
-    // For each interface, broadcast a packet
-    Link* it = g_net_intf_list.next;
-    Link* end = &g_net_intf_list;
-
-    while (it != end)
-    {
-        Net_Intf* intf = link_data(it, Net_Intf, link);
-
-        if (!ipv4_addr_eq(&intf->broadcast_addr, &null_ipv4_addr))
-        {
-            NetBuf* buf = net_alloc_packet();
-            u8* pkt = (u8*)(buf + 1);
-
-            strcpy((char*)pkt, msg);
-
-            udp_tx(&intf->broadcast_addr, PORT_OSHELPER, PORT_OSHELPER, pkt, len);
-        }
-
-        it = it->next;
-    }
+    rlog_print("%s", msg);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -169,7 +144,7 @@ static void cmd_ticks(uint argc, const char** argv)
 static void cmd_gfx(uint argc, const char** argv)
 {
     console_print("Starting 3D graphics...\n");
-	gfx_start();
+    gfx_start();
 }
 
 
@@ -187,6 +162,6 @@ ConsoleCmd console_cmd_table[] =
     { "rlog", cmd_rlog },
     { "synctime", cmd_synctime },
     { "ticks", cmd_ticks },
-	{ "gfx", cmd_gfx },
+    { "gfx", cmd_gfx },
     { 0, 0 },
 };

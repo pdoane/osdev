@@ -51,6 +51,25 @@
 #define PCI_CONFIG_MAX_LATENCY          0x3f
 
 // ------------------------------------------------------------------------------------------------
+// PCI BAR
+
+#define PCI_BAR_IO                      0x01
+#define PCI_BAR_LOWMEM                  0x02
+#define PCI_BAR_64                      0x04
+#define PCI_BAR_PREFETCH                0x08
+
+typedef struct PCI_Bar
+{
+    union
+    {
+        void* address;
+        u16 port;
+    } u;
+    u64 size;
+    uint flags;
+} PCI_Bar;
+
+// ------------------------------------------------------------------------------------------------
 typedef struct PCI_DeviceInfo
 {
     u16 vendor_id;
@@ -75,3 +94,5 @@ u32 pci_in32(uint id, uint reg);
 void pci_out8(uint id, uint reg, u8 data);
 void pci_out16(uint id, uint reg, u16 data);
 void pci_out32(uint id, uint reg, u32 data);
+
+void pci_get_bar(PCI_Bar* bar, uint id, uint index);

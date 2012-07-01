@@ -76,7 +76,7 @@ int main(void)
         char addr_str[INET6_ADDRSTRLEN];
         sockaddr_to_str(addr_str, sizeof(addr_str), addr);
 
-        printf("%s: %s\n", addr_str, buf);
+        printf("%s", buf);
     }
 
     close(sockfd);
