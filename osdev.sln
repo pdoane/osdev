@@ -80,6 +80,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "net", "net", "{A54B0484-834
 		net\ntp.h = net\ntp.h
 		net\port.c = net\port.c
 		net\port.h = net\port.h
+		net\rlog.c = net\rlog.c
+		net\rlog.h = net\rlog.h
 		net\udp.c = net\udp.c
 		net\udp.h = net\udp.h
 	EndProjectSection
@@ -105,15 +107,14 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "pci", "pci", "{4A1EE61F-E19
 	ProjectSection(SolutionItems) = preProject
 		pci\driver.c = pci\driver.c
 		pci\driver.h = pci\driver.h
-		pci\registry.c = pci\registry.c
-		pci\registry.h = pci\registry.h
 		pci\pci.c = pci\pci.c
 		pci\pci.h = pci\pci.h
+		pci\registry.c = pci\registry.c
+		pci\registry.h = pci\registry.h
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "usb", "usb", "{BDD7F67E-0256-4243-8AEF-596C3897217F}"
 	ProjectSection(SolutionItems) = preProject
-		usb\registry.h = usb\registry.h
 		usb\controller.c = usb\controller.c
 		usb\controller.h = usb\controller.h
 		usb\desc.c = usb\desc.c
@@ -130,6 +131,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "usb", "usb", "{BDD7F67E-025
 		usb\kbd.h = usb\kbd.h
 		usb\mouse.c = usb\mouse.c
 		usb\mouse.h = usb\mouse.h
+		usb\registry.h = usb\registry.h
 		usb\req.h = usb\req.h
 		usb\uhci.c = usb\uhci.c
 		usb\uhci.h = usb\uhci.h
@@ -201,6 +203,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "gfx", "gfx", "{9EA32D36-847D-434D-9EFF-D6A8185E571A}"
 	ProjectSection(SolutionItems) = preProject
 		gfx\gfx.c = gfx\gfx.c
+		gfx\reg.h = gfx\reg.h
 		gfx\gfx.h = gfx\gfx.h
 		gfx\vga.c = gfx\vga.c
 		gfx\vga.h = gfx\vga.h
