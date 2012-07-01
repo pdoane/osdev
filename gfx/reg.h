@@ -94,6 +94,10 @@
 #define CUR_CTL_B                       0x71080     // R/W
 #define CUR_CTL_C                       0x72080     // R/W
 
+#define CUR_GAMMA_ENABLE                (1 << 26)   // Gamma Enable
+#define CUR_MODE_ARGB                   (1 << 5)    // 32bpp ARGB
+#define CUR_MODE_64_32BPP               (7 << 0)    // 64 x 64 32bpp
+
 // ------------------------------------------------------------------------------------------------
 // 5.2.2 Cursor Base
 
@@ -107,6 +111,44 @@
 #define CUR_POS_A                       0x70088     // R/W
 #define CUR_POS_B                       0x71088     // R/W
 #define CUR_POS_C                       0x72088     // R/W
+
+// ------------------------------------------------------------------------------------------------
+// 5.3.1 Primary Control
+
+#define PRI_CTL_A                       0x70180     // R/W
+#define PRI_CTL_B                       0x71180     // R/W
+#define PRI_CTL_C                       0x72180     // R/W
+
+#define PRI_PLANE_ENABLE                (1 << 31)
+#define PRI_PLANE_32BPP                 (6 << 26)
+
+// ------------------------------------------------------------------------------------------------
+// 5.3.2 Primary Linear Offset
+
+#define PRI_LINOFF_A                    0x70184     // R/W
+#define PRI_LINOFF_B                    0x71184     // R/W
+#define PRI_LINOFF_C                    0x72184     // R/W
+
+// ------------------------------------------------------------------------------------------------
+// 5.3.3 Primary Stride
+
+#define PRI_STRIDE_A                    0x70188     // R/W
+#define PRI_STRIDE_B                    0x71188     // R/W
+#define PRI_STRIDE_C                    0x72188     // R/W
+
+// ------------------------------------------------------------------------------------------------
+// 5.3.4 Primary Surface Base Address
+
+#define PRI_SURF_A                      0x7019c     // R/W
+#define PRI_SURF_B                      0x7119c     // R/W
+#define PRI_SURF_C                      0x7219c     // R/W
+
+// ------------------------------------------------------------------------------------------------
+// 5.3.5 Primary Tiled Offset
+
+#define PRI_TILEOFF_A                   0x701a4     // R/W
+#define PRI_TILEOFF_B                   0x711a4     // R/W
+#define PRI_TILEOFF_C                   0x721a4     // R/W
 
 // ------------------------------------------------------------------------------------------------
 // Vol 3. Part 4. South Display Engine Registers

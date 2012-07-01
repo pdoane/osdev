@@ -18,12 +18,17 @@
 // ------------------------------------------------------------------------------------------------
 typedef struct GfxDevice
 {
+    bool    active;
     uint    pciId;
 
     void   *pApertureBar;
     void   *pMMIOBar;
     u32    *pGTTAddr;
     u16     ioBarAddr;
+
+    u8     *pGraphicsMem;
+    u8     *pSurfaceMem;
+    u8     *pCursorMem;
 } GfxDevice;
 
 static GfxDevice s_gfxDevice;
@@ -159,37 +164,59 @@ void gfx_start()
     rlog_print("VGA Plane disabled\n");
 
     // Initialize Graphics Memory
-    u8* gfx_mem = vm_alloc(512 * 1024 * 1024);      // TODO: how to know size of GTT?
-    u8* cursor_mem = gfx_mem;
-    //memset(gfx_mem, 0xff, 512 * 1024 * 1024);
-    memset(cursor_mem, 0xff, 64 * 64 * sizeof(u32));    // TODO: this isn't the area the GPU is reading?
+    uint graphicsMemSize = 512 * 1024 * 1024;       // TODO: how to know size of GTT?
+    uint graphicsMemAlign = 256 * 1204;             // Alignment needed for primary surface
+    s_gfxDevice.pGraphicsMem = vm_alloc_align(graphicsMemSize, graphicsMemAlign);
+    u8* gfxNextAlloc = s_gfxDevice.pGraphicsMem;
+
+    uint surfaceMemSize = 16 * 1024 * 1024;         // TODO: compute appropriate surface size
+    s_gfxDevice.pSurfaceMem = gfxNextAlloc;         // 256KB aligned, +512 PTEs
+    gfxNextAlloc += surfaceMemSize;
+
+    uint cursorMemSize = 64 * 64 * sizeof(u32);
+    s_gfxDevice.pCursorMem = gfxNextAlloc;          // 64KB aligned, +2 PTEs
+    gfxNextAlloc += cursorMemSize;
 
     // Setup Virtual Memory
-    u32* gtt_addr = (u32*)((u8*)s_gfxDevice.pMMIOBar + (2 * 1024 * 1024));
-    u8* phys_page = gfx_mem;
+    u8* phys_page = s_gfxDevice.pGraphicsMem;
     for (uint i = 0; i < 512 * 1024; ++i)
     {
         uintptr_t addr = (uintptr_t)phys_page;
 
-        // Mark for LLC Cache use and Valid
-        gtt_addr[i] = addr | ((addr >> 28) & 0xff0) | (2 << 1) | (1 << 0);
+        // Mark as Uncached and Valid
+        s_gfxDevice.pGTTAddr[i] = addr | ((addr >> 28) & 0xff0) | (1 << 1) | (1 << 0);
 
         phys_page += 4096;
     }
 
+    // Setup Primary Plane
+    uint width = 720;                       // TODO: mode support
+    //uint height = 400;
+    uint stride = (width * sizeof(u32) + 63) & ~63;   // 64-byte aligned
+
+    gfx_write(PRI_CTL_A, PRI_PLANE_ENABLE | PRI_PLANE_32BPP);
+    gfx_write(PRI_LINOFF_A, 0);
+    gfx_write(PRI_STRIDE_A, stride);
+    gfx_write(PRI_SURF_A, (u32)(s_gfxDevice.pSurfaceMem - s_gfxDevice.pGraphicsMem));
+
     // Setup Cursor Plane
-    u32 cursor_gfx_mem = (u32)(cursor_mem - gfx_mem);
-    gfx_write(CUR_CTL_A, (1 << 5) | 0x7);   // 64x64 32bpp ARGB
-    gfx_write(CUR_BASE_A, cursor_gfx_mem);  // TODO - use 64k alignment with 2 extra PTEs?
+    gfx_write(CUR_CTL_A, CUR_MODE_ARGB | CUR_MODE_64_32BPP);
+    gfx_write(CUR_BASE_A, (u32)(s_gfxDevice.pCursorMem - s_gfxDevice.pGraphicsMem));
 
     // Pipe State
     gfx_print_pipe_state();
 
+    s_gfxDevice.active = true;
 }
 
 // ------------------------------------------------------------------------------------------------
 void gfx_poll()
 {
+    if (!s_gfxDevice.active)
+    {
+        return;
+    }
+
     // Update cursor position
     gfx_write(CUR_POS_A, (g_mouse_y << 16) | g_mouse_x);
 }
