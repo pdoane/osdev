@@ -14,7 +14,7 @@
 
 #define PD_2MB                          0x80    // 2MB Page
 
-static u64 s_mem_next;
+static uintptr_t s_mem_next;
 
 // ------------------------------------------------------------------------------------------------
 typedef struct MemoryRegion
@@ -77,8 +77,20 @@ void vm_init()
 // ------------------------------------------------------------------------------------------------
 void* vm_alloc(uint size)
 {
-    // Round all requests up to 4k page size for now
-    size = (size + 4095) & ~4095;
+    // Align to 4k for now
+    return vm_alloc_align(size, 4096);
+}
+
+// ------------------------------------------------------------------------------------------------
+void* vm_alloc_align(uint size, uint align)
+{
+    // Align memory request
+    uintptr_t offset = s_mem_next & (align - 1);
+    if (offset)
+    {
+        s_mem_next += align - offset;
+    }
+
     void* result = (void*)s_mem_next;
     s_mem_next += size;
     return result;

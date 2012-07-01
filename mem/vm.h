@@ -9,3 +9,4 @@
 void vm_init();
 
 void* vm_alloc(uint size);
+void* vm_alloc_align(uint size, uint align);
