@@ -59,11 +59,13 @@ all_targets: $(TARGETS)
 
 check: $(TESTS:=.run)
 
-usb_boot_c: tools/set_boot.exe boot/boot.bin boot/loader.bin kernel/kernel.bin
+usb_boot_c:
 	@echo "Unable to make the C: drive a PDOS boot disk"
 
 usb_boot_%: tools/set_boot.exe boot/boot.bin boot/loader.bin kernel/kernel.bin
 	tools/set_boot.exe //./$*: boot/boot.bin
+
+usb_kernel_%: boot/loader.bin kernel/kernel.bin
 	cp boot/loader.bin $*:/
 	cp kernel/kernel.bin $*:/
 
