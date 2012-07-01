@@ -2,58 +2,59 @@
 
 KERNEL_SOURCES := \
 	kernel/kernel.c \
-	kernel/acpi.c \
-	kernel/arp.c \
-	kernel/console.c \
-	kernel/console_cmd.c \
-	kernel/dhcp.c \
-	kernel/dns.c \
-	kernel/ehci.c \
-	kernel/eth.c \
-	kernel/eth_8254x.c \
-	kernel/except.c \
-	kernel/format.c \
-	kernel/icmp.c \
-	kernel/idt.c \
-	kernel/input.c \
-	kernel/ioapic.c \
-	kernel/ipv4.c \
-	kernel/ipv6.c \
-	kernel/keymap.c \
-	kernel/link.c \
-	kernel/local_apic.c \
-	kernel/loopback.c \
-	kernel/mem_dump.c \
-	kernel/net.c \
-	kernel/net_addr.c \
-	kernel/net_intf.c \
-	kernel/net_port.c \
-	kernel/ntp.c \
-	kernel/pci.c \
-	kernel/pci_classify.c \
-	kernel/pci_driver.c \
-	kernel/pic.c \
-	kernel/pit.c \
-	kernel/rtc.c \
-	kernel/time.c \
-	kernel/smp.c \
-	kernel/string.c \
-	kernel/udp.c \
-	kernel/uhci.c \
-	kernel/usb.c \
-	kernel/usb_controller.c \
-	kernel/usb_desc.c \
-	kernel/usb_dev.c \
-	kernel/usb_driver.c \
-	kernel/usb_hub.c \
-	kernel/usb_kbd.c \
-	kernel/usb_mouse.c \
-	kernel/vga.c \
-	kernel/vm.c \
-	kernel/gfx/gfx.c
+	acpi/acpi.c \
+	console/console.c \
+	console/cmd.c \
+	cpu/smp.c \
+	gfx/gfx.c \
+	gfx/vga.c \
+	input/input.c \
+	input/keymap.c \
+	intr/except.c \
+	intr/idt.c \
+	intr/intr.c \
+	intr/ioapic.c \
+	intr/local_apic.c \
+	intr/pic.c \
+	mem/mem_dump.c \
+	mem/vm.c \
+	net/addr.c \
+	net/arp.c \
+	net/dhcp.c \
+	net/dns.c \
+	net/eth.c \
+	net/eth_8254x.c \
+	net/icmp.c \
+	net/intf.c \
+	net/ipv4.c \
+	net/ipv6.c \
+	net/loopback.c \
+	net/net.c \
+	net/ntp.c \
+	net/port.c \
+	net/udp.c \
+	pci/driver.c \
+	pci/pci.c \
+	pci/registry.c \
+	stdlib/format.c \
+	stdlib/link.c \
+	stdlib/string.c \
+	time/pit.c \
+	time/rtc.c \
+	time/time.c \
+	usb/ehci.c \
+	usb/uhci.c \
+	usb/usb.c \
+	usb/controller.c \
+	usb/desc.c \
+	usb/dev.c \
+	usb/driver.c \
+	usb/hub.c \
+	usb/kbd.c \
+	usb/mouse.c
 
 KERNEL_ASM := \
-	kernel/interrupt.asm
+	intr/interrupt.asm
 
 SOURCES += $(KERNEL_SOURCES)
 ASM_SOURCES += $(KERNEL_ASM)
@@ -68,29 +69,29 @@ kernel/kernel.bin: $(KERNEL_OBJECTS) kernel/linker.ld
 # Tests
 
 SOURCES += \
-	kernel/console_mock.c \
-	kernel/console_test.c \
-	kernel/format_test.c \
-	kernel/string_test.c
+	console/console_mock.c \
+	console/console_test.c \
+	stdlib/format_test.c \
+	stdlib/string_test.c
 
 TESTS += \
-	kernel/console_test.exe \
-	kernel/format_test.exe \
-	kernel/string_test.exe \
-	kernel/format_test_native.exe \
-	kernel/string_test_native.exe
+	console/console_test.exe \
+	stdlib/format_test.exe \
+	stdlib/string_test.exe \
+	stdlib/format_test_native.exe \
+	stdlib/string_test_native.exe
 
-kernel/console_test.exe: test/test.test.o kernel/console_test.test.o kernel/console.test.o
+console/console_test.exe: test/test.test.o console/console_test.test.o console/console.test.o
 	$(CC) -o $@ $^
 
-kernel/format_test.exe: test/test.test.o kernel/format_test.test.o kernel/format.test.o
+stdlib/format_test.exe: test/test.test.o stdlib/format_test.test.o stdlib/format.test.o
 	$(CC) -o $@ $^
 
-kernel/string_test.exe: test/test.test.o kernel/string_test.test.o kernel/string.test.o
+stdlib/string_test.exe: test/test.test.o stdlib/string_test.test.o stdlib/string.test.o
 	$(CC) -o $@ $^
 
-kernel/format_test_native.exe: test/test.native.o kernel/format_test.native.o
+stdlib/format_test_native.exe: test/test.native.o stdlib/format_test.native.o
 	$(CC) -o $@ $^
 
-kernel/string_test_native.exe: test/test.native.o kernel/string_test.native.o
+stdlib/string_test_native.exe: test/test.native.o stdlib/string_test.native.o
 	$(CC) -o $@ $^
