@@ -56,7 +56,8 @@ static void gfx_print_port_state()
 // ------------------------------------------------------------------------------------------------
 static void gfx_print_pipe_state()
 {
-    for (uint i = 0; i < 3; ++i)
+    //for (uint i = 0; i < 3; ++i)
+    uint i = 0;
     {
         uint pipe = 0x1000 * i;
         rlog_print("PIPE %d\n", i);
@@ -103,6 +104,12 @@ static void gfx_print_pipe_state()
         rlog_print("  CUR_CTL: %08x\n", gfx_read(CUR_CTL_A + pipe));
         rlog_print("  CUR_BASE: %08x\n", gfx_read(CUR_BASE_A + pipe));
         rlog_print("  CUR_POS: %08x\n", gfx_read(CUR_POS_A + pipe));
+
+        // Primary Plane
+        rlog_print("  PRI_CTL: %08x\n", gfx_read(PRI_CTL_A + pipe));
+        rlog_print("  PRI_LINOFF: %08x\n", gfx_read(PRI_LINOFF_A + pipe));
+        rlog_print("  PRI_STRIDE: %08x\n", gfx_read(PRI_STRIDE_A + pipe));
+        rlog_print("  PRI_SURF: %08x\n", gfx_read(PRI_SURF_A + pipe));
     }
 }
 
@@ -155,17 +162,9 @@ void gfx_start()
     // Log initial port state
     gfx_print_port_state();
 
-    // Disable the VGA Plane
-    out8(SR_INDEX, SEQ_CLOCKING);
-    out8(SR_DATA, in8(SR_DATA) | SCREEN_OFF);
-    pit_wait(100);
-    gfx_write(VGA_CONTROL, VGA_DISABLE);
-
-    rlog_print("VGA Plane disabled\n");
-
     // Initialize Graphics Memory
     uint graphicsMemSize = 512 * 1024 * 1024;       // TODO: how to know size of GTT?
-    uint graphicsMemAlign = 256 * 1204;             // Alignment needed for primary surface
+    uint graphicsMemAlign = 256 * 1024;             // Alignment needed for primary surface
     s_gfxDevice.pGraphicsMem = vm_alloc_align(graphicsMemSize, graphicsMemAlign);
     u8* gfxNextAlloc = s_gfxDevice.pGraphicsMem;
 
@@ -176,6 +175,23 @@ void gfx_start()
     uint cursorMemSize = 64 * 64 * sizeof(u32);
     s_gfxDevice.pCursorMem = gfxNextAlloc;          // 64KB aligned, +2 PTEs
     gfxNextAlloc += cursorMemSize;
+
+    vm_map_pages(s_gfxDevice.pGraphicsMem, graphicsMemSize, PAGE_WRITE_THROUGH | PAGE_CACHE_DISABLE);
+
+    memset(s_gfxDevice.pSurfaceMem, 0x77, 720 * 400 * 4);
+    memset(s_gfxDevice.pCursorMem, 0x99, 64 * 64 * sizeof(u32));
+
+    rlog_print("pGraphicsMem = 0x%x\n", s_gfxDevice.pGraphicsMem);
+    rlog_print("pSurfaceMem = 0x%x\n", s_gfxDevice.pSurfaceMem);
+    rlog_print("pCursorMem = 0x%x\n", s_gfxDevice.pCursorMem);
+
+    // Disable the VGA Plane
+    out8(SR_INDEX, SEQ_CLOCKING);
+    out8(SR_DATA, in8(SR_DATA) | SCREEN_OFF);
+    pit_wait(100);
+    gfx_write(VGA_CONTROL, VGA_DISABLE);
+
+    rlog_print("VGA Plane disabled\n");
 
     // Setup Virtual Memory
     u8* phys_page = s_gfxDevice.pGraphicsMem;
