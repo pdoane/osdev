@@ -4,8 +4,10 @@ the LICENSE file for details.
 -------------------------------------------------------------------------------
 Hardware Requirements:
 
-- 64-bit x86 CPU
-- Intel Gigabit Ethernet
+- Intel Ivy Bridge w/ HD Graphics 4000
+- Intel 82579V Gigabit Ethernet
+
+QEMU is also supported in text mode.
 
 -------------------------------------------------------------------------------
 Setup and Installation for Windows:
@@ -16,7 +18,6 @@ Setup and Installation for Windows:
     - bison
     - flex
     - gcc4
-    - gdb
     - make
     - nasm
     - wget
@@ -83,10 +84,17 @@ Configuration:
 -------------------------------------------------------------------------------
 What to expect:
 
-- Type 'help' to see available commands.
+- Type 'help' to see available commands.  Some examples:
 
-- The ARP layer does not save outgoing packets when performing a query.
-  Network commands may need to be issued twice to get started.
+  - 'gfx' switches into graphics mode
+  - 'host' performs a DNS lookup on a hostname
+  - 'ping' sends an ICMP echo request to an IP address
+  - 'lsroute' prints the routing table
+  - 'datetime' prints the current time
+  - 'synctime' sends an NTP request and updates the CMOS
+
+- tools/os_helper.exe provides services to improve OS development.  Currently
+  this is used for remote logging via UDP.
 
 -------------------------------------------------------------------------------
 Emulator steps:
