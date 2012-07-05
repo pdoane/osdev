@@ -9,7 +9,7 @@
 // ------------------------------------------------------------------------------------------------
 static ExpectedQueue* s_params;
 static const char* s_file;
-static uint s_line;
+static unsigned s_line;
 
 // ------------------------------------------------------------------------------------------------
 void assert_true(const char* expr, bool result, const char* file, unsigned line)
@@ -64,8 +64,8 @@ void assert_eq_ptr(const char* expr, void* result, void* expected, const char* f
 {
     if (result != expected)
     {
-        fprintf(stderr, "%s(%d): %s => 0x%016x != %016x\n", file, line, expr,
-            (uintptr_t)result, (uintptr_t)expected);
+        fprintf(stderr, "%s(%d): %s => %p != %p\n", file, line, expr,
+            result, expected);
         exit(EXIT_FAILURE);
     }
 }
@@ -197,7 +197,7 @@ void end_queue(ExpectedQueue* q)
 }
 
 // ------------------------------------------------------------------------------------------------
-void pre_mock(const char* file, uint line)
+void pre_mock(const char* file, unsigned line)
 {
     s_file = file;
     s_line = line;
