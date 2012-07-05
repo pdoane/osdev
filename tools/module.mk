@@ -8,15 +8,23 @@ SOURCES += \
 
 TARGETS += \
 	tools/img_edit.exe \
-	tools/os_helper.exe \
+	tools/os_helper.exe
+
+WS2_32 :=
+
+ifeq ($(UNAME), Darwin)
+else
+TARGETS += \
 	tools/read_boot.exe \
 	tools/set_boot.exe
+WS2_32 = -lws2_32
+endif
 
 tools/img_edit.exe: tools/img_edit.native.o tools/fat16.native.o
 	$(CC) -o $@ $^
 
 tools/os_helper.exe: tools/os_helper.native.o
-	$(CC) -o $@ $^ -lws2_32
+	$(CC) -o $@ $^ $(WS2_32)
 
 tools/read_boot.exe: tools/read_boot.native.o
 	$(CC) -o $@ $^

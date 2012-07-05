@@ -1,5 +1,7 @@
 all: all_targets check
 
+UNAME := $(shell uname)
+
 SOURCES :=
 TARGETS :=
 TESTS :=
