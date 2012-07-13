@@ -30,7 +30,7 @@ void split_time(DateTime* dt, time_t t, int tz_offset)
 
     // Compute years since the epoch and days in that year
     int epoch_years = (epoch_days - (epoch_days + 365) / 1460) / 365;
-    int year_days = epoch_days - (epoch_years * 365 + (epoch_years + 1) / 4);
+    int year_day = epoch_days - (epoch_years * 365 + (epoch_years + 1) / 4);
 
     // Adjust year based on epoch
     int year = 1970 + epoch_years;
@@ -39,13 +39,13 @@ void split_time(DateTime* dt, time_t t, int tz_offset)
     const int* mstart = year & 3 ? reg_mstart : leap_mstart;
 
     int month = 1;
-    while (year_days >= mstart[month])
+    while (year_day >= mstart[month])
     {
         ++month;
     }
 
     // Compute day of the month and day of the week
-    int day = 1 + year_days - mstart[month - 1];
+    int day = 1 + year_day - mstart[month - 1];
     int week_day = (epoch_days + 4) % 7;
 
     // Store results
@@ -56,11 +56,28 @@ void split_time(DateTime* dt, time_t t, int tz_offset)
     dt->month = month;
     dt->year = year;
     dt->week_day = week_day;
+    dt->year_day = year_day;
     dt->tz_offset = tz_offset;
 }
 
 // ------------------------------------------------------------------------------------------------
-void format_time(char* str, size_t size, DateTime* dt)
+time_t join_time(const DateTime* dt)
+{
+    // From the Posix specification (4.14 Seconds Since the Epoch).
+    // Could be simplified as the last two cases only apply starting in 2100.
+    return
+        dt->sec +
+        dt->min * 60 +
+        dt->hour * 3600 +
+        dt->year_day * 86400 +
+        (dt->year - 70) * 31536000 +
+        ((dt->year - 69) / 4) * 86400 -
+        ((dt->year - 1) / 100) * 86400 +
+        ((dt->year + 299) / 400) * 86400;
+}
+
+// ------------------------------------------------------------------------------------------------
+void format_time(char* str, size_t size, const DateTime* dt)
 {
     static const char* week_days[] =
     {
