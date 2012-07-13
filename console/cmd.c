@@ -9,14 +9,40 @@
 #include "net/dns.h"
 #include "net/icmp.h"
 #include "net/ipv4.h"
-#include "net/net.h"
 #include "net/ntp.h"
 #include "net/port.h"
 #include "net/rlog.h"
+#include "net/route.h"
+#include "net/tcp.h"
 #include "net/udp.h"
 #include "stdlib/string.h"
 #include "time/pit.h"
 #include "time/rtc.h"
+
+// ------------------------------------------------------------------------------------------------
+static void cmd_connect(uint argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        console_print("Usage: connect <dest ipv4 address>\n");
+        return;
+    }
+
+    IPv4_Addr dst_addr;
+    if (!str_to_ipv4_addr(&dst_addr, argv[1]))
+    {
+        console_print("Failed to parse destination address\n");
+        return;
+    }
+
+    u16 port = 80;
+
+    TCP_Conn* conn = tcp_connect(&dst_addr, port);
+    if (conn)
+    {
+        tcp_close(conn);
+    }
+}
 
 // ------------------------------------------------------------------------------------------------
 static void cmd_datetime(uint argc, const char** argv)
@@ -37,6 +63,13 @@ static void cmd_echo(uint argc, const char** argv)
     {
         console_print("%s\n", argv[i]);
     }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void cmd_gfx(uint argc, const char** argv)
+{
+    console_print("Starting 3D graphics...\n");
+    gfx_start();
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -74,7 +107,7 @@ static void cmd_host(uint argc, const char** argv)
 // ------------------------------------------------------------------------------------------------
 static void cmd_lsroute(uint argc, const char** argv)
 {
-    ipv4_print_route_table();
+    net_print_route_table();
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -141,18 +174,12 @@ static void cmd_ticks(uint argc, const char** argv)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_gfx(uint argc, const char** argv)
-{
-    console_print("Starting 3D graphics...\n");
-    gfx_start();
-}
-
-
-// ------------------------------------------------------------------------------------------------
 ConsoleCmd console_cmd_table[] =
 {
+    { "connect", cmd_connect },
     { "datetime", cmd_datetime },
     { "echo", cmd_echo },
+    { "gfx", cmd_gfx },
     { "hello", cmd_hello },
     { "help", cmd_help },
     { "host", cmd_host },
@@ -162,6 +189,5 @@ ConsoleCmd console_cmd_table[] =
     { "rlog", cmd_rlog },
     { "synctime", cmd_synctime },
     { "ticks", cmd_ticks },
-    { "gfx", cmd_gfx },
     { 0, 0 },
 };

@@ -12,7 +12,7 @@ include tools/module.mk
 # Standard Settings
 CC := gcc
 COMMON_CFLAGS := -I . -std=c99
-COMMON_CFLAGS += -Wall -Werror-implicit-function-declaration
+COMMON_CFLAGS += -Wall -Werror-implicit-function-declaration -Werror -Wno-array-bounds
 COMMON_CFLAGS += -fno-common -fno-asynchronous-unwind-tables
 COMMON_CFLAGS += -mno-red-zone
 COMMON_CFLAGS += -O2

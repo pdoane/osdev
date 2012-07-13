@@ -1,18 +1,26 @@
 // ------------------------------------------------------------------------------------------------
-// net/net.h
+// net/route.h
 // ------------------------------------------------------------------------------------------------
 
 #pragma once
 
-#include "stdlib/link.h"
+#include "net/intf.h"
 
 // ------------------------------------------------------------------------------------------------
-// Globals
+// Route Entry
 
-extern u8 net_trace;
+typedef struct Net_Route
+{
+    Link link;
+    IPv4_Addr dst;
+    IPv4_Addr mask;
+    IPv4_Addr gateway;
+    Net_Intf* intf;
+} Net_Route;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void net_init();
-void net_poll();
+const Net_Route* net_find_route(const IPv4_Addr* dst);
+void net_add_route(const IPv4_Addr* dst, const IPv4_Addr* mask, const IPv4_Addr* gateway, Net_Intf* intf);
+void net_print_route_table();

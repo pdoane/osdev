@@ -28,16 +28,15 @@ typedef struct Eth_Header
 
 typedef struct Eth_Packet
 {
-    const Eth_Header* hdr;
+    Eth_Header* hdr;
     u16 ether_type;
-    const u8* data;
-    uint data_len;
+    u8* data;
 } Eth_Packet;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void eth_rx(Net_Intf* intf, u8* pkt, uint len);
-void eth_tx_intf(Net_Intf* intf, const void* dst_addr, u16 ether_type, u8* pkt, uint len);
+void eth_rx(Net_Intf* intf, u8* pkt, u8* end);
+void eth_tx_intf(Net_Intf* intf, const void* dst_addr, u16 ether_type, u8* pkt, u8* end);
 
-void eth_print(const Eth_Packet* ep);
+void eth_print(u8* pkt, u8* end);

@@ -3,3 +3,12 @@
 // ------------------------------------------------------------------------------------------------
 
 #include "net/port.h"
+
+static u16 net_next_port = 49152;
+
+// ------------------------------------------------------------------------------------------------
+u16 net_ephemeral_port()
+{
+    // TODO - check for collisions with active connections.
+    return net_next_port++;
+}

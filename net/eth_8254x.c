@@ -3,9 +3,9 @@
 // ------------------------------------------------------------------------------------------------
 
 #include "net/eth_8254x.h"
+#include "net/buf.h"
 #include "net/ipv4.h"
 #include "net/eth.h"
-#include "net/net.h"
 #include "console/console.h"
 #include "cpu/io.h"
 #include "mem/vm.h"
@@ -190,7 +190,7 @@ static void eth_8254x_poll(Net_Intf* intf)
     while (desc->status & RSTA_DD)
     {
         u8* pkt = (u8*)desc->addr;
-        uint len = desc->len;
+        u8* end = pkt + desc->len;
 
         if (desc->errors)
         {
@@ -198,7 +198,7 @@ static void eth_8254x_poll(Net_Intf* intf)
         }
         else
         {
-            eth_rx(intf, pkt, len);
+            eth_rx(intf, pkt, end);
         }
 
         desc->status = 0;
@@ -211,7 +211,7 @@ static void eth_8254x_poll(Net_Intf* intf)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void eth_8254x_tx(u8* pkt, uint len)
+static void eth_8254x_tx(u8* pkt, u8* end)
 {
     TX_Desc* desc = &dev.tx_descs[dev.tx_write];
 
@@ -232,7 +232,7 @@ static void eth_8254x_tx(u8* pkt, uint len)
 
     // Write new tx descriptor
     desc->addr = (u64)pkt;
-    desc->len = len;
+    desc->len = end - pkt;
     desc->cmd = CMD_EOP | CMD_IFCS | CMD_RS;
     desc->status = 0;
 

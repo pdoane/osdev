@@ -3,8 +3,10 @@
 // ------------------------------------------------------------------------------------------------
 
 #include "net/ntp.h"
+#include "net/buf.h"
 #include "net/net.h"
 #include "net/port.h"
+#include "net/swap.h"
 #include "net/udp.h"
 #include "console/console.h"
 #include "time/rtc.h"
@@ -41,11 +43,11 @@ typedef struct NTP_Header
 #define MODE_SERVER                     4
 
 // ------------------------------------------------------------------------------------------------
-void ntp_rx(Net_Intf* intf, const u8* pkt, uint len)
+void ntp_rx(Net_Intf* intf, const u8* pkt, const u8* end)
 {
-    ntp_print(pkt, len);
+    ntp_print(pkt, end);
 
-    if (len < sizeof(NTP_Header))
+    if (pkt + sizeof(NTP_Header) > end)
     {
         return;
     }
@@ -82,22 +84,22 @@ void ntp_tx(const IPv4_Addr* dst_addr)
     hdr->rx_timestamp = net_swap64(0);
     hdr->tx_timestamp = net_swap64(0);
 
-    uint len = sizeof(NTP_Header);
-    uint src_port = PORT_EPHEMERAL;
+    u8* end = pkt + sizeof(NTP_Header);
+    uint src_port = net_ephemeral_port();
 
-    ntp_print(pkt, len);
-    udp_tx(dst_addr, PORT_NTP, src_port, pkt, len);
+    ntp_print(pkt, end);
+    udp_tx(dst_addr, PORT_NTP, src_port, pkt, end);
 }
 
 // ------------------------------------------------------------------------------------------------
-void ntp_print(const u8* pkt, uint len)
+void ntp_print(const u8* pkt, const u8* end)
 {
     if (!net_trace)
     {
         return;
     }
 
-    if (len < sizeof(NTP_Header))
+    if (pkt + sizeof(NTP_Header) > end)
     {
         return;
     }

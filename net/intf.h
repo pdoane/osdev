@@ -19,8 +19,8 @@ typedef struct Net_Intf
     const char* name;
 
     void (*poll)(struct Net_Intf* intf);
-    void (*tx)(struct Net_Intf* intf, const void* dst_addr, u16 ether_type, u8* pkt, uint len);
-    void (*dev_tx)(u8* pkt, uint len);
+    void (*tx)(struct Net_Intf* intf, const void* dst_addr, u16 ether_type, u8* pkt, u8* end);
+    void (*dev_tx)(u8* pkt, u8* end);
 } Net_Intf;
 
 // ------------------------------------------------------------------------------------------------

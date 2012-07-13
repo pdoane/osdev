@@ -14,7 +14,7 @@ extern IPv4_Addr dns_server;
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void dns_rx(Net_Intf* intf, const u8* pkt, uint len);
+void dns_rx(Net_Intf* intf, const u8* pkt, const u8* end);
 void dns_query_host(const char* host, uint id);
 
-void dns_print(const u8* pkt, uint len);
+void dns_print(const u8* pkt, const u8* end);

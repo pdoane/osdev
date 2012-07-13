@@ -3,10 +3,11 @@
 // ------------------------------------------------------------------------------------------------
 
 #include "net/dns.h"
-#include "console/console.h"
-#include "net/net.h"
+#include "net/buf.h"
 #include "net/port.h"
+#include "net/swap.h"
 #include "net/udp.h"
+#include "console/console.h"
 #include "stdlib/string.h"
 
 // ------------------------------------------------------------------------------------------------
@@ -28,9 +29,9 @@ typedef struct DNS_Header
 IPv4_Addr dns_server;
 
 // ------------------------------------------------------------------------------------------------
-void dns_rx(Net_Intf* intf, const u8* pkt, uint len)
+void dns_rx(Net_Intf* intf, const u8* pkt, const u8* end)
 {
-    dns_print(pkt, len);
+    dns_print(pkt, end);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -87,13 +88,11 @@ void dns_query_host(const char* host, uint id)
     *(u16*)q = net_swap16(1);   // query class
     q += sizeof(u16);
 
-    uint len = q - pkt;
+    u8* end = q;
+    uint src_port = net_ephemeral_port();
 
-    uint src_port = PORT_EPHEMERAL;
-
-    dns_print(pkt, len);
-
-    udp_tx(&dns_server, PORT_DNS, src_port, pkt, len);
+    dns_print(pkt, end);
+    udp_tx(&dns_server, PORT_DNS, src_port, pkt, end);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -183,7 +182,7 @@ static const u8* dns_print_rr(const char* hdr, const u8* pkt, const u8* p)
 }
 
 // ------------------------------------------------------------------------------------------------
-void dns_print(const u8* pkt, uint len)
+void dns_print(const u8* pkt, const u8* end)
 {
     const DNS_Header* hdr = (const DNS_Header*)pkt;
 

@@ -3,10 +3,13 @@
 // ------------------------------------------------------------------------------------------------
 
 #include "net/dhcp.h"
+#include "net/buf.h"
 #include "net/dns.h"
 #include "net/ipv4.h"
 #include "net/net.h"
 #include "net/port.h"
+#include "net/route.h"
+#include "net/swap.h"
 #include "net/udp.h"
 #include "console/console.h"
 #include "stdlib/string.h"
@@ -117,6 +120,10 @@ static bool dhcp_parse_options(DHCP_Options* opt, const u8* p, const u8* end)
             u8 opt_len = *p++;
 
             const u8* next = p + opt_len;
+            if (next > end)
+            {
+                return false;
+            }
 
             switch (type)
             {
@@ -229,9 +236,9 @@ static void dhcp_request(Net_Intf* intf, const DHCP_Header* hdr, const DHCP_Opti
     *p++ = OPT_END;
 
     // Send packet
-    uint len = p - pkt;
-    dhcp_print(pkt, len);
-    udp_tx_intf(intf, &broadcast_ipv4_addr, PORT_BOOTP_SERVER, PORT_BOOTP_CLIENT, pkt, len);
+    u8* end = p;
+    dhcp_print(pkt, end);
+    udp_tx_intf(intf, &broadcast_ipv4_addr, PORT_BOOTP_SERVER, PORT_BOOTP_CLIENT, pkt, end);
 }
 
 
@@ -244,7 +251,7 @@ static void dhcp_ack(Net_Intf* intf, const DHCP_Header* hdr, const DHCP_Options*
     // Add gateway route
     if (opt->router_list)
     {
-        ipv4_add_route(&null_ipv4_addr, &null_ipv4_addr, opt->router_list, intf);
+        net_add_route(&null_ipv4_addr, &null_ipv4_addr, opt->router_list, intf);
     }
 
     // Add subnet route
@@ -252,12 +259,12 @@ static void dhcp_ack(Net_Intf* intf, const DHCP_Header* hdr, const DHCP_Options*
     {
         IPv4_Addr subnet_addr;
         subnet_addr.u.bits = intf->ip_addr.u.bits & opt->subnet_mask->u.bits;
-        ipv4_add_route(&subnet_addr, opt->subnet_mask, 0, intf);
+        net_add_route(&subnet_addr, opt->subnet_mask, 0, intf);
     }
 
     // Add host route
     IPv4_Addr host_mask = { { { 0xff, 0xff, 0xff, 0xff } } };
-    ipv4_add_route(&intf->ip_addr, &host_mask, 0, intf);
+    net_add_route(&intf->ip_addr, &host_mask, 0, intf);
 
     // Record broadcast address
     if (opt->subnet_mask)
@@ -275,11 +282,11 @@ static void dhcp_ack(Net_Intf* intf, const DHCP_Header* hdr, const DHCP_Options*
 }
 
 // ------------------------------------------------------------------------------------------------
-void dhcp_rx(Net_Intf* intf, const u8* pkt, uint len)
+void dhcp_rx(Net_Intf* intf, const u8* pkt, const u8* end)
 {
-    dhcp_print(pkt, len);
+    dhcp_print(pkt, end);
 
-    if (len < sizeof(DHCP_Header))
+    if (pkt + sizeof(DHCP_Header) > end)
     {
         return;
     }
@@ -295,10 +302,9 @@ void dhcp_rx(Net_Intf* intf, const u8* pkt, uint len)
         return;
     }
 
-    if (len >= sizeof(DHCP_Header) + 4)
+    if (end - pkt >= sizeof(DHCP_Header) + 4)
     {
         const u8* p = pkt + sizeof(DHCP_Header);
-        const u8* end = pkt + len;
 
         DHCP_Options opt;
         if (!dhcp_parse_options(&opt, p, end))
@@ -355,20 +361,20 @@ void dhcp_discover(Net_Intf* intf)
     *p++ = OPT_END;
 
     // Send packet
-    uint len = p - pkt;
-    dhcp_print(pkt, len);
-    udp_tx_intf(intf, &broadcast_ipv4_addr, PORT_BOOTP_SERVER, PORT_BOOTP_CLIENT, pkt, len);
+    u8* end = p;
+    dhcp_print(pkt, end);
+    udp_tx_intf(intf, &broadcast_ipv4_addr, PORT_BOOTP_SERVER, PORT_BOOTP_CLIENT, pkt, end);
 }
 
 // ------------------------------------------------------------------------------------------------
-void dhcp_print(const u8* pkt, uint len)
+void dhcp_print(const u8* pkt, const u8* end)
 {
     if (!net_trace)
     {
         return;
     }
 
-    if (len < sizeof(DHCP_Header))
+    if (pkt + sizeof(DHCP_Header) > end)
     {
         return;
     }
@@ -389,16 +395,15 @@ void dhcp_print(const u8* pkt, uint len)
 
     console_print("   DHCP: opcode=%d htype=%d hlen=%d hop_count=%d xid=%d secs=%d flags=%d len=%d\n",
         hdr->opcode, hdr->htype, hdr->hlen, hdr->hop_count,
-        net_swap32(hdr->xid), net_swap16(hdr->sec_count), net_swap16(hdr->flags), len);
+        net_swap32(hdr->xid), net_swap16(hdr->sec_count), net_swap16(hdr->flags), end - pkt);
     console_print("   DHCP: client=%s your=%s server=%s gateway=%s\n",
         client_ip_addr_str, your_ip_addr_str, server_ip_addr_str, gateway_ip_addr_str);
     console_print("   DHCP: eth=%s server_name=%s boot_filename=%s\n",
         client_eth_addr_str, hdr->server_name, hdr->boot_filename);
 
-    if (len >= sizeof(DHCP_Header) + 4)
+    if (end - pkt >= sizeof(DHCP_Header) + 4)
     {
         const u8* p = pkt + sizeof(DHCP_Header);
-        const u8* end = pkt + len;
 
         DHCP_Options opt;
         if (!dhcp_parse_options(&opt, p, end))

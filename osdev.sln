@@ -46,6 +46,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{1D3B050B-D
 		console\console_test.c = console\console_test.c
 		stdlib\format_test.c = stdlib\format_test.c
 		stdlib\string_test.c = stdlib\string_test.c
+		net\tcp_test.c = net\tcp_test.c
 		test\test.c = test\test.c
 		test\test.h = test\test.h
 	EndProjectSection
@@ -56,6 +57,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "net", "net", "{A54B0484-834
 		net\addr.h = net\addr.h
 		net\arp.c = net\arp.c
 		net\arp.h = net\arp.h
+		net\buf.c = net\buf.c
+		net\buf.h = net\buf.h
+		net\checksum.c = net\checksum.c
+		net\checksum.h = net\checksum.h
 		net\dhcp.c = net\dhcp.c
 		net\dhcp.h = net\dhcp.h
 		net\dns.c = net\dns.c
@@ -82,6 +87,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "net", "net", "{A54B0484-834
 		net\port.h = net\port.h
 		net\rlog.c = net\rlog.c
 		net\rlog.h = net\rlog.h
+		net\route.c = net\route.c
+		net\route.h = net\route.h
+		net\swap.h = net\swap.h
+		net\tcp.c = net\tcp.c
+		net\tcp.h = net\tcp.h
 		net\udp.c = net\udp.c
 		net\udp.h = net\udp.h
 	EndProjectSection
@@ -203,8 +213,8 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "gfx", "gfx", "{9EA32D36-847D-434D-9EFF-D6A8185E571A}"
 	ProjectSection(SolutionItems) = preProject
 		gfx\gfx.c = gfx\gfx.c
-		gfx\reg.h = gfx\reg.h
 		gfx\gfx.h = gfx\gfx.h
+		gfx\reg.h = gfx\reg.h
 		gfx\vga.c = gfx\vga.c
 		gfx\vga.h = gfx\vga.h
 	EndProjectSection

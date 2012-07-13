@@ -1,18 +1,26 @@
 // ------------------------------------------------------------------------------------------------
-// net/net.h
+// net/checksum.h
 // ------------------------------------------------------------------------------------------------
 
 #pragma once
 
-#include "stdlib/link.h"
+#include "net/addr.h"
 
 // ------------------------------------------------------------------------------------------------
-// Globals
+// Checksum Header
 
-extern u8 net_trace;
+typedef struct Checksum_Header
+{
+    IPv4_Addr src;
+    IPv4_Addr dst;
+    u8 reserved;
+    u8 protocol;
+    u16 len;
+} PACKED Checksum_Header;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void net_init();
-void net_poll();
+u16 net_checksum(const u8* data, const u8* end);
+uint net_checksum_acc(const u8* data, const u8* end, uint sum);
+u16 net_checksum_final(uint sum);

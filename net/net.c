@@ -6,12 +6,10 @@
 #include "net/arp.h"
 #include "net/dhcp.h"
 #include "net/loopback.h"
-#include "console/console.h"
-#include "mem/vm.h"
+#include "net/tcp.h"
 
 // ------------------------------------------------------------------------------------------------
-
-static Link net_free_packets = { &net_free_packets, &net_free_packets };
+// Globals
 
 u8 net_trace = 0;
 
@@ -20,6 +18,7 @@ void net_init()
 {
     loopback_init();
     arp_init();
+    tcp_init();
 
     // Initialize interfaces
     Link* it = g_net_intf_list.next;
@@ -54,25 +53,4 @@ void net_poll()
 
         it = it->next;
     }
-}
-
-// ------------------------------------------------------------------------------------------------
-NetBuf* net_alloc_packet()
-{
-    Link* p = net_free_packets.next;
-    if (p != &net_free_packets)
-    {
-        link_remove(p);
-        return link_data(p, NetBuf, link);
-    }
-    else
-    {
-        return vm_alloc(MAX_PACKET_SIZE);
-    }
-}
-
-// ------------------------------------------------------------------------------------------------
-void net_free_packet(NetBuf* buf)
-{
-    link_before(&net_free_packets, &buf->link);
 }

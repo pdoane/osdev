@@ -7,7 +7,7 @@
 #include "net/intf.h"
 
 // ------------------------------------------------------------------------------------------------
-void ntp_rx(Net_Intf* intf, const u8* pkt, uint len);
+void ntp_rx(Net_Intf* intf, const u8* pkt, const u8* end);
 void ntp_tx(const IPv4_Addr* dst_addr);
 
-void ntp_print(const u8* pkt, uint len);
+void ntp_print(const u8* pkt, const u8* end);

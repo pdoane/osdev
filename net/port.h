@@ -16,4 +16,7 @@
 
 #define PORT_OSHELPER                   4950
 
-#define PORT_EPHEMERAL                  3141    // TODO - add proper ephemeral port management
+// ------------------------------------------------------------------------------------------------
+// Functions
+
+u16 net_ephemeral_port();

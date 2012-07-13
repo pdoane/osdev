@@ -20,6 +20,8 @@ KERNEL_SOURCES := \
 	mem/vm.c \
 	net/addr.c \
 	net/arp.c \
+	net/buf.c \
+	net/checksum.c \
 	net/dhcp.c \
 	net/dns.c \
 	net/eth.c \
@@ -33,6 +35,8 @@ KERNEL_SOURCES := \
 	net/ntp.c \
 	net/port.c \
 	net/rlog.c \
+	net/route.c \
+	net/tcp.c \
 	net/udp.c \
 	pci/driver.c \
 	pci/pci.c \
@@ -72,17 +76,34 @@ kernel/kernel.bin: $(KERNEL_OBJECTS) kernel/linker.ld
 SOURCES += \
 	console/console_mock.c \
 	console/console_test.c \
+	net/tcp_test.c \
 	stdlib/format_test.c \
 	stdlib/string_test.c
 
 TESTS += \
 	console/console_test.exe \
+	net/tcp_test.exe \
 	stdlib/format_test.exe \
 	stdlib/string_test.exe \
 	stdlib/format_test_native.exe \
 	stdlib/string_test_native.exe
 
+TCP_TEST_SOURCES := \
+	net/addr.c \
+	net/buf.c \
+	net/checksum.c \
+	net/intf.c \
+	net/port.c \
+	net/route.c \
+	net/tcp.c \
+	net/tcp_test.c \
+	test/test.c \
+	time/time.c
+
 console/console_test.exe: test/test.test.o console/console_test.test.o console/console.test.o
+	$(CC) -o $@ $^
+
+net/tcp_test.exe: $(TCP_TEST_SOURCES:.c=.test.o)
 	$(CC) -o $@ $^
 
 stdlib/format_test.exe: test/test.test.o stdlib/format_test.test.o stdlib/format.test.o

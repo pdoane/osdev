@@ -3,8 +3,8 @@
 // ------------------------------------------------------------------------------------------------
 
 #include "net/rlog.h"
+#include "net/buf.h"
 #include "net/intf.h"
-#include "net/net.h"
 #include "net/port.h"
 #include "net/udp.h"
 #include "stdlib/link.h"
@@ -38,8 +38,9 @@ void rlog_print(const char* fmt, ...)
             u8* pkt = (u8*)(buf + 1);
 
             strcpy((char*)pkt, msg);
+            u8* end = pkt + len;
 
-            udp_tx(&intf->broadcast_addr, PORT_OSHELPER, PORT_OSHELPER, pkt, len);
+            udp_tx(&intf->broadcast_addr, PORT_OSHELPER, PORT_OSHELPER, pkt, end);
         }
 
         it = it->next;
