@@ -60,21 +60,24 @@ loader_bsp:
 ; -------------------------------------------------------------------------------------------------
 ; Enable Unreal Mode
 enable_unreal_mode:
-        lgdt [gdt64.desc]           ; Load GDT
+        lgdt [gdt32.desc]           ; Load GDT
 
         push ds                     ; Save real mode
+        push es
 
         mov eax, cr0                ; Activate protected mode
         or al, 0x01
         mov cr0, eax
 
-        mov bx, gdt64.unreal        ; Load unreal descriptor
+        mov bx, gdt32.data          ; Load data descriptor
         mov ds, bx
+        mov es, bx
 
         and al, 0xfe                ; Disable protected mode
         mov cr0, eax
 
-        pop ds                      ; Restore real mode
+        pop es                      ; Restore real mode
+        pop ds
 
         ret
 
@@ -160,6 +163,8 @@ build_vm_tables:
 ; -------------------------------------------------------------------------------------------------
 ; Enable Long Mode
 enable_long_mode:
+        lgdt [gdt64.desc]
+
         mov eax, 0x000000a0         ; Set PAE and PGE
         mov cr4, eax
 
@@ -378,8 +383,6 @@ gdt64:
         dq 0x0020980000000000
 .data equ $ - gdt64                 ; Data segment
         dq 0x0000920000000000
-.unreal equ $ - gdt64               ; Unreal segment
-        dq 0x00cf92000000ffff
 
 .desc:
         dw $ - gdt64 - 1            ; 16-bit Size (Limit)
