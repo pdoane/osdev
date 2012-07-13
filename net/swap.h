@@ -9,27 +9,17 @@
 // ------------------------------------------------------------------------------------------------
 // Byte Order translation
 
-static inline u16 net_swap16(u16 n)
+static inline u16 net_swap16(u16 x)
 {
-    return ((n & 0x00ff) << 8) | ((n & 0xff00) >> 8);
+    return (x>>8) | (x<<8);
 }
 
-static inline u32 net_swap32(u32 n)
+static inline u32 net_swap32(u32 x)
 {
-    return ((n & 0x000000ff) << 24) |
-           ((n & 0x0000ff00) << 8) |
-           ((n & 0x00ff0000) >> 8) |
-           ((n & 0xff000000) >> 24);
+    return __builtin_bswap32(x);
 }
 
-static inline u64 net_swap64(u64 n)
+static inline u64 net_swap64(u64 x)
 {
-    return ((n & 0x00000000000000ff) << 56) |
-           ((n & 0x000000000000ff00) << 40) |
-           ((n & 0x0000000000ff0000) << 24) |
-           ((n & 0x00000000ff000000) << 8) |
-           ((n & 0x000000ff00000000) >> 8) |
-           ((n & 0x0000ff0000000000) >> 24) |
-           ((n & 0x00ff000000000000) >> 40) |
-           ((n & 0xff00000000000000) >> 56);
+    return __builtin_bswap64(x);
 }
