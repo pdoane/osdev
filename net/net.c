@@ -21,20 +21,14 @@ void net_init()
     tcp_init();
 
     // Initialize interfaces
-    Link* it = g_net_intf_list.next;
-    Link* end = &g_net_intf_list;
-
-    while (it != end)
+    Net_Intf* intf;
+    list_for_each(intf, g_net_intf_list, link)
     {
-        Net_Intf* intf = link_data(it, Net_Intf, link);
-
         // Check if interface needs IP address dynamically assigned
         if (!intf->ip_addr.u.bits)
         {
             dhcp_discover(intf);
         }
-
-        it = it->next;
     }
 }
 
@@ -42,15 +36,9 @@ void net_init()
 void net_poll()
 {
     // Poll interfaces
-    Link* it = g_net_intf_list.next;
-    Link* end = &g_net_intf_list;
-
-    while (it != end)
+    Net_Intf* intf;
+    list_for_each(intf, g_net_intf_list, link)
     {
-        Net_Intf* intf = link_data(it, Net_Intf, link);
-
         intf->poll(intf);
-
-        it = it->next;
     }
 }

@@ -25,13 +25,9 @@ void rlog_print(const char* fmt, ...)
     uint len = strlen(msg) + 1;
 
     // For each interface, broadcast a packet
-    Link* it = g_net_intf_list.next;
-    Link* end = &g_net_intf_list;
-
-    while (it != end)
+    Net_Intf* intf;
+    list_for_each(intf, g_net_intf_list, link)
     {
-        Net_Intf* intf = link_data(it, Net_Intf, link);
-
         if (!ipv4_addr_eq(&intf->broadcast_addr, &null_ipv4_addr))
         {
             NetBuf* buf = net_alloc_packet();
@@ -42,7 +38,5 @@ void rlog_print(const char* fmt, ...)
 
             udp_tx(&intf->broadcast_addr, PORT_OSHELPER, PORT_OSHELPER, pkt, end);
         }
-
-        it = it->next;
     }
 }

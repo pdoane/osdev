@@ -587,17 +587,14 @@ static void uhci_controller_poll(USB_Controller* controller)
 {
     UHCI_Controller* hc = (UHCI_Controller*)controller->hc;
 
-    UHCI_QH* qh = link_data(hc->async_qh->qh_link.next, UHCI_QH, qh_link);
-    UHCI_QH* end = hc->async_qh;
-    while (qh != end)
+    UHCI_QH* qh;
+    UHCI_QH* next;
+    list_for_each_safe(qh, next, hc->async_qh->qh_link, qh_link)
     {
-        UHCI_QH* next = link_data(qh->qh_link.next, UHCI_QH, qh_link);
         if (qh->transfer)
         {
             uhci_qh_process(hc, qh);
         }
-
-        qh = next;
     }
 }
 

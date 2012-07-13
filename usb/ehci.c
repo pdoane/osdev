@@ -769,20 +769,14 @@ static void ehci_probe(EHCI_Controller* hc)
 // ------------------------------------------------------------------------------------------------
 static void ehci_controller_poll_list(EHCI_Controller* hc, Link* list)
 {
-    Link* it = list->next;
-    Link* end = list;
-
-    while (it != end)
+    EHCI_QH* qh;
+    EHCI_QH* next;
+    list_for_each_safe(qh, next, *list, qh_link)
     {
-        EHCI_QH* qh = link_data(it, EHCI_QH, qh_link);
-        Link* next = it->next;
-
         if (qh->transfer)
         {
             ehci_qh_process(hc, qh);
         }
-
-        it = next;
     }
 }
 

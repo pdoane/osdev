@@ -55,4 +55,18 @@ static inline void link_remove(Link* a)
 
 // ------------------------------------------------------------------------------------------------
 #define link_data(link,T,m) \
-    (T*)((char*)link - (unsigned long)(&(((T*)0)->m)))
+    (T*)((char*)(link) - (unsigned long)(&(((T*)0)->m)))
+
+// ------------------------------------------------------------------------------------------------
+#define list_for_each(it, list, m) \
+    for (it = link_data((list).next, typeof(*it), m); \
+        &it->m != &(list); \
+        it = link_data(it->m.next, typeof(*it), m))
+
+// ------------------------------------------------------------------------------------------------
+#define list_for_each_safe(it, n, list, m) \
+    for (it = link_data((list).next, typeof(*it), m), \
+        n = link_data(it->m.next, typeof(*it), m); \
+        &it->m != &(list); \
+        it = n, \
+        n = link_data(n->m.next, typeof(*it), m))
