@@ -13,6 +13,8 @@
 #include "stdlib/string.h"
 #include "time/pit.h"
 
+#include "cursor.c"
+
 #define DEVICE_HD3000 0x0162
 
 // ------------------------------------------------------------------------------------------------
@@ -179,7 +181,7 @@ void gfx_start()
     vm_map_pages(s_gfxDevice.pGraphicsMem, graphicsMemSize, PAGE_WRITE_THROUGH | PAGE_CACHE_DISABLE);
 
     memset(s_gfxDevice.pSurfaceMem, 0x77, 720 * 400 * 4);
-    memset(s_gfxDevice.pCursorMem, 0x99, 64 * 64 * sizeof(u32));
+    memcpy(s_gfxDevice.pCursorMem, cursor_image.pixel_data, 64 * 64 * sizeof(u32));
 
     rlog_print("pGraphicsMem = 0x%x\n", s_gfxDevice.pGraphicsMem);
     rlog_print("pSurfaceMem = 0x%x\n", s_gfxDevice.pSurfaceMem);
