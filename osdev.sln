@@ -23,6 +23,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "boot", "boot", "{53880C07-2
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{154C46AE-2126-4835-95DB-DF45EC6F6AAC}"
 	ProjectSection(SolutionItems) = preProject
+		AUTHORS = AUTHORS
 		LICENSE = LICENSE
 		Makefile = Makefile
 		module.mk = module.mk
@@ -205,6 +206,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "console", "console", "{EAFA
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "cpu", "cpu", "{E4EF894A-03A0-45CA-8F3A-7BD4694C0684}"
 	ProjectSection(SolutionItems) = preProject
+		cpu\detect.c = cpu\detect.c
+		cpu\detect.h = cpu\detect.h
 		cpu\io.h = cpu\io.h
 		cpu\smp.c = cpu\smp.c
 		cpu\smp.h = cpu\smp.h

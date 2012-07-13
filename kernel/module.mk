@@ -5,6 +5,7 @@ KERNEL_SOURCES := \
 	acpi/acpi.c \
 	console/console.c \
 	console/cmd.c \
+	cpu/detect.c \
 	cpu/smp.c \
 	gfx/gfx.c \
 	gfx/vga.c \

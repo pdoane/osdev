@@ -4,6 +4,7 @@
 
 #include "console/cmd.h"
 #include "console/console.h"
+#include "cpu/detect.h"
 #include "cpu/io.h"
 #include "gfx/gfx.h"
 #include "net/dns.h"
@@ -54,6 +55,12 @@ static void cmd_datetime(uint argc, const char** argv)
     format_time(buf, sizeof(buf), &dt);
 
     console_print("%s\n", buf);
+}
+
+// ------------------------------------------------------------------------------------------------
+static void cmd_detect(uint argc, const char** argv)
+{
+    cpu_detect();
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -178,6 +185,7 @@ ConsoleCmd console_cmd_table[] =
 {
     { "connect", cmd_connect },
     { "datetime", cmd_datetime },
+    { "detect", cmd_detect },
     { "echo", cmd_echo },
     { "gfx", cmd_gfx },
     { "hello", cmd_hello },
