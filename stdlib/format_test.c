@@ -77,6 +77,9 @@ static void test_print()
     ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%p", (void*)0x12345678), 10);
     ASSERT_EQ_STR(buf, "0x12345678");
 
+    ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%p", (void*)0x123456), 8);
+    ASSERT_EQ_STR(buf, "0x123456");
+
     // padding
     ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%-10s", "left"), 10);
     ASSERT_EQ_STR(buf, "left      ");
