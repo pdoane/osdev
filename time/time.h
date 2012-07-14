@@ -9,7 +9,7 @@
 // ------------------------------------------------------------------------------------------------
 // Elapsed Time
 
-typedef i32 time_t;     // seconds since Jan 1, 1970 at midnight UTC
+typedef i32 abs_time;     // seconds since Jan 1, 1970 at midnight UTC
 
 // ------------------------------------------------------------------------------------------------
 // Date/Time Components
@@ -37,6 +37,6 @@ extern int tz_local;   // Time zone offset in minutes
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void split_time(DateTime* dt, time_t t, int tz_offset);
-time_t join_time(const DateTime* dt);
+void split_time(DateTime* dt, abs_time t, int tz_offset);
+abs_time join_time(const DateTime* dt);
 void format_time(char* str, size_t size, const DateTime* dt);

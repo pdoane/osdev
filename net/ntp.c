@@ -54,7 +54,7 @@ void ntp_rx(Net_Intf* intf, const u8* pkt, const u8* end)
 
     NTP_Header* hdr = (NTP_Header*)pkt;
 
-    time_t t = (net_swap64(hdr->tx_timestamp) >> 32) - UNIX_EPOCH;
+    abs_time t = (net_swap64(hdr->tx_timestamp) >> 32) - UNIX_EPOCH;
     DateTime dt;
     split_time(&dt, t, tz_local);
 
@@ -106,7 +106,7 @@ void ntp_print(const u8* pkt, const u8* end)
 
     NTP_Header* hdr = (NTP_Header*)pkt;
 
-    time_t t = (net_swap64(hdr->tx_timestamp) >> 32) - UNIX_EPOCH;
+    abs_time t = (net_swap64(hdr->tx_timestamp) >> 32) - UNIX_EPOCH;
 
     console_print("   NTP: mode=%02x stratum=%d poll=%d precision=%d\n",
         hdr->mode, hdr->stratum, hdr->poll, hdr->precision);

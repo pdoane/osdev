@@ -10,7 +10,7 @@
 int tz_local = -7 * 60;   // Time zone offset in minutes
 
 // ------------------------------------------------------------------------------------------------
-void split_time(DateTime* dt, time_t t, int tz_offset)
+void split_time(DateTime* dt, abs_time t, int tz_offset)
 {
     // Adjust t for time zone
     t += tz_offset * 60;
@@ -61,7 +61,7 @@ void split_time(DateTime* dt, time_t t, int tz_offset)
 }
 
 // ------------------------------------------------------------------------------------------------
-time_t join_time(const DateTime* dt)
+abs_time join_time(const DateTime* dt)
 {
     // From the Posix specification (4.14 Seconds Since the Epoch).
     // Could be simplified as the last two cases only apply starting in 2100.

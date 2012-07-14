@@ -190,7 +190,7 @@ void tcp_init()
     // Compute base ISN from system clock and ticks since boot.  ISN is incremented every 4 us.
     DateTime dt;
     rtc_get_time(&dt);
-    time_t t = join_time(&dt);
+    abs_time t = join_time(&dt);
 
     tcp_base_isn = (t * 1000 - pit_ticks) * 250;
 }
