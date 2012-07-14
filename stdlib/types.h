@@ -17,7 +17,8 @@ typedef unsigned long long  u64;
 typedef u32                 size_t;
 typedef u64                 uintptr_t;
 #else
-#include <stdlib.h>
+#include <stddef.h>
+#include <stdint.h>
 #endif
 
 typedef unsigned int        uint;
