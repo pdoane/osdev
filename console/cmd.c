@@ -10,6 +10,7 @@
 #include "net/dns.h"
 #include "net/icmp.h"
 #include "net/ipv4.h"
+#include "net/net.h"
 #include "net/ntp.h"
 #include "net/port.h"
 #include "net/rlog.h"
@@ -40,6 +41,11 @@ static void cmd_connect(uint argc, const char** argv)
 
     TCP_Conn* conn = tcp_create();
     tcp_connect(conn, &dst_addr, port);
+    while (conn->state == TCP_SYN_SENT)
+    {
+        net_poll();
+    }
+
     tcp_close(conn);
 }
 

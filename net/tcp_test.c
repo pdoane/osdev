@@ -254,6 +254,7 @@ int main(int argc, const char** argv)
     tcp_swap(out_hdr);
     ASSERT_TRUE(out_hdr->src_port >= 49152);
     ASSERT_EQ_UINT(out_hdr->dst_port, 80);
+    ASSERT_EQ_UINT(out_hdr->seq, conn->iss);
     ASSERT_EQ_UINT(out_hdr->ack, 0);
     ASSERT_EQ_HEX8(out_hdr->flags, TCP_SYN);
     ASSERT_EQ_UINT(out_hdr->window_size, TCP_WINDOW_SIZE);
