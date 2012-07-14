@@ -12,6 +12,14 @@
 #define TCP_WINDOW_SIZE     8192
 
 // ------------------------------------------------------------------------------------------------
+// Sequence comparisons
+
+#define SEQ_LT(x,y) ((int)((x)-(y)) < 0)
+#define SEQ_LE(x,y) ((int)((x)-(y)) <= 0)
+#define SEQ_GT(x,y) ((int)((x)-(y)) > 0)
+#define SEQ_GE(x,y) ((int)((x)-(y)) >= 0)
+
+// ------------------------------------------------------------------------------------------------
 // TCP Header
 
 typedef struct TCP_Header
@@ -20,7 +28,7 @@ typedef struct TCP_Header
     u16 dst_port;
     u32 seq;
     u32 ack;
-    u8 len;
+    u8 off;
     u8 flags;
     u16 window_size;
     u16 checksum;
@@ -81,12 +89,19 @@ typedef struct TCP_Conn
     u32 snd_una;                        // send unacknowledged
     u32 snd_nxt;                        // send next
     u32 snd_wnd;                        // send window
+    u32 snd_up;                         // send urgent pointer
     u32 snd_wl1;                        // segment sequence number used for last window update
     u32 snd_wl2;                        // segment acknowledgment number used for last window update
+    u32 iss;                            // initial send sequence number
 
     // receive state
     u32 rcv_nxt;                        // receive next
     u32 rcv_wnd;                        // receive window
+    u32 rcv_up;                         // receive urgent pointer
+    u32 irs;                            // initial receive sequence number
+
+    // callbacks
+    void (*on_error)(const char* msg);
 } TCP_Conn;
 
 // ------------------------------------------------------------------------------------------------
@@ -96,7 +111,8 @@ void tcp_init();
 void tcp_rx(Net_Intf* intf, u8* pkt, u8* end);
 void tcp_swap(TCP_Header* hdr);
 
-TCP_Conn* tcp_connect(const IPv4_Addr* addr, u16 port);
+TCP_Conn* tcp_create();
+bool tcp_connect(TCP_Conn* conn, const IPv4_Addr* addr, u16 port);
 void tcp_close(TCP_Conn* conn);
 void tcp_send(TCP_Conn* conn, const void* data, uint count);
 uint tcp_recv(TCP_Conn* conn, void* data, uint count);

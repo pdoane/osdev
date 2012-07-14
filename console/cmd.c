@@ -38,11 +38,9 @@ static void cmd_connect(uint argc, const char** argv)
 
     u16 port = 80;
 
-    TCP_Conn* conn = tcp_connect(&dst_addr, port);
-    if (conn)
-    {
-        tcp_close(conn);
-    }
+    TCP_Conn* conn = tcp_create();
+    tcp_connect(conn, &dst_addr, port);
+    tcp_close(conn);
 }
 
 // ------------------------------------------------------------------------------------------------
