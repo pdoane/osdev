@@ -9,7 +9,7 @@
 // ------------------------------------------------------------------------------------------------
 void usb_poll()
 {
-    for (USB_Controller* c = g_usb_controller_list; c; c = c->next)
+    for (USB_Controller* c = usb_controller_list; c; c = c->next)
     {
         if (c->poll)
         {
@@ -17,7 +17,7 @@ void usb_poll()
         }
     }
 
-    for (USB_Device* dev = g_usb_dev_list; dev; dev = dev->next)
+    for (USB_Device* dev = usb_dev_list; dev; dev = dev->next)
     {
         if (dev->drv_poll)
         {

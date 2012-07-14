@@ -30,7 +30,7 @@ static void pci_visit(uint bus, uint dev, uint func)
         pci_class_name(info.class_code, info.subclass, info.prog_intf)
         );
 
-    PCI_Driver* driver = pci_driver_table;
+    const PCI_Driver* driver = pci_driver_table;
     while (driver->init)
     {
         driver->init(id, &info);

@@ -9,7 +9,7 @@
 // ------------------------------------------------------------------------------------------------
 // Globals
 
-Link g_net_intf_list = { &g_net_intf_list, &g_net_intf_list };
+Link net_intf_list = { &net_intf_list, &net_intf_list };
 
 // ------------------------------------------------------------------------------------------------
 Net_Intf* net_intf_create()
@@ -24,5 +24,5 @@ Net_Intf* net_intf_create()
 // ------------------------------------------------------------------------------------------------
 void net_intf_add(Net_Intf* intf)
 {
-    link_before(&g_net_intf_list, &intf->link);
+    link_before(&net_intf_list, &intf->link);
 }

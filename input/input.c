@@ -22,7 +22,7 @@ static u8 s_flags;
 // ------------------------------------------------------------------------------------------------
 void input_event(uint code, uint val)
 {
-    Keymap* keymap = &keymap_us101;
+    const Keymap* keymap = &keymap_us101;
 
     if (val)
     {

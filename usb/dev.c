@@ -9,7 +9,7 @@
 #include "time/pit.h"
 
 // ------------------------------------------------------------------------------------------------
-USB_Device* g_usb_dev_list;
+USB_Device* usb_dev_list;
 
 static int s_next_addr;
 
@@ -21,7 +21,7 @@ USB_Device* usb_dev_create()
     if (dev)
     {
         dev->parent = 0;
-        dev->next = g_usb_dev_list;
+        dev->next = usb_dev_list;
         dev->hc = 0;
         dev->drv = 0;
 
@@ -35,7 +35,7 @@ USB_Device* usb_dev_create()
         dev->hc_intr = 0;
         dev->drv_poll = 0;
 
-        g_usb_dev_list = dev;
+        usb_dev_list = dev;
     }
 
     return dev;
@@ -196,7 +196,7 @@ bool usb_dev_init(USB_Device* dev)
         dev->endp.desc = *picked_endp_desc;
 
         // Initialize driver
-        USB_Driver* driver = usb_driver_table;
+        const USB_Driver* driver = usb_driver_table;
         while (driver->init)
         {
             if (driver->init(dev))

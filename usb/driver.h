@@ -13,4 +13,4 @@ typedef struct USB_Driver
 } USB_Driver;
 
 // ------------------------------------------------------------------------------------------------
-extern USB_Driver usb_driver_table[];
+extern const USB_Driver usb_driver_table[];

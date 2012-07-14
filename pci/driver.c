@@ -11,7 +11,7 @@
 #include "usb/uhci.h"
 
 // ------------------------------------------------------------------------------------------------
-PCI_Driver pci_driver_table[] =
+const PCI_Driver pci_driver_table[] =
 {
     { eth_8254x_init },
     { uhci_init },

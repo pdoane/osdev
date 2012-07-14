@@ -22,7 +22,7 @@ void net_init()
 
     // Initialize interfaces
     Net_Intf* intf;
-    list_for_each(intf, g_net_intf_list, link)
+    list_for_each(intf, net_intf_list, link)
     {
         // Check if interface needs IP address dynamically assigned
         if (!intf->ip_addr.u.bits)
@@ -37,7 +37,7 @@ void net_poll()
 {
     // Poll interfaces
     Net_Intf* intf;
-    list_for_each(intf, g_net_intf_list, link)
+    list_for_each(intf, net_intf_list, link)
     {
         intf->poll(intf);
     }

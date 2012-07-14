@@ -92,7 +92,7 @@ static void cmd_hello(uint argc, const char** argv)
 // ------------------------------------------------------------------------------------------------
 static void cmd_help(uint argc, const char** argv)
 {
-    ConsoleCmd* cmd = console_cmd_table;
+    const ConsoleCmd* cmd = console_cmd_table;
     while (cmd->name)
     {
         console_print("%s\n", cmd->name);
@@ -185,7 +185,7 @@ static void cmd_ticks(uint argc, const char** argv)
 }
 
 // ------------------------------------------------------------------------------------------------
-ConsoleCmd console_cmd_table[] =
+const ConsoleCmd console_cmd_table[] =
 {
     { "connect", cmd_connect },
     { "datetime", cmd_datetime },

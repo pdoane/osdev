@@ -917,9 +917,9 @@ void ehci_init(uint id, PCI_DeviceInfo* info)
 
     // Register controller
     USB_Controller* controller = (USB_Controller*)vm_alloc(sizeof(USB_Controller));
-    controller->next = g_usb_controller_list;
+    controller->next = usb_controller_list;
     controller->hc = hc;
     controller->poll = ehci_controller_poll;
 
-    g_usb_controller_list = controller;
+    usb_controller_list = controller;
 }

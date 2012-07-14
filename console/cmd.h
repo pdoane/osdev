@@ -12,4 +12,4 @@ typedef struct ConsoleCmd
     void (*exec)(uint argc, const char** argv);
 } ConsoleCmd;
 
-extern ConsoleCmd console_cmd_table[];
+extern const ConsoleCmd console_cmd_table[];

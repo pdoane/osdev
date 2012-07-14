@@ -10,7 +10,7 @@
 
 u16 vga_text_base[80*25];
 
-ConsoleCmd console_cmd_table[] =
+const ConsoleCmd console_cmd_table[] =
 {
     { 0, 0 },
 };

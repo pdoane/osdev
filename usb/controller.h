@@ -20,4 +20,4 @@ typedef struct USB_Controller
 // ------------------------------------------------------------------------------------------------
 // Globals
 
-extern USB_Controller* g_usb_controller_list;
+extern USB_Controller* usb_controller_list;

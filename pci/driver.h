@@ -85,7 +85,7 @@ typedef struct PCI_Driver
 } PCI_Driver;
 
 // ------------------------------------------------------------------------------------------------
-extern PCI_Driver pci_driver_table[];
+extern const PCI_Driver pci_driver_table[];
 
 u8 pci_in8(uint id, uint reg);
 u16 pci_in16(uint id, uint reg);

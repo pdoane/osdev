@@ -16,8 +16,8 @@ void split_time(DateTime* dt, abs_time t, int tz_offset)
     t += tz_offset * 60;
 
     // Start of each month based on day of the year
-    static int reg_mstart[]  = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
-    static int leap_mstart[] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 };
+    static const int reg_mstart[]  = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
+    static const int leap_mstart[] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 };
 
     // Split time into days since the epoch and seconds in that day
     int epoch_days = t / (24 * 60 * 60);

@@ -26,7 +26,7 @@ void rlog_print(const char* fmt, ...)
 
     // For each interface, broadcast a packet
     Net_Intf* intf;
-    list_for_each(intf, g_net_intf_list, link)
+    list_for_each(intf, net_intf_list, link)
     {
         if (!ipv4_addr_eq(&intf->broadcast_addr, &null_ipv4_addr))
         {

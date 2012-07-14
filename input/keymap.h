@@ -13,4 +13,4 @@ typedef struct Keymap
     u8 numlock[128];
 } Keymap;
 
-extern Keymap keymap_us101;
+extern const Keymap keymap_us101;

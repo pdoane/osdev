@@ -144,7 +144,7 @@ static void console_exec()
     // Execute command
     if (argc > 0)
     {
-        ConsoleCmd* cmd = console_cmd_table;
+        const ConsoleCmd* cmd = console_cmd_table;
         while (cmd->name)
         {
             if (strcmp(cmd->name, argv[0]) == 0)
