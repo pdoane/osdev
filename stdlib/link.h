@@ -54,6 +54,12 @@ static inline void link_remove(Link* a)
 }
 
 // ------------------------------------------------------------------------------------------------
+static inline bool list_empty(Link* x)
+{
+    return x->next == x;
+}
+
+// ------------------------------------------------------------------------------------------------
 #define link_data(link,T,m) \
     (T*)((char*)(link) - (unsigned long)(&(((T*)0)->m)))
 
