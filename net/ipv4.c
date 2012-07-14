@@ -104,17 +104,11 @@ void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
 // ------------------------------------------------------------------------------------------------
 void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, u8* end)
 {
-    // Find an appropriate interface to route dst_addr
     const Net_Route* route = net_find_route(dst_addr);
-    const IPv4_Addr* next_addr = dst_addr;
 
     if (route)
     {
-        // Use gateway if appropriate for the route
-        if (route->gateway.u.bits)
-        {
-            next_addr = &route->gateway;
-        }
+        const IPv4_Addr* next_addr = net_next_addr(route, dst_addr);
 
         ipv4_tx_intf(route->intf, next_addr, dst_addr, protocol, pkt, end);
     }

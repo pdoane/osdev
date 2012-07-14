@@ -260,7 +260,7 @@ TCP_Conn* tcp_connect(const IPv4_Addr* addr, u16 port)
     memset(conn, 0, sizeof(TCP_Conn));
     conn->intf = intf;
     conn->local_addr = intf->ip_addr;
-    conn->next_addr = route->gateway.u.bits ? route->gateway : *addr;
+    conn->next_addr = *net_next_addr(route, addr);
     conn->remote_addr = *addr;
     conn->local_port = net_ephemeral_port();
     conn->remote_port = port;

@@ -58,6 +58,12 @@ void net_add_route(const IPv4_Addr* dst, const IPv4_Addr* mask, const IPv4_Addr*
 }
 
 // ------------------------------------------------------------------------------------------------
+const IPv4_Addr* net_next_addr(const Net_Route* route, const IPv4_Addr* dst_addr)
+{
+    return route->gateway.u.bits ? &route->gateway : dst_addr;
+}
+
+// ------------------------------------------------------------------------------------------------
 void net_print_route_table()
 {
     console_print("%-15s  %-15s  %-15s  %s\n", "Destination", "Netmask", "Gateway", "Interface");
