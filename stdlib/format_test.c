@@ -73,6 +73,10 @@ static void test_print()
     ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%llx", 0x123456789abcdefu), 15);
     ASSERT_EQ_STR(buf, "123456789abcdef");
 
+    // 'p'
+    ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%p", (void*)0x12345678), 10);
+    ASSERT_EQ_STR(buf, "0x12345678");
+
     // padding
     ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%-10s", "left"), 10);
     ASSERT_EQ_STR(buf, "left      ");
