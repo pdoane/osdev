@@ -44,14 +44,14 @@ void rtc_get_time(DateTime* dt)
 
 void console_print(const char* fmt, ...)
 {
-    /*
     va_list args;
 
     va_start(args, fmt);
     vprintf(fmt, args);
     va_end(args);
-    */
 }
+
+static void validate_checksum(Packet* pkt);
 
 void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
     const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, u8* end)
@@ -61,6 +61,7 @@ void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
     Packet* packet = malloc(sizeof(Packet));
     packet->phdr.src = intf->ip_addr;
     packet->phdr.dst = *dst_addr;
+    packet->phdr.reserved = 0;
     packet->phdr.protocol = protocol;
     packet->phdr.len = net_swap16(len);
 
@@ -142,9 +143,29 @@ static Packet* pop_packet()
 }
 
 // ------------------------------------------------------------------------------------------------
-static void test_case(const char* msg)
+static void set_in_hdr(TCP_Conn* conn, TCP_Header* hdr)
+{
+    hdr->src_port = conn->remote_port;
+    hdr->dst_port = conn->local_port;
+    hdr->seq = 0;
+    hdr->ack = 0;
+    hdr->off = 5 << 4;
+    hdr->flags = 0;
+    hdr->window_size = TCP_WINDOW_SIZE;
+    hdr->checksum = 0;
+    hdr->urgent = 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+static void test_case_begin(const char* msg)
 {
     printf("-- %s\n", msg);
+}
+
+// ------------------------------------------------------------------------------------------------
+static void test_case_end()
+{
+    ASSERT_TRUE(list_empty(&out_packets));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -166,25 +187,108 @@ static void test_setup()
 }
 
 // ------------------------------------------------------------------------------------------------
+static void enter_state(TCP_Conn* conn, uint state)
+{
+    Packet* out_pkt;
+    TCP_Header* out_hdr;
+
+    switch (state)
+    {
+    case TCP_SYN_SENT:
+        ASSERT_TRUE(tcp_connect(conn, &ip_addr, 80));
+
+        out_pkt = pop_packet();
+        out_hdr = (TCP_Header*)out_pkt->data;
+        tcp_swap(out_hdr);
+        ASSERT_TRUE(out_hdr->src_port >= 49152);
+        ASSERT_EQ_UINT(out_hdr->dst_port, 80);
+        ASSERT_EQ_UINT(out_hdr->seq, conn->iss);
+        ASSERT_EQ_UINT(out_hdr->ack, 0);
+        ASSERT_EQ_HEX8(out_hdr->flags, TCP_SYN);
+        ASSERT_EQ_UINT(out_hdr->window_size, TCP_WINDOW_SIZE);
+        ASSERT_EQ_UINT(out_hdr->urgent, 0);
+        free(out_pkt);
+        break;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void exit_state(TCP_Conn* conn, uint state)
+{
+    Packet* out_pkt;
+    TCP_Header* out_hdr;
+
+    ASSERT_EQ_UINT(conn->state, state);
+    ASSERT_TRUE(list_empty(&out_packets));
+
+    switch (state)
+    {
+    case TCP_CLOSED:
+        tcp_close(conn);
+        break;
+
+    case TCP_SYN_SENT:
+        tcp_close(conn);
+        break;
+
+    case TCP_SYN_RECEIVED:
+        tcp_close(conn);
+
+        out_pkt = pop_packet();
+        out_hdr = (TCP_Header*)out_pkt->data;
+        tcp_swap(out_hdr);
+        ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
+        ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
+        ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt - 1);
+        ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
+        ASSERT_EQ_HEX8(out_hdr->flags, TCP_FIN | TCP_ACK);
+        free(out_pkt);
+
+        exit_state(conn, TCP_FIN_WAIT_1);
+        break;
+
+    case TCP_ESTABLISHED:
+        tcp_close(conn);
+
+        out_pkt = pop_packet();
+        out_hdr = (TCP_Header*)out_pkt->data;
+        tcp_swap(out_hdr);
+        ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
+        ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
+        ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt - 1);
+        ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
+        ASSERT_EQ_HEX8(out_hdr->flags, TCP_FIN | TCP_ACK);
+        free(out_pkt);
+
+        exit_state(conn, TCP_FIN_WAIT_1);
+        break;
+
+    case TCP_FIN_WAIT_1:
+        // TODO - continue transition to CLOSED
+        break;
+
+    default:
+        ASSERT_TRUE(0);
+        break;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 int main(int argc, const char** argv)
 {
     // Common variables
     u8 in_buf[2048];
     u8* in_pkt = in_buf + 256;
+    TCP_Header* in_hdr = (TCP_Header*)in_pkt;
     Packet* out_pkt;
-    TCP_Header* in_hdr;
     TCP_Header* out_hdr;
     TCP_Conn* conn;
 
-    // --------------------------------------------------------------------------------------------
     test_setup();
 
-    ASSERT_TRUE(list_empty(&out_packets));
-
     // --------------------------------------------------------------------------------------------
-    in_hdr = (TCP_Header*)in_pkt;
+    test_case_begin("CLOSED: RST - segment dropped");
 
-    test_case("CLOSED: Receive RST - packet should be dropped");
     in_hdr->src_port = 100;
     in_hdr->dst_port = 101;
     in_hdr->seq = 1;
@@ -195,9 +299,11 @@ int main(int argc, const char** argv)
     in_hdr->checksum = 0;
     in_hdr->urgent = 0;
     tcp_input(in_pkt);
-    ASSERT_TRUE(list_empty(&out_packets));
+    test_case_end();
 
-    test_case("CLOSED: Receive ACK - RST should be sent");
+    // --------------------------------------------------------------------------------------------
+    test_case_begin("CLOSED: ACK - RST sent");
+
     in_hdr->src_port = 100;
     in_hdr->dst_port = 101;
     in_hdr->seq = 1;
@@ -217,10 +323,13 @@ int main(int argc, const char** argv)
     ASSERT_EQ_UINT(out_hdr->seq, 2);
     ASSERT_EQ_UINT(out_hdr->ack, 0);
     ASSERT_EQ_HEX8(out_hdr->flags, TCP_RST);
+    free(out_pkt);
 
-    ASSERT_TRUE(list_empty(&out_packets));
+    test_case_end();
 
-    test_case("CLOSED: Receive non-ACK - RST/ACK should be sent");
+    // --------------------------------------------------------------------------------------------
+    test_case_begin("CLOSED: no ACK - RST/ACK sent");
+
     in_hdr->src_port = 100;
     in_hdr->dst_port = 101;
     in_hdr->seq = 1;
@@ -240,27 +349,135 @@ int main(int argc, const char** argv)
     ASSERT_EQ_UINT(out_hdr->seq, 0);
     ASSERT_EQ_UINT(out_hdr->ack, 1);
     ASSERT_EQ_HEX8(out_hdr->flags, TCP_RST | TCP_ACK);
+    free(out_pkt);
 
-    ASSERT_TRUE(list_empty(&out_packets));
+    test_case_end();
 
     // --------------------------------------------------------------------------------------------
-    test_case("SYN_SENT: Open connection");
+    test_case_begin("SYN_SENT: Bad ACK, no RST - RST sent");
 
     conn = tcp_create();
-    ASSERT_TRUE(tcp_connect(conn, &ip_addr, 80));
+    enter_state(conn, TCP_SYN_SENT);
+    set_in_hdr(conn, in_hdr);
+    in_hdr->seq = 1000;
+    in_hdr->ack = conn->iss;
+    in_hdr->flags = TCP_ACK;
+    tcp_input(in_pkt);
 
     out_pkt = pop_packet();
     out_hdr = (TCP_Header*)out_pkt->data;
     tcp_swap(out_hdr);
-    ASSERT_TRUE(out_hdr->src_port >= 49152);
-    ASSERT_EQ_UINT(out_hdr->dst_port, 80);
-    ASSERT_EQ_UINT(out_hdr->seq, conn->iss);
+    ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
+    ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
+    ASSERT_EQ_UINT(out_hdr->seq, in_hdr->ack);
     ASSERT_EQ_UINT(out_hdr->ack, 0);
-    ASSERT_EQ_HEX8(out_hdr->flags, TCP_SYN);
-    ASSERT_EQ_UINT(out_hdr->window_size, TCP_WINDOW_SIZE);
-    ASSERT_EQ_UINT(out_hdr->urgent, 0);
+    ASSERT_EQ_HEX8(out_hdr->flags, TCP_RST);
+    free(out_pkt);
 
-    tcp_close(conn);
+    exit_state(conn, TCP_SYN_SENT);
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin("SYN_SENT: Bad ACK, RST - segment dropped");
+
+    conn = tcp_create();
+    enter_state(conn, TCP_SYN_SENT);
+    set_in_hdr(conn, in_hdr);
+    in_hdr->seq = 1000;
+    in_hdr->ack = conn->iss;
+    in_hdr->flags = TCP_RST | TCP_ACK;
+    tcp_input(in_pkt);
+
+    exit_state(conn, TCP_SYN_SENT);
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin("SYN_SENT: ACK, RST - connection locally reset");
+
+    conn = tcp_create();
+    enter_state(conn, TCP_SYN_SENT);
+    set_in_hdr(conn, in_hdr);
+    in_hdr->seq = 1000;
+    in_hdr->ack = conn->iss + 1;
+    in_hdr->flags = TCP_RST | TCP_ACK;
+    tcp_input(in_pkt);
+
+    exit_state(conn, TCP_CLOSED);
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin("SYN_SENT: no ACK, RST - segment dropped");
+
+    conn = tcp_create();
+    enter_state(conn, TCP_SYN_SENT);
+    set_in_hdr(conn, in_hdr);
+    in_hdr->seq = 1000;
+    in_hdr->ack = conn->iss + 1;
+    in_hdr->flags = TCP_RST;
+    tcp_input(in_pkt);
+
+    exit_state(conn, TCP_SYN_SENT);
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin("SYN_SENT: SYN, ACK - transition to ESTABLISHED");
+
+    conn = tcp_create();
+    enter_state(conn, TCP_SYN_SENT);
+    set_in_hdr(conn, in_hdr);
+    in_hdr->seq = 1000;
+    in_hdr->ack = conn->iss + 1;
+    in_hdr->flags = TCP_SYN | TCP_ACK;
+    tcp_input(in_pkt);
+
+    ASSERT_EQ_UINT(conn->irs, 1000);
+    ASSERT_EQ_UINT(conn->rcv_nxt, 1001);
+
+    out_pkt = pop_packet();
+    out_hdr = (TCP_Header*)out_pkt->data;
+    tcp_swap(out_hdr);
+    ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
+    ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
+    ASSERT_EQ_UINT(out_hdr->seq, conn->iss + 1);
+    ASSERT_EQ_UINT(out_hdr->ack, 1001);
+    ASSERT_EQ_HEX8(out_hdr->flags, TCP_ACK);
+    free(out_pkt);
+
+    exit_state(conn, TCP_ESTABLISHED);
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin("SYN_SENT: SYN, no ACK - transition to SYN_RECEIVED, resend SYN,ACK");
+
+    conn = tcp_create();
+    enter_state(conn, TCP_SYN_SENT);
+    set_in_hdr(conn, in_hdr);
+    in_hdr->seq = 1000;
+    in_hdr->ack = 0;
+    in_hdr->flags = TCP_SYN;
+    tcp_input(in_pkt);
+
+    ASSERT_EQ_UINT(conn->irs, 1000);
+    ASSERT_EQ_UINT(conn->rcv_nxt, 1001);
+
+    out_pkt = pop_packet();
+    out_hdr = (TCP_Header*)out_pkt->data;
+    tcp_swap(out_hdr);
+    ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
+    ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
+    ASSERT_EQ_UINT(out_hdr->seq, conn->iss);
+    ASSERT_EQ_UINT(out_hdr->ack, 1001);
+    ASSERT_EQ_HEX8(out_hdr->flags, TCP_SYN | TCP_ACK);
+    free(out_pkt);
+
+    exit_state(conn, TCP_SYN_RECEIVED);
+
+    test_case_end();
 
     return EXIT_SUCCESS;
 }
