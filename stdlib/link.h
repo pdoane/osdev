@@ -43,14 +43,46 @@ static inline void link_before(Link* a, Link* x)
 }
 
 // ------------------------------------------------------------------------------------------------
-static inline void link_remove(Link* a)
+static inline void link_remove(Link* x)
 {
-    Link* p = a->prev;
-    Link* n = a->next;
+    Link* p = x->prev;
+    Link* n = x->next;
     n->prev = p;
     p->next = n;
-    a->next = 0;
-    a->prev = 0;
+    x->next = 0;
+    x->prev = 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+static inline void link_move_after(Link* a, Link* x)
+{
+    Link* p = x->prev;
+    Link* n = x->next;
+    n->prev = p;
+    p->next = n;
+
+    p = a;
+    n = a->next;
+    n->prev = x;
+    x->next = n;
+    x->prev = p;
+    p->next = x;
+}
+
+// ------------------------------------------------------------------------------------------------
+static inline void link_move_before(Link* a, Link* x)
+{
+    Link* p = x->prev;
+    Link* n = x->next;
+    n->prev = p;
+    p->next = n;
+
+    p = a->prev;
+    n = a;
+    n->prev = x;
+    x->next = n;
+    x->prev = p;
+    p->next = x;
 }
 
 // ------------------------------------------------------------------------------------------------
