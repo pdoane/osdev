@@ -29,6 +29,7 @@ typedef struct IPv4_Addr
 } PACKED IPv4_Addr;
 
 #define IPV4_ADDR_STRING_SIZE           16
+#define IPV4_ADDR_PORT_STRING_SIZE      22
 
 // ------------------------------------------------------------------------------------------------
 // Globals
@@ -47,5 +48,7 @@ bool ipv4_addr_eq(const IPv4_Addr* x, const IPv4_Addr* y);
 
 void eth_addr_to_str(char* str, size_t size, const Eth_Addr* addr);
 void ipv4_addr_to_str(char* str, size_t size, const IPv4_Addr* addr);
+void ipv4_addr_port_to_str(char* str, size_t size, const IPv4_Addr* addr, u16 port);
 
 bool str_to_ipv4_addr(IPv4_Addr* addr, const char* str);
+bool str_to_ipv4_addr_port(IPv4_Addr* addr, const char* str, u16* port);

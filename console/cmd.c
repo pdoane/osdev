@@ -138,6 +138,30 @@ static void cmd_host(uint argc, const char** argv)
 }
 
 // ------------------------------------------------------------------------------------------------
+static void cmd_lsconn(uint argc, const char** argv)
+{
+    console_print("%-21s  %-21s  %s\n", "Local Address", "Remote Address", "State");
+
+    TCP_Conn* conn;
+    list_for_each(conn, tcp_active_conns, link)
+    {
+        char local_str[IPV4_ADDR_PORT_STRING_SIZE];
+        char remote_str[IPV4_ADDR_PORT_STRING_SIZE];
+        const char* state_str = "Unknown";
+
+        ipv4_addr_port_to_str(local_str, sizeof(local_str), &conn->local_addr, conn->local_port);
+        ipv4_addr_port_to_str(remote_str, sizeof(remote_str), &conn->remote_addr, conn->remote_port);
+
+        if (conn->state <= TCP_TIME_WAIT)
+        {
+            state_str = tcp_state_strs[conn->state];
+        }
+
+        console_print("%-21s  %-21s  %s\n", local_str, remote_str, state_str);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 static void cmd_lsroute(uint argc, const char** argv)
 {
     net_print_route_table();
@@ -233,6 +257,7 @@ const ConsoleCmd console_cmd_table[] =
     { "hello", cmd_hello },
     { "help", cmd_help },
     { "host", cmd_host },
+    { "lsconn", cmd_lsconn },
     { "lsroute", cmd_lsroute },
     { "net_trace", cmd_net_trace },
     { "ping", cmd_ping },

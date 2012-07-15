@@ -42,11 +42,47 @@ void eth_addr_to_str(char* str, size_t size, const Eth_Addr* addr)
 // ------------------------------------------------------------------------------------------------
 void ipv4_addr_to_str(char* str, size_t size, const IPv4_Addr* addr)
 {
-    snprintf(str, size, "%d.%d.%d.%d", addr->u.n[0], addr->u.n[1], addr->u.n[2], addr->u.n[3]);
+    snprintf(str, size, "%d.%d.%d.%d",
+        addr->u.n[0], addr->u.n[1], addr->u.n[2], addr->u.n[3]);
+}
+
+// ------------------------------------------------------------------------------------------------
+void ipv4_addr_port_to_str(char* str, size_t size, const IPv4_Addr* addr, u16 port)
+{
+    snprintf(str, size, "%d.%d.%d.%d:%d",
+        addr->u.n[0], addr->u.n[1], addr->u.n[2], addr->u.n[3], port);
 }
 
 // ------------------------------------------------------------------------------------------------
 bool str_to_ipv4_addr(IPv4_Addr* addr, const char* str)
 {
-    return sscanf(str, "%d.%d.%d.%d", &addr->u.n[0], &addr->u.n[1], &addr->u.n[2], &addr->u.n[3]) == 4;
+    int a[4];
+    if (sscanf(str, "%d.%d.%d.%d", &a[0], &a[1], &a[2], &a[3]) == 4)
+    {
+        addr->u.n[0] = a[0];
+        addr->u.n[1] = a[1];
+        addr->u.n[2] = a[2];
+        addr->u.n[3] = a[3];
+        return true;
+    }
+
+    return false;
+}
+
+// ------------------------------------------------------------------------------------------------
+bool str_to_ipv4_addr_port(IPv4_Addr* addr, const char* str, u16* port)
+{
+    int a[4];
+    int n;
+    if (sscanf(str, "%d.%d.%d.%d:%d", &a[0], &a[1], &a[2], &a[3], &n) == 5)
+    {
+        addr->u.n[0] = a[0];
+        addr->u.n[1] = a[1];
+        addr->u.n[2] = a[2];
+        addr->u.n[3] = a[3];
+        *port = n;
+        return true;
+    }
+
+    return false;
 }

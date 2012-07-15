@@ -17,11 +17,12 @@
 #include "time/rtc.h"
 
 // ------------------------------------------------------------------------------------------------
-// Static Variables
+// Static/Global Variables
 
 static u32 tcp_base_isn;
 static Link tcp_free_conns = { &tcp_free_conns, &tcp_free_conns };
-static Link tcp_active_conns = { &tcp_active_conns, &tcp_active_conns};
+
+Link tcp_active_conns = { &tcp_active_conns, &tcp_active_conns};
 
 // ------------------------------------------------------------------------------------------------
 // TCP state strings
