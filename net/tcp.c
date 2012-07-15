@@ -154,6 +154,34 @@ static void tcp_set_state(TCP_Conn* conn, uint state)
 }
 
 // ------------------------------------------------------------------------------------------------
+static TCP_Conn* tcp_alloc()
+{
+    Link* p = tcp_free_conns.next;
+    if (p != &tcp_free_conns)
+    {
+        link_remove(p);
+        return link_data(p, TCP_Conn, link);
+    }
+    else
+    {
+        TCP_Conn* conn = vm_alloc(sizeof(TCP_Conn));
+        memset(conn, 0, sizeof(TCP_Conn));
+        return conn;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void tcp_free(TCP_Conn* conn)
+{
+    if (conn->state != TCP_CLOSED)
+    {
+        tcp_set_state(conn, TCP_CLOSED);
+    }
+
+    link_move_before(&tcp_free_conns, &conn->link);
+}
+
+// ------------------------------------------------------------------------------------------------
 static void tcp_tx(TCP_Conn* conn, u32 seq, u8 flags, const void* data, uint count)
 {
     NetBuf* buf = net_alloc_packet();
@@ -246,7 +274,7 @@ static void tcp_error(TCP_Conn* conn, const char* msg)
         conn->on_error(conn, msg);
     }
 
-    tcp_set_state(conn, TCP_CLOSED);
+    tcp_free(conn);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -392,7 +420,7 @@ static void tcp_rx_rst(TCP_Conn* conn, TCP_Header* hdr)
     case TCP_CLOSING:
     case TCP_LAST_ACK:
     case TCP_TIME_WAIT:
-        tcp_set_state(conn, TCP_CLOSED);
+        tcp_free(conn);
         break;
     }
 }
@@ -441,7 +469,12 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
         break;
 
     case TCP_LAST_ACK:
-        // TODO
+        if (SEQ_GE(hdr->ack, conn->snd_nxt))
+        {
+            // TODO - is this the right way to detect that our FIN has been ACK'd?
+
+            tcp_free(conn);
+        }
         break;
 
     case TCP_TIME_WAIT:
@@ -650,18 +683,7 @@ void tcp_swap(TCP_Header* hdr)
 // ------------------------------------------------------------------------------------------------
 TCP_Conn* tcp_create()
 {
-    Link* p = tcp_free_conns.next;
-    if (p != &tcp_free_conns)
-    {
-        link_remove(p);
-        return link_data(p, TCP_Conn, link);
-    }
-    else
-    {
-        TCP_Conn* conn = vm_alloc(sizeof(TCP_Conn));
-        memset(conn, 0, sizeof(TCP_Conn));
-        return conn;
-    }
+    return tcp_alloc();
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -715,17 +737,17 @@ void tcp_close(TCP_Conn* conn)
     switch (conn->state)
     {
     case TCP_CLOSED:
-        link_before(&tcp_free_conns, &conn->link);
+        tcp_free(conn);
         break;
 
     case TCP_LISTEN:
         // TODO - cancel queued receives
-        link_before(&tcp_free_conns, &conn->link);
+        tcp_free(conn);
         break;
 
     case TCP_SYN_SENT:
         // TODO - cancel queued sends or receives
-        link_before(&tcp_free_conns, &conn->link);
+        tcp_free(conn);
         break;
 
     case TCP_SYN_RECEIVED:
