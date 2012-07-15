@@ -67,11 +67,10 @@ static bool tcp_parse_options(TCP_Options* opt, const u8* p, const u8* end)
 // ------------------------------------------------------------------------------------------------
 static void tcp_print(const u8* pkt, const u8* end)
 {
-    /*
-    if (!net_trace)
+    if (~net_trace & (1 << 2))
     {
         return;
-    }*/
+    }
 
     if (pkt + sizeof(TCP_Header) > end)
     {

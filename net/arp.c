@@ -39,7 +39,7 @@ static ARP_Entry arp_cache[ARP_CACHE_SIZE];
 // ------------------------------------------------------------------------------------------------
 static void arp_print(const u8* pkt, const u8* end)
 {
-    if (!net_trace)
+    if (~net_trace & (1 << 0))
     {
         return;
     }
@@ -263,11 +263,6 @@ void arp_rx(Net_Intf* intf, u8* pkt, u8* end)
     ARP_Entry* entry = arp_lookup(spa);
     if (entry)
     {
-        if (net_trace)
-        {
-            console_print("ARP Merging entry\n");
-        }
-
         entry->ha = *sha;
         merge = true;
 
@@ -289,11 +284,6 @@ void arp_rx(Net_Intf* intf, u8* pkt, u8* end)
         // Add a new entry if we didn't update earlier.
         if (!merge)
         {
-            if (net_trace)
-            {
-                console_print("ARP Adding entry\n");
-            }
-
             arp_add(sha, spa);
         }
 

@@ -94,7 +94,7 @@ void ntp_tx(const IPv4_Addr* dst_addr)
 // ------------------------------------------------------------------------------------------------
 void ntp_print(const u8* pkt, const u8* end)
 {
-    if (!net_trace)
+    if (~net_trace & (1 << 3))
     {
         return;
     }

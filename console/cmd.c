@@ -17,6 +17,7 @@
 #include "net/route.h"
 #include "net/tcp.h"
 #include "net/udp.h"
+#include "stdlib/format.h"
 #include "stdlib/string.h"
 #include "time/pit.h"
 #include "time/rtc.h"
@@ -122,6 +123,22 @@ static void cmd_lsroute(uint argc, const char** argv)
 }
 
 // ------------------------------------------------------------------------------------------------
+static void cmd_net_trace(uint argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        console_print("Usage: net_trace <level>\n");
+        return;
+    }
+
+    uint level;
+    if (sscanf(argv[1], "%d", &level) == 1)
+    {
+        net_trace = level;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 static void cmd_ping(uint argc, const char** argv)
 {
     if (argc != 2)
@@ -196,6 +213,7 @@ const ConsoleCmd console_cmd_table[] =
     { "help", cmd_help },
     { "host", cmd_host },
     { "lsroute", cmd_lsroute },
+    { "net_trace", cmd_net_trace },
     { "ping", cmd_ping },
     { "reboot", cmd_reboot },
     { "rlog", cmd_rlog },
