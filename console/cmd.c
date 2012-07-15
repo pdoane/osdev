@@ -23,11 +23,27 @@
 #include "time/rtc.h"
 
 // ------------------------------------------------------------------------------------------------
+static void tcp_state(TCP_Conn* conn, uint old_state, uint new_state)
+{
+    const char* msg = (const char*)conn->ctx;
+
+    if (new_state == TCP_ESTABLISHED)
+    {
+        tcp_send(conn, msg, strlen(msg));
+    }
+
+    if (new_state == TCP_CLOSE_WAIT)
+    {
+        tcp_close(conn);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 static void cmd_connect(uint argc, const char** argv)
 {
-    if (argc != 2)
+    if (argc != 3)
     {
-        console_print("Usage: connect <dest ipv4 address>\n");
+        console_print("Usage: connect <dest ipv4 address> <path>\n");
         return;
     }
 
@@ -39,15 +55,15 @@ static void cmd_connect(uint argc, const char** argv)
     }
 
     u16 port = 80;
+    static char buf[256];
+
+    snprintf(buf, sizeof(buf), "GET %s HTTP/1.0\r\n\r\n", argv[2]);
 
     TCP_Conn* conn = tcp_create();
-    tcp_connect(conn, &dst_addr, port);
-    while (conn->state == TCP_SYN_SENT)
-    {
-        net_poll();
-    }
+    conn->ctx = buf;
+    conn->on_state = tcp_state;
 
-    tcp_close(conn);
+    tcp_connect(conn, &dst_addr, port);
 }
 
 // ------------------------------------------------------------------------------------------------

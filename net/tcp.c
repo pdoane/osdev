@@ -140,12 +140,18 @@ static void tcp_set_state(TCP_Conn* conn, uint state)
         "TIME-WAIT"
     };
 
-    console_print("TCP: %p %s -> %s\n", conn, state_strs[conn->state], state_strs[state]);
+    uint old_state = conn->state;
     conn->state = state;
+
+    console_print("\nTCP: %p %s -> %s\n", conn, state_strs[old_state], state_strs[state]);
+    if (conn->on_state)
+    {
+        conn->on_state(conn, old_state, state);
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_tx(TCP_Conn* conn, u32 seq, u8 flags)
+static void tcp_tx(TCP_Conn* conn, u32 seq, u8 flags, const void* data, uint count)
 {
     NetBuf* buf = net_alloc_packet();
     u8* pkt = (u8*)(buf + 1);
@@ -183,7 +189,8 @@ static void tcp_tx(TCP_Conn* conn, u32 seq, u8 flags)
     hdr->off = (p - pkt) << 2;
 
     // Data
-    u8* end = p;
+    memcpy(p, data, count);
+    u8* end = p + count;
 
     // Pseudo Header
     Checksum_Header* phdr = (Checksum_Header*)(pkt - sizeof(Checksum_Header));
@@ -202,6 +209,7 @@ static void tcp_tx(TCP_Conn* conn, u32 seq, u8 flags)
     ipv4_tx_intf(conn->intf, &conn->next_addr, &conn->remote_addr, IP_PROTOCOL_TCP, pkt, end);
 
     // Update State
+    conn->snd_nxt += count;
     if (flags & (TCP_SYN | TCP_FIN))
     {
         ++conn->snd_nxt;
@@ -232,7 +240,7 @@ static void tcp_error(TCP_Conn* conn, const char* msg)
 {
     if (conn->on_error)
     {
-        conn->on_error(msg);
+        conn->on_error(conn, msg);
     }
 
     tcp_set_state(conn, TCP_CLOSED);
@@ -252,7 +260,7 @@ void tcp_init()
 // ------------------------------------------------------------------------------------------------
 static void tcp_rx_closed(Checksum_Header* phdr, TCP_Header* hdr)
 {
-    console_print("TCP: packet received in CLOSED state\n");
+    console_print("\nTCP: packet received in CLOSED state\n");
 
     // Drop packet if this is a RST
     if (hdr->flags & TCP_RST)
@@ -282,7 +290,7 @@ static void tcp_rx_closed(Checksum_Header* phdr, TCP_Header* hdr)
 
     if (hdr->flags & TCP_ACK)
     {
-        tcp_tx(&rst_conn, hdr->ack, TCP_RST);
+        tcp_tx(&rst_conn, hdr->ack, TCP_RST, 0, 0);
     }
     else
     {
@@ -291,7 +299,7 @@ static void tcp_rx_closed(Checksum_Header* phdr, TCP_Header* hdr)
 
         rst_conn.rcv_nxt = hdr->seq + data_len;
 
-        tcp_tx(&rst_conn, 0, TCP_RST | TCP_ACK);
+        tcp_tx(&rst_conn, 0, TCP_RST | TCP_ACK, 0, 0);
     }
 }
 
@@ -308,7 +316,7 @@ static void tcp_rx_syn_sent(TCP_Conn* conn, TCP_Header* hdr)
             if (~flags & TCP_RST)
             {
                 console_print("TCP: Bad ACK received\n");
-                tcp_tx(conn, hdr->ack, TCP_RST);
+                tcp_tx(conn, hdr->ack, TCP_RST, 0, 0);
             }
 
             return;
@@ -344,7 +352,7 @@ static void tcp_rx_syn_sent(TCP_Conn* conn, TCP_Header* hdr)
         if (SEQ_GT(conn->snd_una, conn->iss))
         {
             tcp_set_state(conn, TCP_ESTABLISHED);
-            tcp_tx(conn, conn->snd_nxt, TCP_ACK);
+            tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
 
             // TODO - Data queued for transmission may be included with the ACK.
 
@@ -356,7 +364,7 @@ static void tcp_rx_syn_sent(TCP_Conn* conn, TCP_Header* hdr)
 
             // Resend ISS
             --conn->snd_nxt;
-            tcp_tx(conn, conn->snd_nxt, TCP_SYN | TCP_ACK);
+            tcp_tx(conn, conn->snd_nxt, TCP_SYN | TCP_ACK, 0, 0);
         }
     }
 }
@@ -398,7 +406,7 @@ static void tcp_rx_syn(TCP_Conn* conn, TCP_Header* hdr)
     // TODO - All outstanding receives and sends should receive "reset" responses
     // TODO - All segment queues should be flushed.
 
-    tcp_tx(conn, 0, TCP_RST | TCP_ACK);
+    tcp_tx(conn, 0, TCP_RST | TCP_ACK, 0, 0);
 
     tcp_error(conn, "connection reset");
 }
@@ -413,9 +421,9 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
         break;
 
     case TCP_ESTABLISHED:
+    case TCP_FIN_WAIT_1:
     case TCP_FIN_WAIT_2:
     case TCP_CLOSE_WAIT:
-    case TCP_FIN_WAIT_1:
     case TCP_CLOSING:
         // TODO - process ACK
 
@@ -446,6 +454,39 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
 }
 
 // ------------------------------------------------------------------------------------------------
+static void tcp_rx_data(TCP_Conn* conn, TCP_Header* hdr, const u8* data, uint data_len)
+{
+    switch (conn->state)
+    {
+    case TCP_SYN_RECEIVED:
+        // TODO - can this happen? ACK processing would transition to ESTABLISHED state.
+        break;
+
+    case TCP_ESTABLISHED:
+    case TCP_FIN_WAIT_1:
+    case TCP_FIN_WAIT_2:
+        temp:
+        {
+            char buf[2048];
+            memcpy(buf, data, data_len);
+            buf[data_len] = '\0';
+
+            console_print("%s", buf);
+
+            conn->rcv_nxt += data_len;
+            tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
+        }
+        break;
+
+    default:
+        // FIN has been received from the remote side - ignore the segment data.
+        console_print("\nTCP: Should ignore this data:\n");
+        goto temp;
+        break;
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
 static void tcp_rx_fin(TCP_Conn* conn, TCP_Header* hdr)
 {
     uint flags = hdr->flags;
@@ -453,7 +494,7 @@ static void tcp_rx_fin(TCP_Conn* conn, TCP_Header* hdr)
     // TODO - signal the user "connection closing" and return any pending receives
 
     conn->rcv_nxt = hdr->seq + 1;
-    tcp_tx(conn, conn->snd_nxt, TCP_ACK);
+    tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
 
     switch (conn->state)
     {
@@ -491,7 +532,7 @@ static void tcp_rx_fin(TCP_Conn* conn, TCP_Header* hdr)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr)
+static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr, const u8* data, uint data_len)
 {
     // Process segments not in the CLOSED, LISTEN, or SYN-SENT states.
 
@@ -522,7 +563,11 @@ static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr)
 
     // TODO - check URG
 
-    // TODO - process segment data
+    // Process segment data
+    if (data_len)
+    {
+        tcp_rx_data(conn, hdr, data, data_len);
+    }
 
     // Check FIN
     if (flags & TCP_FIN)
@@ -589,7 +634,11 @@ void tcp_rx(Net_Intf* intf, u8* pkt, u8* end)
     }
     else
     {
-        tcp_rx_general(conn, hdr);
+        uint hdr_len = hdr->off >> 2;
+        const u8* data = (tcp_pkt + hdr_len);
+        uint data_len = phdr->len - hdr_len;
+
+        tcp_rx_general(conn, hdr, data, data_len);
     }
 }
 
@@ -661,7 +710,7 @@ bool tcp_connect(TCP_Conn* conn, const IPv4_Addr* addr, u16 port)
     link_before(&tcp_active_conns, &conn->link);
 
     // Issue SYN segment
-    tcp_tx(conn, conn->snd_nxt, TCP_SYN);
+    tcp_tx(conn, conn->snd_nxt, TCP_SYN, 0, 0);
     tcp_set_state(conn, TCP_SYN_SENT);
 
     return true;
@@ -670,7 +719,7 @@ bool tcp_connect(TCP_Conn* conn, const IPv4_Addr* addr, u16 port)
 // ------------------------------------------------------------------------------------------------
 void tcp_close(TCP_Conn* conn)
 {
-    console_print("tcp_close\n");
+    console_print("\ntcp_close %p\n", conn);
 
     switch (conn->state)
     {
@@ -689,13 +738,13 @@ void tcp_close(TCP_Conn* conn)
     case TCP_SYN_RECEIVED:
         // TODO - if sends have been issued or queued, wait for ESTABLISHED
         // before entering FIN-WAIT-1
-        tcp_tx(conn, conn->snd_nxt, TCP_FIN | TCP_ACK);
+        tcp_tx(conn, conn->snd_nxt, TCP_FIN | TCP_ACK, 0, 0);
         tcp_set_state(conn, TCP_FIN_WAIT_1);
         break;
 
     case TCP_ESTABLISHED:
         // TODO - queue FIN after sends
-        tcp_tx(conn, conn->snd_nxt, TCP_FIN | TCP_ACK);
+        tcp_tx(conn, conn->snd_nxt, TCP_FIN | TCP_ACK, 0, 0);
         tcp_set_state(conn, TCP_FIN_WAIT_1);
         break;
 
@@ -706,14 +755,14 @@ void tcp_close(TCP_Conn* conn)
     case TCP_TIME_WAIT:
         if (conn->on_error)
         {
-            conn->on_error("connection closing");
+            conn->on_error(conn, "connection closing");
         }
         break;
 
     case TCP_CLOSE_WAIT:
         // TODO - queue FIN and state transition after sends
-        tcp_tx(conn, conn->snd_nxt, TCP_FIN | TCP_ACK);
-        tcp_set_state(conn, TCP_FIN_WAIT_1);
+        tcp_tx(conn, conn->snd_nxt, TCP_FIN | TCP_ACK, 0, 0);
+        tcp_set_state(conn, TCP_LAST_ACK);
         break;
     }
 }
@@ -721,6 +770,7 @@ void tcp_close(TCP_Conn* conn)
 // ------------------------------------------------------------------------------------------------
 void tcp_send(TCP_Conn* conn, const void* data, uint count)
 {
+    tcp_tx(conn, conn->snd_nxt, TCP_ACK, data, count);
 }
 
 // ------------------------------------------------------------------------------------------------

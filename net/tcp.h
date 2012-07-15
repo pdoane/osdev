@@ -101,7 +101,9 @@ typedef struct TCP_Conn
     u32 irs;                            // initial receive sequence number
 
     // callbacks
-    void (*on_error)(const char* msg);
+    void* ctx;
+    void (*on_error)(struct TCP_Conn* conn, const char* msg);
+    void (*on_state)(struct TCP_Conn* conn, uint old_state, uint new_state);
 } TCP_Conn;
 
 // ------------------------------------------------------------------------------------------------
