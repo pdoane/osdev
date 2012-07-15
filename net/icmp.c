@@ -31,7 +31,7 @@
 // ------------------------------------------------------------------------------------------------
 void icmp_print(const u8* pkt, const u8* end)
 {
-    if (~net_trace & (1 << 1))
+    if (~net_trace & TRACE_NET)
     {
         return;
     }

@@ -140,7 +140,7 @@ void eth_tx_intf(Net_Intf* intf, const void* dst_addr, u16 ether_type, u8* pkt, 
 // ------------------------------------------------------------------------------------------------
 void eth_print(u8* pkt, u8* end)
 {
-    if (~net_trace & (1 << 0))
+    if (~net_trace & TRACE_LINK)
     {
         return;
     }

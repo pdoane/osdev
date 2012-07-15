@@ -70,6 +70,8 @@ typedef struct TCP_Options
 #define TCP_LAST_ACK                    9
 #define TCP_TIME_WAIT                   10
 
+extern const char* tcp_state_strs[];
+
 // ------------------------------------------------------------------------------------------------
 // TCP Connection
 

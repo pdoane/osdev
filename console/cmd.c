@@ -25,6 +25,11 @@
 // ------------------------------------------------------------------------------------------------
 static void tcp_state(TCP_Conn* conn, uint old_state, uint new_state)
 {
+    console_print("\nTCP: %p %s -> %s\n",
+        conn,
+        tcp_state_strs[old_state],
+        tcp_state_strs[new_state]);
+
     const char* msg = (const char*)conn->ctx;
 
     if (new_state == TCP_ESTABLISHED)

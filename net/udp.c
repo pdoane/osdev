@@ -83,7 +83,7 @@ void udp_tx_intf(Net_Intf* intf, const IPv4_Addr* dst_addr, uint dst_port, uint 
 // ------------------------------------------------------------------------------------------------
 void udp_print(const u8* pkt, const u8* end)
 {
-    if (~net_trace & (1 << 2))
+    if (~net_trace & TRACE_TRANSPORT)
     {
         return;
     }

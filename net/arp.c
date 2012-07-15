@@ -39,7 +39,7 @@ static ARP_Entry arp_cache[ARP_CACHE_SIZE];
 // ------------------------------------------------------------------------------------------------
 static void arp_print(const u8* pkt, const u8* end)
 {
-    if (~net_trace & (1 << 0))
+    if (~net_trace & TRACE_LINK)
     {
         return;
     }

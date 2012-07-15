@@ -369,7 +369,7 @@ void dhcp_discover(Net_Intf* intf)
 // ------------------------------------------------------------------------------------------------
 void dhcp_print(const u8* pkt, const u8* end)
 {
-    if (~net_trace & (1 << 3))
+    if (~net_trace & TRACE_APP)
     {
         return;
     }

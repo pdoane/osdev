@@ -24,6 +24,24 @@ static Link tcp_free_conns = { &tcp_free_conns, &tcp_free_conns };
 static Link tcp_active_conns = { &tcp_active_conns, &tcp_active_conns};
 
 // ------------------------------------------------------------------------------------------------
+// TCP state strings
+
+const char* tcp_state_strs[] =
+{
+    "CLOSED",
+    "LISTEN",
+    "SYN-SENT",
+    "SYN-RECEIVED",
+    "ESTABLISHED",
+    "FIN-WAIT-1",
+    "FIN-WAIT-2",
+    "CLOSE-WAIT",
+    "CLOSING",
+    "LAST-ACK",
+    "TIME-WAIT"
+};
+
+// ------------------------------------------------------------------------------------------------
 static bool tcp_parse_options(TCP_Options* opt, const u8* p, const u8* end)
 {
     memset(opt, 0, sizeof(*opt));
@@ -67,7 +85,7 @@ static bool tcp_parse_options(TCP_Options* opt, const u8* p, const u8* end)
 // ------------------------------------------------------------------------------------------------
 static void tcp_print(const u8* pkt, const u8* end)
 {
-    if (~net_trace & (1 << 2))
+    if (~net_trace & TRACE_TRANSPORT)
     {
         return;
     }
@@ -125,25 +143,9 @@ static void tcp_print(const u8* pkt, const u8* end)
 // ------------------------------------------------------------------------------------------------
 static void tcp_set_state(TCP_Conn* conn, uint state)
 {
-    static const char* state_strs[] =
-    {
-        "CLOSED",
-        "LISTEN",
-        "SYN-SENT",
-        "SYN-RECEIVED",
-        "ESTABLISHED",
-        "FIN-WAIT-1",
-        "FIN-WAIT-2",
-        "CLOSE-WAIT",
-        "CLOSING",
-        "LAST-ACK",
-        "TIME-WAIT"
-    };
-
     uint old_state = conn->state;
     conn->state = state;
 
-    console_print("\nTCP: %p %s -> %s\n", conn, state_strs[old_state], state_strs[state]);
     if (conn->on_state)
     {
         conn->on_state(conn, old_state, state);
@@ -260,8 +262,6 @@ void tcp_init()
 // ------------------------------------------------------------------------------------------------
 static void tcp_rx_closed(Checksum_Header* phdr, TCP_Header* hdr)
 {
-    console_print("\nTCP: packet received in CLOSED state\n");
-
     // Drop packet if this is a RST
     if (hdr->flags & TCP_RST)
     {
@@ -315,7 +315,6 @@ static void tcp_rx_syn_sent(TCP_Conn* conn, TCP_Header* hdr)
         {
             if (~flags & TCP_RST)
             {
-                console_print("TCP: Bad ACK received\n");
                 tcp_tx(conn, hdr->ack, TCP_RST, 0, 0);
             }
 
@@ -347,10 +346,7 @@ static void tcp_rx_syn_sent(TCP_Conn* conn, TCP_Header* hdr)
             conn->snd_una = hdr->ack;
 
             // TODO - Segments on the retransmission queue which are ack'd should be removed
-        }
 
-        if (SEQ_GT(conn->snd_una, conn->iss))
-        {
             tcp_set_state(conn, TCP_ESTABLISHED);
             tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
 
@@ -465,7 +461,6 @@ static void tcp_rx_data(TCP_Conn* conn, TCP_Header* hdr, const u8* data, uint da
     case TCP_ESTABLISHED:
     case TCP_FIN_WAIT_1:
     case TCP_FIN_WAIT_2:
-        temp:
         {
             char buf[2048];
             memcpy(buf, data, data_len);
@@ -480,8 +475,6 @@ static void tcp_rx_data(TCP_Conn* conn, TCP_Header* hdr, const u8* data, uint da
 
     default:
         // FIN has been received from the remote side - ignore the segment data.
-        console_print("\nTCP: Should ignore this data:\n");
-        goto temp;
         break;
     }
 }
@@ -607,7 +600,6 @@ void tcp_rx(Net_Intf* intf, u8* pkt, u8* end)
     // Validate checksum
     if (net_checksum(tcp_pkt - sizeof(Checksum_Header), end))
     {
-        console_print("TCP: Dropping packet with bad checksum\n");
         return;
     }
 
@@ -719,11 +711,10 @@ bool tcp_connect(TCP_Conn* conn, const IPv4_Addr* addr, u16 port)
 // ------------------------------------------------------------------------------------------------
 void tcp_close(TCP_Conn* conn)
 {
-    console_print("\ntcp_close %p\n", conn);
-
     switch (conn->state)
     {
     case TCP_CLOSED:
+        link_before(&tcp_free_conns, &conn->link);
         break;
 
     case TCP_LISTEN:
@@ -733,6 +724,7 @@ void tcp_close(TCP_Conn* conn)
 
     case TCP_SYN_SENT:
         // TODO - cancel queued sends or receives
+        link_before(&tcp_free_conns, &conn->link);
         break;
 
     case TCP_SYN_RECEIVED:
