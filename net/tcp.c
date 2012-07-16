@@ -442,7 +442,14 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
     switch (conn->state)
     {
     case TCP_SYN_RECEIVED:
-        // TODO
+        if (conn->snd_una <= hdr->ack && hdr->ack <= conn->snd_nxt)
+        {
+            tcp_set_state(conn, TCP_ESTABLISHED);
+        }
+        else
+        {
+            tcp_tx(conn, hdr->ack, TCP_RST, 0, 0);
+        }
         break;
 
     case TCP_ESTABLISHED:
