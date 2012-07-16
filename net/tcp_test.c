@@ -166,6 +166,7 @@ static void test_case_begin(const char* msg)
 static void test_case_end()
 {
     ASSERT_TRUE(list_empty(&out_packets));
+    ASSERT_TRUE(list_empty(&tcp_active_conns));
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -215,6 +216,9 @@ static void enter_state(TCP_Conn* conn, uint state)
 // ------------------------------------------------------------------------------------------------
 static void exit_state(TCP_Conn* conn, uint state)
 {
+    u8 in_buf[2048];
+    u8* in_pkt = in_buf + 256;
+    TCP_Header* in_hdr = (TCP_Header*)in_pkt;
     Packet* out_pkt;
     TCP_Header* out_hdr;
 
@@ -232,22 +236,36 @@ static void exit_state(TCP_Conn* conn, uint state)
         break;
 
     case TCP_SYN_RECEIVED:
-        tcp_close(conn);
+        set_in_hdr(conn, in_hdr);
+        in_hdr->seq = conn->rcv_nxt;
+        in_hdr->ack = conn->snd_nxt;
+        in_hdr->flags = TCP_ACK;
+        tcp_input(in_pkt);
 
-        out_pkt = pop_packet();
-        out_hdr = (TCP_Header*)out_pkt->data;
-        tcp_swap(out_hdr);
-        ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
-        ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
-        ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt - 1);
-        ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
-        ASSERT_EQ_HEX8(out_hdr->flags, TCP_FIN | TCP_ACK);
-        free(out_pkt);
-
-        exit_state(conn, TCP_FIN_WAIT_1);
+        exit_state(conn, TCP_ESTABLISHED);
         break;
 
     case TCP_ESTABLISHED:
+        set_in_hdr(conn, in_hdr);
+        in_hdr->seq = conn->rcv_nxt;
+        in_hdr->ack = conn->snd_nxt;
+        in_hdr->flags = TCP_FIN | TCP_ACK;
+        tcp_input(in_pkt);
+
+        out_pkt = pop_packet();
+        out_hdr = (TCP_Header*)out_pkt->data;
+        tcp_swap(out_hdr);
+        ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
+        ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
+        ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt);
+        ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
+        ASSERT_EQ_HEX8(out_hdr->flags, TCP_ACK);
+        free(out_pkt);
+
+        exit_state(conn, TCP_CLOSE_WAIT);
+        break;
+
+    case TCP_CLOSE_WAIT:
         tcp_close(conn);
 
         out_pkt = pop_packet();
@@ -260,11 +278,15 @@ static void exit_state(TCP_Conn* conn, uint state)
         ASSERT_EQ_HEX8(out_hdr->flags, TCP_FIN | TCP_ACK);
         free(out_pkt);
 
-        exit_state(conn, TCP_FIN_WAIT_1);
+        exit_state(conn, TCP_LAST_ACK);
         break;
 
-    case TCP_FIN_WAIT_1:
-        // TODO - continue transition to CLOSED
+    case TCP_LAST_ACK:
+        set_in_hdr(conn, in_hdr);
+        in_hdr->seq = conn->rcv_nxt;
+        in_hdr->ack = conn->snd_nxt;
+        in_hdr->flags = TCP_ACK;
+        tcp_input(in_pkt);
         break;
 
     default:
