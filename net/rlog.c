@@ -30,13 +30,12 @@ void rlog_print(const char* fmt, ...)
     {
         if (!ipv4_addr_eq(&intf->broadcast_addr, &null_ipv4_addr))
         {
-            NetBuf* buf = net_alloc_packet();
-            u8* pkt = (u8*)(buf + 1);
+            Net_Buf* pkt = net_alloc_buf();
 
-            strcpy((char*)pkt, msg);
-            u8* end = pkt + len;
+            strcpy((char*)pkt->start, msg);
+            pkt->end += len;
 
-            udp_tx(&intf->broadcast_addr, PORT_OSHELPER, PORT_OSHELPER, pkt, end);
+            udp_tx(&intf->broadcast_addr, PORT_OSHELPER, PORT_OSHELPER, pkt);
         }
     }
 }

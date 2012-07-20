@@ -7,7 +7,7 @@
 #include "net/intf.h"
 
 // ------------------------------------------------------------------------------------------------
-void dhcp_rx(Net_Intf* intf, const u8* pkt, const u8* end);
+void dhcp_rx(Net_Intf* intf, const Net_Buf* pkt);
 void dhcp_discover(Net_Intf* intf);
 
-void dhcp_print(const u8* pkt, const u8* end);
+void dhcp_print(const Net_Buf* pkt);

@@ -43,16 +43,16 @@ typedef struct NTP_Header
 #define MODE_SERVER                     4
 
 // ------------------------------------------------------------------------------------------------
-void ntp_rx(Net_Intf* intf, const u8* pkt, const u8* end)
+void ntp_rx(Net_Intf* intf, const Net_Buf* pkt)
 {
-    ntp_print(pkt, end);
+    ntp_print(pkt);
 
-    if (pkt + sizeof(NTP_Header) > end)
+    if (pkt->start + sizeof(NTP_Header) > pkt->end)
     {
         return;
     }
 
-    NTP_Header* hdr = (NTP_Header*)pkt;
+    NTP_Header* hdr = (NTP_Header*)pkt->start;
 
     abs_time t = (net_swap64(hdr->tx_timestamp) >> 32) - UNIX_EPOCH;
     DateTime dt;
@@ -68,10 +68,9 @@ void ntp_rx(Net_Intf* intf, const u8* pkt, const u8* end)
 // ------------------------------------------------------------------------------------------------
 void ntp_tx(const IPv4_Addr* dst_addr)
 {
-    NetBuf* buf = net_alloc_packet();
-    u8* pkt = (u8*)(buf + 1);
+    Net_Buf* pkt = net_alloc_buf();
 
-    NTP_Header* hdr = (NTP_Header*)pkt;
+    NTP_Header* hdr = (NTP_Header*)pkt->start;
     hdr->mode = (NTP_VERSION << 3) | MODE_CLIENT;
     hdr->stratum = 0;
     hdr->poll = 4;
@@ -84,27 +83,27 @@ void ntp_tx(const IPv4_Addr* dst_addr)
     hdr->rx_timestamp = net_swap64(0);
     hdr->tx_timestamp = net_swap64(0);
 
-    u8* end = pkt + sizeof(NTP_Header);
+    pkt->end += sizeof(NTP_Header);
     uint src_port = net_ephemeral_port();
 
-    ntp_print(pkt, end);
-    udp_tx(dst_addr, PORT_NTP, src_port, pkt, end);
+    ntp_print(pkt);
+    udp_tx(dst_addr, PORT_NTP, src_port, pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-void ntp_print(const u8* pkt, const u8* end)
+void ntp_print(const Net_Buf* pkt)
 {
     if (~net_trace & TRACE_APP)
     {
         return;
     }
 
-    if (pkt + sizeof(NTP_Header) > end)
+    if (pkt->start + sizeof(NTP_Header) > pkt->end)
     {
         return;
     }
 
-    NTP_Header* hdr = (NTP_Header*)pkt;
+    NTP_Header* hdr = (NTP_Header*)pkt->start;
 
     abs_time t = (net_swap64(hdr->tx_timestamp) >> 32) - UNIX_EPOCH;
 

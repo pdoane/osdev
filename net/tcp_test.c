@@ -54,9 +54,9 @@ void console_print(const char* fmt, ...)
 static void validate_checksum(Packet* pkt);
 
 void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
-    const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, u8* end)
+    const IPv4_Addr* dst_addr, u8 protocol, Net_Buf* pkt)
 {
-    uint len = end - pkt;
+    uint len = pkt->end - pkt->start;
 
     Packet* packet = malloc(sizeof(Packet));
     packet->phdr.src = intf->ip_addr;
@@ -65,7 +65,7 @@ void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
     packet->phdr.protocol = protocol;
     packet->phdr.len = net_swap16(len);
 
-    memcpy(packet->data, pkt, len);
+    memcpy(packet->data, pkt->start, len);
     packet->end = packet->data + len;
 
     link_before(&out_packets, &packet->link);
@@ -77,33 +77,31 @@ void* vm_alloc(uint size)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_input(u8* pkt)
+static void tcp_input(Net_Buf* pkt)
 {
-    TCP_Header* tcp_hdr = (TCP_Header*)pkt;
+    TCP_Header* tcp_hdr = (TCP_Header*)pkt->start;
     tcp_swap(tcp_hdr);
 
     // Data
-    u8* end = pkt + sizeof(TCP_Header);
+    pkt->end = pkt->start + sizeof(TCP_Header);
 
     // Pseudo Header
-    Checksum_Header* phdr = (Checksum_Header*)(pkt - sizeof(Checksum_Header));
+    Checksum_Header* phdr = (Checksum_Header*)(pkt->start - sizeof(Checksum_Header));
     phdr->src = ip_addr;
     phdr->dst = ip_addr;
     phdr->reserved = 0;
     phdr->protocol = IP_PROTOCOL_TCP;
-    phdr->len = net_swap16(end - pkt);
+    phdr->len = net_swap16(pkt->end - pkt->start);
 
     // Checksum
-    u16 checksum = net_checksum(pkt - sizeof(Checksum_Header), end);
+    u16 checksum = net_checksum(pkt->start - sizeof(Checksum_Header), pkt->end);
     tcp_hdr->checksum = net_swap16(checksum);
 
     // IP Header
-    pkt -= sizeof(IPv4_Header);
-
-    IPv4_Header* ip_hdr = (IPv4_Header*)pkt;
+    IPv4_Header* ip_hdr = (IPv4_Header*)(pkt->start - sizeof(IPv4_Header));
     ip_hdr->ver_ihl = (4 << 4) | 5;
     ip_hdr->tos = 0;
-    ip_hdr->len = net_swap16(end - pkt);
+    ip_hdr->len = net_swap16(pkt->end - pkt->start);
     ip_hdr->id = net_swap16(0);
     ip_hdr->offset = net_swap16(0);
     ip_hdr->ttl = 64;
@@ -113,7 +111,9 @@ static void tcp_input(u8* pkt)
     ip_hdr->dst = ip_addr;
 
     // Receive
-    tcp_rx(intf, pkt, end);
+    tcp_rx(intf, ip_hdr, pkt);
+
+    net_free_buf(pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -216,9 +216,8 @@ static void enter_state(TCP_Conn* conn, uint state)
 // ------------------------------------------------------------------------------------------------
 static void exit_state(TCP_Conn* conn, uint state)
 {
-    u8 in_buf[2048];
-    u8* in_pkt = in_buf + 256;
-    TCP_Header* in_hdr = (TCP_Header*)in_pkt;
+    Net_Buf* in_pkt;
+    TCP_Header* in_hdr;
     Packet* out_pkt;
     TCP_Header* out_hdr;
 
@@ -236,6 +235,8 @@ static void exit_state(TCP_Conn* conn, uint state)
         break;
 
     case TCP_SYN_RECEIVED:
+        in_pkt = net_alloc_buf();
+        in_hdr = (TCP_Header*)in_pkt->start;
         set_in_hdr(conn, in_hdr);
         in_hdr->seq = conn->rcv_nxt;
         in_hdr->ack = conn->snd_nxt;
@@ -246,6 +247,8 @@ static void exit_state(TCP_Conn* conn, uint state)
         break;
 
     case TCP_ESTABLISHED:
+        in_pkt = net_alloc_buf();
+        in_hdr = (TCP_Header*)in_pkt->start;
         set_in_hdr(conn, in_hdr);
         in_hdr->seq = conn->rcv_nxt;
         in_hdr->ack = conn->snd_nxt;
@@ -282,6 +285,8 @@ static void exit_state(TCP_Conn* conn, uint state)
         break;
 
     case TCP_LAST_ACK:
+        in_pkt = net_alloc_buf();
+        in_hdr = (TCP_Header*)in_pkt->start;
         set_in_hdr(conn, in_hdr);
         in_hdr->seq = conn->rcv_nxt;
         in_hdr->ack = conn->snd_nxt;
@@ -299,9 +304,8 @@ static void exit_state(TCP_Conn* conn, uint state)
 int main(int argc, const char** argv)
 {
     // Common variables
-    u8 in_buf[2048];
-    u8* in_pkt = in_buf + 256;
-    TCP_Header* in_hdr = (TCP_Header*)in_pkt;
+    Net_Buf* in_pkt;
+    TCP_Header* in_hdr;
     Packet* out_pkt;
     TCP_Header* out_hdr;
     TCP_Conn* conn;
@@ -311,6 +315,8 @@ int main(int argc, const char** argv)
     // --------------------------------------------------------------------------------------------
     test_case_begin("CLOSED: RST - segment dropped");
 
+    in_pkt = net_alloc_buf();
+    in_hdr = (TCP_Header*)in_pkt->start;
     in_hdr->src_port = 100;
     in_hdr->dst_port = 101;
     in_hdr->seq = 1;
@@ -326,6 +332,8 @@ int main(int argc, const char** argv)
     // --------------------------------------------------------------------------------------------
     test_case_begin("CLOSED: ACK - RST sent");
 
+    in_pkt = net_alloc_buf();
+    in_hdr = (TCP_Header*)in_pkt->start;
     in_hdr->src_port = 100;
     in_hdr->dst_port = 101;
     in_hdr->seq = 1;
@@ -352,6 +360,8 @@ int main(int argc, const char** argv)
     // --------------------------------------------------------------------------------------------
     test_case_begin("CLOSED: no ACK - RST/ACK sent");
 
+    in_pkt = net_alloc_buf();
+    in_hdr = (TCP_Header*)in_pkt->start;
     in_hdr->src_port = 100;
     in_hdr->dst_port = 101;
     in_hdr->seq = 1;
@@ -380,6 +390,9 @@ int main(int argc, const char** argv)
 
     conn = tcp_create();
     enter_state(conn, TCP_SYN_SENT);
+
+    in_pkt = net_alloc_buf();
+    in_hdr = (TCP_Header*)in_pkt->start;
     set_in_hdr(conn, in_hdr);
     in_hdr->seq = 1000;
     in_hdr->ack = conn->iss;
@@ -405,6 +418,9 @@ int main(int argc, const char** argv)
 
     conn = tcp_create();
     enter_state(conn, TCP_SYN_SENT);
+
+    in_pkt = net_alloc_buf();
+    in_hdr = (TCP_Header*)in_pkt->start;
     set_in_hdr(conn, in_hdr);
     in_hdr->seq = 1000;
     in_hdr->ack = conn->iss;
@@ -420,6 +436,9 @@ int main(int argc, const char** argv)
 
     conn = tcp_create();
     enter_state(conn, TCP_SYN_SENT);
+
+    in_pkt = net_alloc_buf();
+    in_hdr = (TCP_Header*)in_pkt->start;
     set_in_hdr(conn, in_hdr);
     in_hdr->seq = 1000;
     in_hdr->ack = conn->iss + 1;
@@ -435,6 +454,9 @@ int main(int argc, const char** argv)
 
     conn = tcp_create();
     enter_state(conn, TCP_SYN_SENT);
+
+    in_pkt = net_alloc_buf();
+    in_hdr = (TCP_Header*)in_pkt->start;
     set_in_hdr(conn, in_hdr);
     in_hdr->seq = 1000;
     in_hdr->ack = conn->iss + 1;
@@ -450,6 +472,9 @@ int main(int argc, const char** argv)
 
     conn = tcp_create();
     enter_state(conn, TCP_SYN_SENT);
+
+    in_pkt = net_alloc_buf();
+    in_hdr = (TCP_Header*)in_pkt->start;
     set_in_hdr(conn, in_hdr);
     in_hdr->seq = 1000;
     in_hdr->ack = conn->iss + 1;
@@ -478,6 +503,9 @@ int main(int argc, const char** argv)
 
     conn = tcp_create();
     enter_state(conn, TCP_SYN_SENT);
+
+    in_pkt = net_alloc_buf();
+    in_hdr = (TCP_Header*)in_pkt->start;
     set_in_hdr(conn, in_hdr);
     in_hdr->seq = 1000;
     in_hdr->ack = 0;

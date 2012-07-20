@@ -5,6 +5,6 @@
 #include "net/ipv6.h"
 
 // ------------------------------------------------------------------------------------------------
-void ipv6_rx(Net_Intf* intf, u8* pkt, u8* end)
+void ipv6_rx(Net_Intf* intf, Net_Buf* pkt)
 {
 }

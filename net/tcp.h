@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "net/intf.h"
+#include "net/ipv4.h"
 
 // ------------------------------------------------------------------------------------------------
 // Configuration
@@ -117,7 +117,7 @@ extern Link tcp_active_conns;
 // Functions
 
 void tcp_init();
-void tcp_rx(Net_Intf* intf, u8* pkt, u8* end);
+void tcp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt);
 void tcp_swap(TCP_Header* hdr);
 
 TCP_Conn* tcp_create();

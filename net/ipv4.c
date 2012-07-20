@@ -16,17 +16,17 @@
 #include "mem/vm.h"
 
 // ------------------------------------------------------------------------------------------------
-void ipv4_rx(Net_Intf* intf, u8* pkt, u8* end)
+void ipv4_rx(Net_Intf* intf, Net_Buf* pkt)
 {
-    ipv4_print(pkt, end);
+    ipv4_print(pkt);
 
     // Validate packet header
-    if (pkt + sizeof(IPv4_Header) > end)
+    if (pkt->start + sizeof(IPv4_Header) > pkt->end)
     {
         return;
     }
 
-    const IPv4_Header* hdr = (const IPv4_Header*)pkt;
+    const IPv4_Header* hdr = (const IPv4_Header*)pkt->start;
 
     uint version = (hdr->ver_ihl >> 4) & 0xf;
     if (version != 4)
@@ -45,46 +45,46 @@ void ipv4_rx(Net_Intf* intf, u8* pkt, u8* end)
 
     // Jump to packet data
     uint ihl = (hdr->ver_ihl) & 0xf;
-    u8* data = pkt + (ihl << 2);
 
     // Update packet end
-    u8* ip_end = pkt + net_swap16(hdr->len);
-    if (ip_end > end)
+    u8* ip_end = pkt->start + net_swap16(hdr->len);
+    if (ip_end > pkt->end)
     {
         console_print("IP Packet too long\n");
         return;
     }
 
-    end = ip_end;
+    pkt->start += ihl << 2;
+    pkt->end = ip_end;
 
     // Dispatch based on protocol
     switch (hdr->protocol)
     {
     case IP_PROTOCOL_ICMP:
-        icmp_rx(intf, pkt, end);  // Send the base IPv4 packet
+        icmp_rx(intf, hdr, pkt);
         break;
 
     case IP_PROTOCOL_TCP:
-        tcp_rx(intf, pkt, end);  // Send the base IPv4 packet
+        tcp_rx(intf, hdr, pkt);
         break;
 
     case IP_PROTOCOL_UDP:
-        udp_rx(intf, data, end);
+        udp_rx(intf, hdr, pkt);
         break;
     }
 }
 
 // ------------------------------------------------------------------------------------------------
 void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
-    const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, u8* end)
+    const IPv4_Addr* dst_addr, u8 protocol, Net_Buf* pkt)
 {
     // IPv4 Header
-    pkt -= sizeof(IPv4_Header);
+    pkt->start -= sizeof(IPv4_Header);
 
-    IPv4_Header* hdr = (IPv4_Header*)pkt;
+    IPv4_Header* hdr = (IPv4_Header*)pkt->start;
     hdr->ver_ihl = (4 << 4) | 5;
     hdr->tos = 0;
-    hdr->len = net_swap16(end - pkt);
+    hdr->len = net_swap16(pkt->end - pkt->start);
     hdr->id = net_swap16(0);
     hdr->offset = net_swap16(0);
     hdr->ttl = 64;
@@ -93,16 +93,16 @@ void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
     hdr->src = intf->ip_addr;
     hdr->dst = *dst_addr;
 
-    uint checksum = net_checksum(pkt, pkt + sizeof(IPv4_Header));
+    uint checksum = net_checksum(pkt->start, pkt->start + sizeof(IPv4_Header));
     hdr->checksum = net_swap16(checksum);
 
-    ipv4_print(pkt, end);
+    ipv4_print(pkt);
 
-    intf->tx(intf, next_addr, ET_IPV4, pkt, end);
+    intf->tx(intf, next_addr, ET_IPV4, pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, u8* end)
+void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, Net_Buf* pkt)
 {
     const Net_Route* route = net_find_route(dst_addr);
 
@@ -110,24 +110,24 @@ void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, u8* end)
     {
         const IPv4_Addr* next_addr = net_next_addr(route, dst_addr);
 
-        ipv4_tx_intf(route->intf, next_addr, dst_addr, protocol, pkt, end);
+        ipv4_tx_intf(route->intf, next_addr, dst_addr, protocol, pkt);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void ipv4_print(const u8* pkt, const u8* end)
+void ipv4_print(const Net_Buf* pkt)
 {
     if (~net_trace & TRACE_NET)
     {
         return;
     }
 
-    if (pkt + sizeof(IPv4_Header) > end)
+    if (pkt->start + sizeof(IPv4_Header) > pkt->end)
     {
         return;
     }
 
-    const IPv4_Header* hdr = (const IPv4_Header*)pkt;
+    const IPv4_Header* hdr = (const IPv4_Header*)pkt->start;
 
     uint version = (hdr->ver_ihl >> 4) & 0xf;
     uint ihl = (hdr->ver_ihl) & 0xf;
@@ -140,7 +140,7 @@ void ipv4_print(const u8* pkt, const u8* end)
     u8 protocol = hdr->protocol;
     u16 checksum = net_swap16(hdr->checksum);
 
-    uint checksum2 = net_checksum(pkt, pkt + sizeof(IPv4_Header));
+    uint checksum2 = net_checksum(pkt->start, pkt->start + sizeof(IPv4_Header));
 
     char src_addr_str[IPV4_ADDR_STRING_SIZE];
     char dst_addr_str[IPV4_ADDR_STRING_SIZE];

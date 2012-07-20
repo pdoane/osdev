@@ -33,9 +33,9 @@ typedef struct IPv4_Header
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void ipv4_rx(Net_Intf* intf, u8* pkt, u8* end);
-void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, u8* end);
+void ipv4_rx(Net_Intf* intf, Net_Buf* pkt);
+void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, Net_Buf* pkt);
 void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
-    const IPv4_Addr* dst_addr, u8 protocol, u8* pkt, u8* end);
+    const IPv4_Addr* dst_addr, u8 protocol, Net_Buf* pkt);
 
-void ipv4_print(const u8* pkt, const u8* end);
+void ipv4_print(const Net_Buf* pkt);

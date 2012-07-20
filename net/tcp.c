@@ -63,6 +63,11 @@ static bool tcp_parse_options(TCP_Options* opt, const u8* p, const u8* end)
         {
             u8 opt_len = *p++;
 
+            if (opt_len < 2)
+            {
+                return false;
+            }
+
             const u8* next = p + opt_len - 2;
             if (next > end)
             {
@@ -84,25 +89,25 @@ static bool tcp_parse_options(TCP_Options* opt, const u8* p, const u8* end)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_print(const u8* pkt, const u8* end)
+static void tcp_print(const Net_Buf* pkt)
 {
     if (~net_trace & TRACE_TRANSPORT)
     {
         return;
     }
 
-    if (pkt + sizeof(TCP_Header) > end)
+    if (pkt->start + sizeof(TCP_Header) > pkt->end)
     {
         return;
     }
 
-    Checksum_Header* phdr = (Checksum_Header*)(pkt - sizeof(Checksum_Header));
+    Checksum_Header* phdr = (Checksum_Header*)(pkt->start - sizeof(Checksum_Header));
     char src_addr_str[IPV4_ADDR_STRING_SIZE];
     char dst_addr_str[IPV4_ADDR_STRING_SIZE];
     ipv4_addr_to_str(src_addr_str, sizeof(src_addr_str), &phdr->src);
     ipv4_addr_to_str(dst_addr_str, sizeof(dst_addr_str), &phdr->dst);
 
-    const TCP_Header* hdr = (const TCP_Header*)pkt;
+    const TCP_Header* hdr = (const TCP_Header*)pkt->start;
 
     u16 src_port = net_swap16(hdr->src_port);
     u16 dst_port = net_swap16(hdr->dst_port);
@@ -112,11 +117,11 @@ static void tcp_print(const u8* pkt, const u8* end)
     u16 checksum = net_swap16(hdr->checksum);
     u16 urgent = net_swap16(hdr->urgent);
 
-    u16 checksum2 = net_checksum(pkt - sizeof(Checksum_Header), end);
+    u16 checksum2 = net_checksum(pkt->start - sizeof(Checksum_Header), pkt->end);
 
     uint hdr_len = hdr->off >> 2;
-    //const u8* data = (pkt + hdr_len);
-    uint data_len = (end - pkt) - hdr_len;
+    //const u8* data = (pkt->start + hdr_len);
+    uint data_len = (pkt->end - pkt->start) - hdr_len;
 
     console_print("  TCP: src=%s:%d dst=%s:%d\n",
             src_addr_str, src_port, dst_addr_str, dst_port);
@@ -128,7 +133,7 @@ static void tcp_print(const u8* pkt, const u8* end)
 
     if (hdr_len > sizeof(TCP_Header))
     {
-        const u8* p = pkt + sizeof(TCP_Header);
+        const u8* p = pkt->start + sizeof(TCP_Header);
         const u8* end = p + hdr_len;
 
         TCP_Options opt;
@@ -184,11 +189,10 @@ static void tcp_free(TCP_Conn* conn)
 // ------------------------------------------------------------------------------------------------
 static void tcp_tx(TCP_Conn* conn, u32 seq, u8 flags, const void* data, uint count)
 {
-    NetBuf* buf = net_alloc_packet();
-    u8* pkt = (u8*)(buf + 1);
+    Net_Buf* pkt = net_alloc_buf();
 
     // Header
-    TCP_Header* hdr = (TCP_Header*)pkt;
+    TCP_Header* hdr = (TCP_Header*)pkt->start;
     hdr->src_port = conn->local_port;
     hdr->dst_port = conn->remote_port;
     hdr->seq = seq;
@@ -200,7 +204,7 @@ static void tcp_tx(TCP_Conn* conn, u32 seq, u8 flags, const void* data, uint cou
     hdr->urgent = 0;
     tcp_swap(hdr);
 
-    u8* p = pkt + sizeof(TCP_Header);
+    u8* p = pkt->start + sizeof(TCP_Header);
 
     if (flags & TCP_SYN)
     {
@@ -212,32 +216,32 @@ static void tcp_tx(TCP_Conn* conn, u32 seq, u8 flags, const void* data, uint cou
     }
 
     // Option End
-    while ((p - pkt) & 3)
+    while ((p - pkt->start) & 3)
     {
         *p++ = 0;
     }
 
-    hdr->off = (p - pkt) << 2;
+    hdr->off = (p - pkt->start) << 2;
 
     // Data
     memcpy(p, data, count);
-    u8* end = p + count;
+    pkt->end = p + count;
 
     // Pseudo Header
-    Checksum_Header* phdr = (Checksum_Header*)(pkt - sizeof(Checksum_Header));
+    Checksum_Header* phdr = (Checksum_Header*)(pkt->start - sizeof(Checksum_Header));
     phdr->src = conn->local_addr;
     phdr->dst = conn->remote_addr;
     phdr->reserved = 0;
     phdr->protocol = IP_PROTOCOL_TCP;
-    phdr->len = net_swap16(end - pkt);
+    phdr->len = net_swap16(pkt->end - pkt->start);
 
     // Checksum
-    u16 checksum = net_checksum(pkt - sizeof(Checksum_Header), end);
+    u16 checksum = net_checksum(pkt->start - sizeof(Checksum_Header), pkt->end);
     hdr->checksum = net_swap16(checksum);
 
     // Transmit
-    tcp_print(pkt, end);
-    ipv4_tx_intf(conn->intf, &conn->next_addr, &conn->remote_addr, IP_PROTOCOL_TCP, pkt, end);
+    tcp_print(pkt);
+    ipv4_tx_intf(conn->intf, &conn->next_addr, &conn->remote_addr, IP_PROTOCOL_TCP, pkt);
 
     // Update State
     conn->snd_nxt += count;
@@ -611,15 +615,10 @@ static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr, const u8* data, uint
 }
 
 // ------------------------------------------------------------------------------------------------
-void tcp_rx(Net_Intf* intf, u8* pkt, u8* end)
+void tcp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt)
 {
     // Validate packet header
-    const IPv4_Header* ip_hdr = (const IPv4_Header*)pkt;
-
-    uint ihl = (ip_hdr->ver_ihl) & 0xf;
-    const u8* tcp_pkt = pkt + (ihl << 2);
-
-    if (pkt + sizeof(TCP_Header) > end)
+    if (pkt->start + sizeof(TCP_Header) > pkt->end)
     {
         return;
     }
@@ -629,23 +628,23 @@ void tcp_rx(Net_Intf* intf, u8* pkt, u8* end)
     IPv4_Addr dst_addr = ip_hdr->dst;
     u8 protocol = ip_hdr->protocol;
 
-    Checksum_Header* phdr = (Checksum_Header*)(tcp_pkt - sizeof(Checksum_Header));
+    Checksum_Header* phdr = (Checksum_Header*)(pkt->start - sizeof(Checksum_Header));
     phdr->src = src_addr;
     phdr->dst = dst_addr;
     phdr->reserved = 0;
     phdr->protocol = protocol;
-    phdr->len = net_swap16(end - tcp_pkt);
+    phdr->len = net_swap16(pkt->end - pkt->start);
 
-    tcp_print(tcp_pkt, end);
+    tcp_print(pkt);
 
     // Validate checksum
-    if (net_checksum(tcp_pkt - sizeof(Checksum_Header), end))
+    if (net_checksum(pkt->start - sizeof(Checksum_Header), pkt->end))
     {
         return;
     }
 
     // Process packet
-    TCP_Header* hdr = (TCP_Header*)tcp_pkt;
+    TCP_Header* hdr = (TCP_Header*)pkt->start;
     tcp_swap(hdr);
     phdr->len = net_swap16(phdr->len);
 
@@ -668,7 +667,7 @@ void tcp_rx(Net_Intf* intf, u8* pkt, u8* end)
     else
     {
         uint hdr_len = hdr->off >> 2;
-        const u8* data = (tcp_pkt + hdr_len);
+        const u8* data = (pkt->start + hdr_len);
         uint data_len = phdr->len - hdr_len;
 
         tcp_rx_general(conn, hdr, data, data_len);

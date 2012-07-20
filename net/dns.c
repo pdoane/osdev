@@ -29,9 +29,9 @@ typedef struct DNS_Header
 IPv4_Addr dns_server;
 
 // ------------------------------------------------------------------------------------------------
-void dns_rx(Net_Intf* intf, const u8* pkt, const u8* end)
+void dns_rx(Net_Intf* intf, const Net_Buf* pkt)
 {
-    dns_print(pkt, end);
+    dns_print(pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -43,10 +43,9 @@ void dns_query_host(const char* host, uint id)
         return;
     }
 
-    NetBuf* buf = net_alloc_packet();
-    u8* pkt = (u8*)(buf + 1);
+    Net_Buf* pkt = net_alloc_buf();
 
-    DNS_Header* hdr = (DNS_Header*)pkt;
+    DNS_Header* hdr = (DNS_Header*)pkt->start;
     hdr->id = net_swap16(id);
     hdr->flags = net_swap16(0x0100);    // Recursion Desired
     hdr->question_count = net_swap16(1);
@@ -54,7 +53,7 @@ void dns_query_host(const char* host, uint id)
     hdr->authority_count = net_swap16(0);
     hdr->additional_count = net_swap16(0);
 
-    u8* q = pkt + sizeof(DNS_Header);
+    u8* q = pkt->start + sizeof(DNS_Header);
     uint host_len = strlen(host);
     if (host_len >= 256)
     {
@@ -88,15 +87,15 @@ void dns_query_host(const char* host, uint id)
     *(u16*)q = net_swap16(1);   // query class
     q += sizeof(u16);
 
-    u8* end = q;
+    pkt->end = q;
     uint src_port = net_ephemeral_port();
 
-    dns_print(pkt, end);
-    udp_tx(&dns_server, PORT_DNS, src_port, pkt, end);
+    dns_print(pkt);
+    udp_tx(&dns_server, PORT_DNS, src_port, pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-static const u8* dns_print_host(const u8* pkt, const u8* p, bool first)
+static const u8* dns_print_host(const Net_Buf* pkt, const u8* p, bool first)
 {
     for (;;)
     {
@@ -107,7 +106,7 @@ static const u8* dns_print_host(const u8* pkt, const u8* p, bool first)
             u8 n = *p++;
             uint offset = ((count & 0x3f) << 6) | n;
 
-            dns_print_host(pkt, pkt + offset, first);
+            dns_print_host(pkt, pkt->start + offset, first);
             return p;
         }
         else if (count > 0)
@@ -133,7 +132,7 @@ static const u8* dns_print_host(const u8* pkt, const u8* p, bool first)
 }
 
 // ------------------------------------------------------------------------------------------------
-static const u8* dns_print_query(const u8* pkt, const u8* p)
+static const u8* dns_print_query(const Net_Buf* pkt, const u8* p)
 {
     console_print("    Query: ");
     p = dns_print_host(pkt, p, true);
@@ -148,7 +147,7 @@ static const u8* dns_print_query(const u8* pkt, const u8* p)
 }
 
 // ------------------------------------------------------------------------------------------------
-static const u8* dns_print_rr(const char* hdr, const u8* pkt, const u8* p)
+static const u8* dns_print_rr(const char* hdr, const Net_Buf* pkt, const u8* p)
 {
     console_print("    %s: ", hdr);
     p = dns_print_host(pkt, p, true);
@@ -182,9 +181,9 @@ static const u8* dns_print_rr(const char* hdr, const u8* pkt, const u8* p)
 }
 
 // ------------------------------------------------------------------------------------------------
-void dns_print(const u8* pkt, const u8* end)
+void dns_print(const Net_Buf* pkt)
 {
-    const DNS_Header* hdr = (const DNS_Header*)pkt;
+    const DNS_Header* hdr = (const DNS_Header*)pkt->start;
 
     u16 id = net_swap16(hdr->id);
     u16 flags = net_swap16(hdr->flags);
@@ -196,7 +195,7 @@ void dns_print(const u8* pkt, const u8* end)
     console_print("   DNS: id=%d flags=%04x questions=%d answers=%d authorities=%d additional=%d\n",
         id, flags, question_count, answer_count, authority_count, additional_count);
 
-    const u8* p = pkt + sizeof(DNS_Header);
+    const u8* p = pkt->start + sizeof(DNS_Header);
 
     for (uint i = 0; i < question_count; ++i)
     {

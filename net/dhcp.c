@@ -91,8 +91,16 @@ typedef struct DHCP_Options
 #define DHCP_INFORM                     8
 
 // ------------------------------------------------------------------------------------------------
-static bool dhcp_parse_options(DHCP_Options* opt, const u8* p, const u8* end)
+static bool dhcp_parse_options(DHCP_Options* opt, const Net_Buf* pkt)
 {
+    const u8* p = pkt->start + sizeof(DHCP_Header);
+    const u8* end = pkt->end;
+
+    if (p + 4 > end)
+    {
+        return false;
+    }
+
     u32 magic_cookie = net_swap32(*(u32*)p);
     p += 4;
 
@@ -167,9 +175,9 @@ static bool dhcp_parse_options(DHCP_Options* opt, const u8* p, const u8* end)
 }
 
 // ------------------------------------------------------------------------------------------------
-static u8* dhcp_build_header(u8* pkt, uint xid, const Eth_Addr* client_eth_addr, u8 message_type)
+static u8* dhcp_build_header(Net_Buf* pkt, uint xid, const Eth_Addr* client_eth_addr, u8 message_type)
 {
-    DHCP_Header* hdr = (DHCP_Header*)pkt;
+    DHCP_Header* hdr = (DHCP_Header*)pkt->start;
 
     memset(hdr, 0, sizeof(DHCP_Header));
     hdr->opcode = OP_REQUEST;
@@ -182,7 +190,7 @@ static u8* dhcp_build_header(u8* pkt, uint xid, const Eth_Addr* client_eth_addr,
     hdr->client_eth_addr = *client_eth_addr;
 
     // Options
-    u8* p = pkt + sizeof(DHCP_Header);
+    u8* p = pkt->start + sizeof(DHCP_Header);
 
     // Magic Cookie
     *(u32*)p = net_swap32(MAGIC_COOKIE);
@@ -207,8 +215,7 @@ static void dhcp_request(Net_Intf* intf, const DHCP_Header* hdr, const DHCP_Opti
     ipv4_addr_to_str(requested_ip_addr_str, sizeof(requested_ip_addr_str), requested_ip_addr);
     console_print("DHCP requesting lease for %s\n", requested_ip_addr_str);
 
-    NetBuf* buf = net_alloc_packet();
-    u8* pkt = (u8*)(buf + 1);
+    Net_Buf* pkt = net_alloc_buf();
 
     // Header
     u8* p = dhcp_build_header(pkt, xid, &intf->eth_addr, DHCP_REQUEST);
@@ -236,9 +243,10 @@ static void dhcp_request(Net_Intf* intf, const DHCP_Header* hdr, const DHCP_Opti
     *p++ = OPT_END;
 
     // Send packet
-    u8* end = p;
-    dhcp_print(pkt, end);
-    udp_tx_intf(intf, &broadcast_ipv4_addr, PORT_BOOTP_SERVER, PORT_BOOTP_CLIENT, pkt, end);
+    pkt->end = p;
+
+    dhcp_print(pkt);
+    udp_tx_intf(intf, &broadcast_ipv4_addr, PORT_BOOTP_SERVER, PORT_BOOTP_CLIENT, pkt);
 }
 
 
@@ -282,16 +290,16 @@ static void dhcp_ack(Net_Intf* intf, const DHCP_Header* hdr, const DHCP_Options*
 }
 
 // ------------------------------------------------------------------------------------------------
-void dhcp_rx(Net_Intf* intf, const u8* pkt, const u8* end)
+void dhcp_rx(Net_Intf* intf, const Net_Buf* pkt)
 {
-    dhcp_print(pkt, end);
+    dhcp_print(pkt);
 
-    if (pkt + sizeof(DHCP_Header) > end)
+    if (pkt->start + sizeof(DHCP_Header) > pkt->end)
     {
         return;
     }
 
-    const DHCP_Header* hdr = (const DHCP_Header*)pkt;
+    const DHCP_Header* hdr = (const DHCP_Header*)pkt->start;
     if (hdr->opcode != OP_REPLY || hdr->htype != HTYPE_ETH || hdr->hlen != sizeof(Eth_Addr))
     {
         return;
@@ -302,39 +310,34 @@ void dhcp_rx(Net_Intf* intf, const u8* pkt, const u8* end)
         return;
     }
 
-    if (end - pkt >= sizeof(DHCP_Header) + 4)
+    DHCP_Options opt;
+    if (!dhcp_parse_options(&opt, pkt))
     {
-        const u8* p = pkt + sizeof(DHCP_Header);
+        return;
+    }
 
-        DHCP_Options opt;
-        if (!dhcp_parse_options(&opt, p, end))
-        {
-            return;
-        }
+    char your_ip_addr_str[IPV4_ADDR_STRING_SIZE];
+    ipv4_addr_to_str(your_ip_addr_str, sizeof(your_ip_addr_str), &hdr->your_ip_addr);
 
-        char your_ip_addr_str[IPV4_ADDR_STRING_SIZE];
-        ipv4_addr_to_str(your_ip_addr_str, sizeof(your_ip_addr_str), &hdr->your_ip_addr);
+    switch (opt.message_type)
+    {
+    case DHCP_OFFER:
+        console_print("DHCP offer received for %s\n", your_ip_addr_str);
+        dhcp_request(intf, hdr, &opt);
+        break;
 
-        switch (opt.message_type)
-        {
-        case DHCP_OFFER:
-            console_print("DHCP offer received for %s\n", your_ip_addr_str);
-            dhcp_request(intf, hdr, &opt);
-            break;
+    case DHCP_ACK:
+        console_print("DHCP ack received for %s\n", your_ip_addr_str);
+        dhcp_ack(intf, hdr, &opt);
+        break;
 
-        case DHCP_ACK:
-            console_print("DHCP ack received for %s\n", your_ip_addr_str);
-            dhcp_ack(intf, hdr, &opt);
-            break;
+    case DHCP_NAK:
+        console_print("DHCP nak received for %s\n", your_ip_addr_str);
+        break;
 
-        case DHCP_NAK:
-            console_print("DHCP nak received for %s\n", your_ip_addr_str);
-            break;
-
-        default:
-            console_print("DHCP message unhandled\n");
-            break;
-        }
+    default:
+        console_print("DHCP message unhandled\n");
+        break;
     }
 }
 
@@ -343,8 +346,7 @@ void dhcp_discover(Net_Intf* intf)
 {
     console_print("DHCP discovery\n");
 
-    NetBuf* buf = net_alloc_packet();
-    u8* pkt = (u8*)(buf + 1);
+    Net_Buf* pkt = net_alloc_buf();
 
     // Header
     uint xid = 0;
@@ -361,25 +363,26 @@ void dhcp_discover(Net_Intf* intf)
     *p++ = OPT_END;
 
     // Send packet
-    u8* end = p;
-    dhcp_print(pkt, end);
-    udp_tx_intf(intf, &broadcast_ipv4_addr, PORT_BOOTP_SERVER, PORT_BOOTP_CLIENT, pkt, end);
+    pkt->end = p;
+
+    dhcp_print(pkt);
+    udp_tx_intf(intf, &broadcast_ipv4_addr, PORT_BOOTP_SERVER, PORT_BOOTP_CLIENT, pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-void dhcp_print(const u8* pkt, const u8* end)
+void dhcp_print(const Net_Buf* pkt)
 {
     if (~net_trace & TRACE_APP)
     {
         return;
     }
 
-    if (pkt + sizeof(DHCP_Header) > end)
+    if (pkt->start + sizeof(DHCP_Header) > pkt->end)
     {
         return;
     }
 
-    const DHCP_Header* hdr = (const DHCP_Header*)pkt;
+    const DHCP_Header* hdr = (const DHCP_Header*)pkt->start;
 
     char client_ip_addr_str[IPV4_ADDR_STRING_SIZE];
     char your_ip_addr_str[IPV4_ADDR_STRING_SIZE];
@@ -395,67 +398,62 @@ void dhcp_print(const u8* pkt, const u8* end)
 
     console_print("   DHCP: opcode=%d htype=%d hlen=%d hop_count=%d xid=%d secs=%d flags=%d len=%d\n",
         hdr->opcode, hdr->htype, hdr->hlen, hdr->hop_count,
-        net_swap32(hdr->xid), net_swap16(hdr->sec_count), net_swap16(hdr->flags), end - pkt);
+        net_swap32(hdr->xid), net_swap16(hdr->sec_count), net_swap16(hdr->flags), pkt->end - pkt->start);
     console_print("   DHCP: client=%s your=%s server=%s gateway=%s\n",
         client_ip_addr_str, your_ip_addr_str, server_ip_addr_str, gateway_ip_addr_str);
     console_print("   DHCP: eth=%s server_name=%s boot_filename=%s\n",
         client_eth_addr_str, hdr->server_name, hdr->boot_filename);
 
-    if (end - pkt >= sizeof(DHCP_Header) + 4)
+    DHCP_Options opt;
+    if (!dhcp_parse_options(&opt, pkt))
     {
-        const u8* p = pkt + sizeof(DHCP_Header);
+        return;
+    }
 
-        DHCP_Options opt;
-        if (!dhcp_parse_options(&opt, p, end))
-        {
-            return;
-        }
+    char ipv4_addr_str[IPV4_ADDR_STRING_SIZE];
 
-        char ipv4_addr_str[IPV4_ADDR_STRING_SIZE];
+    if (opt.message_type)
+    {
+        console_print("   DHCP: message type: %d\n", opt.message_type);
+    }
 
-        if (opt.message_type)
-        {
-            console_print("   DHCP: message type: %d\n", opt.message_type);
-        }
+    if (opt.subnet_mask)
+    {
+        ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), opt.subnet_mask);
+        console_print("   DHCP: subnet_mask: %s\n", ipv4_addr_str);
+    }
 
-        if (opt.subnet_mask)
-        {
-            ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), opt.subnet_mask);
-            console_print("   DHCP: subnet_mask: %s\n", ipv4_addr_str);
-        }
+    for (const IPv4_Addr* addr = opt.router_list; addr != opt.router_end; ++addr)
+    {
+        ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), addr);
+        console_print("   DHCP: router: %s\n", ipv4_addr_str);
+    }
 
-        for (const IPv4_Addr* addr = opt.router_list; addr != opt.router_end; ++addr)
-        {
-            ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), addr);
-            console_print("   DHCP: router: %s\n", ipv4_addr_str);
-        }
+    for (const IPv4_Addr* addr = opt.dns_list; addr != opt.dns_end; ++addr)
+    {
+        ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), addr);
+        console_print("   DHCP: dns: %s\n", ipv4_addr_str);
+    }
 
-        for (const IPv4_Addr* addr = opt.dns_list; addr != opt.dns_end; ++addr)
-        {
-            ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), addr);
-            console_print("   DHCP: dns: %s\n", ipv4_addr_str);
-        }
+    if (opt.requested_ip_addr)
+    {
+        ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), opt.requested_ip_addr);
+        console_print("   DHCP: requested ip: %s\n", ipv4_addr_str);
+    }
 
-        if (opt.requested_ip_addr)
-        {
-            ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), opt.requested_ip_addr);
-            console_print("   DHCP: requested ip: %s\n", ipv4_addr_str);
-        }
+    if (opt.lease_time)
+    {
+        console_print("   DHCP: lease time: %d\n", opt.lease_time);
+    }
 
-        if (opt.lease_time)
-        {
-            console_print("   DHCP: lease time: %d\n", opt.lease_time);
-        }
+    if (opt.server_id)
+    {
+        ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), opt.server_id);
+        console_print("   DHCP: server id: %s\n", ipv4_addr_str);
+    }
 
-        if (opt.server_id)
-        {
-            ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), opt.server_id);
-            console_print("   DHCP: server id: %s\n", ipv4_addr_str);
-        }
-
-        for (const u8* p = opt.parameter_list; p != opt.parameter_end; ++p)
-        {
-            console_print("   DHCP: parameter request: %d\n", *p);
-        }
+    for (const u8* p = opt.parameter_list; p != opt.parameter_end; ++p)
+    {
+        console_print("   DHCP: parameter request: %d\n", *p);
     }
 }

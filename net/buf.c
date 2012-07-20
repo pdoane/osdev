@@ -6,25 +6,32 @@
 #include "mem/vm.h"
 
 // ------------------------------------------------------------------------------------------------
-static Link net_free_packets = { &net_free_packets, &net_free_packets };
+static Net_Buf* net_free_bufs;
 
 // ------------------------------------------------------------------------------------------------
-NetBuf* net_alloc_packet()
+Net_Buf* net_alloc_buf()
 {
-    Link* p = net_free_packets.next;
-    if (p != &net_free_packets)
+    Net_Buf* buf = net_free_bufs;
+    if (!buf)
     {
-        link_remove(p);
-        return link_data(p, NetBuf, link);
+        buf = vm_alloc(NET_BUF_SIZE);
     }
     else
     {
-        return vm_alloc(MAX_PACKET_SIZE);
+        net_free_bufs = buf->next_buf;
     }
+
+    buf->next_buf = 0;
+    buf->next_pkt = 0;
+    buf->start = (u8*)buf + 256;   // room for Net_Buf header + eth header + ip header + tcp header
+    buf->end = (u8*)buf + 256;
+
+    return buf;
 }
 
 // ------------------------------------------------------------------------------------------------
-void net_free_packet(NetBuf* buf)
+void net_free_buf(Net_Buf* buf)
 {
-    link_before(&net_free_packets, &buf->link);
+    buf->next_buf = net_free_bufs;
+    net_free_bufs = buf;
 }

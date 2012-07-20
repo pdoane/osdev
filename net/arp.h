@@ -25,7 +25,7 @@ typedef struct ARP_Header
 void arp_init();
 
 const Eth_Addr* arp_lookup_mac(const IPv4_Addr* pa);
-void arp_request(Net_Intf* intf, const IPv4_Addr* tpa, u16 ether_type, u8* pkt, u8* end);
+void arp_request(Net_Intf* intf, const IPv4_Addr* tpa, u16 ether_type, Net_Buf* pkt);
 void arp_reply(Net_Intf* intf, const Eth_Addr* tha, const IPv4_Addr* tpa);
 
-void arp_rx(Net_Intf* intf, u8* pkt, u8* end);
+void arp_rx(Net_Intf* intf, Net_Buf* pkt);

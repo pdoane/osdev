@@ -13,87 +13,87 @@
 #include "console/console.h"
 
 // ------------------------------------------------------------------------------------------------
-void udp_rx(Net_Intf* intf, u8* pkt, u8* end)
+void udp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt)
 {
-    udp_print(pkt, end);
+    udp_print(pkt);
 
     // Validate packet header
-    if (pkt + sizeof(UDP_Header) > end)
+    if (pkt->start + sizeof(UDP_Header) > pkt->end)
     {
         return;
     }
 
-    const UDP_Header* hdr = (const UDP_Header*)pkt;
+    const UDP_Header* hdr = (const UDP_Header*)pkt->start;
 
     u16 src_port = net_swap16(hdr->src_port);
     //u16 dst_port = net_swap16(hdr->dst_port);
 
-    const u8* data = pkt + sizeof(UDP_Header);
+    pkt->start += sizeof(UDP_Header);
 
     switch (src_port)
     {
     case PORT_DNS:
-        dns_rx(intf, data, end);
+        dns_rx(intf, pkt);
         break;
 
     case PORT_BOOTP_SERVER:
-        dhcp_rx(intf, data, end);
+        dhcp_rx(intf, pkt);
         break;
 
     case PORT_NTP:
-        ntp_rx(intf, data, end);
+        ntp_rx(intf, pkt);
         break;
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void udp_tx(const IPv4_Addr* dst_addr, uint dst_port, uint src_port, u8* pkt, u8* end)
+void udp_tx(const IPv4_Addr* dst_addr, uint dst_port, uint src_port, Net_Buf* pkt)
 {
     // UDP Header
-    pkt -= sizeof(UDP_Header);
+    pkt->start -= sizeof(UDP_Header);
 
-    UDP_Header* hdr = (UDP_Header*)pkt;
+    UDP_Header* hdr = (UDP_Header*)pkt->start;
     hdr->src_port = net_swap16(src_port);
     hdr->dst_port = net_swap16(dst_port);
-    hdr->len = net_swap16(end - pkt);
+    hdr->len = net_swap16(pkt->end - pkt->start);
     hdr->checksum = 0;  // don't compute checksum yet
 
-    udp_print(pkt, end);
+    udp_print(pkt);
 
-    ipv4_tx(dst_addr, IP_PROTOCOL_UDP, pkt, end);
+    ipv4_tx(dst_addr, IP_PROTOCOL_UDP, pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-void udp_tx_intf(Net_Intf* intf, const IPv4_Addr* dst_addr, uint dst_port, uint src_port, u8* pkt, u8* end)
+void udp_tx_intf(Net_Intf* intf, const IPv4_Addr* dst_addr, uint dst_port, uint src_port, Net_Buf* pkt)
 {
     // UDP Header
-    pkt -= sizeof(UDP_Header);
+    pkt->start -= sizeof(UDP_Header);
 
-    UDP_Header* hdr = (UDP_Header*)pkt;
+    UDP_Header* hdr = (UDP_Header*)pkt->start;
     hdr->src_port = net_swap16(src_port);
     hdr->dst_port = net_swap16(dst_port);
-    hdr->len = net_swap16(end - pkt);
+    hdr->len = net_swap16(pkt->end - pkt->start);
     hdr->checksum = 0;  // don't compute checksum yet
 
-    udp_print(pkt, end);
+    udp_print(pkt);
 
-    ipv4_tx_intf(intf, dst_addr, dst_addr, IP_PROTOCOL_UDP, pkt, end);
+    ipv4_tx_intf(intf, dst_addr, dst_addr, IP_PROTOCOL_UDP, pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-void udp_print(const u8* pkt, const u8* end)
+void udp_print(const Net_Buf* pkt)
 {
     if (~net_trace & TRACE_TRANSPORT)
     {
         return;
     }
 
-    if (pkt + sizeof(UDP_Header) > end)
+    if (pkt->start + sizeof(UDP_Header) > pkt->end)
     {
         return;
     }
 
-    const UDP_Header* hdr = (const UDP_Header*)pkt;
+    const UDP_Header* hdr = (const UDP_Header*)pkt->start;
 
     u16 src_port = net_swap16(hdr->src_port);
     u16 dst_port = net_swap16(hdr->dst_port);

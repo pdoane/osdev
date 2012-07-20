@@ -16,21 +16,21 @@ static void loop_poll(Net_Intf* intf)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void loop_tx(Net_Intf* intf, const void* dst_addr, u16 ether_type, u8* pkt, u8* end)
+static void loop_tx(Net_Intf* intf, const void* dst_addr, u16 ether_type, Net_Buf* pkt)
 {
     // Route packet by protocol
     switch (ether_type)
     {
     case ET_ARP:
-        arp_rx(intf, pkt, end);
+        arp_rx(intf, pkt);
         break;
 
     case ET_IPV4:
-        ipv4_rx(intf, pkt, end);
+        ipv4_rx(intf, pkt);
         break;
 
     case ET_IPV6:
-        ipv6_rx(intf, pkt, end);
+        ipv6_rx(intf, pkt);
         break;
     }
 }

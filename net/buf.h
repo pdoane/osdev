@@ -9,19 +9,20 @@
 // ------------------------------------------------------------------------------------------------
 // Net Buffer
 
-typedef struct NetBuf
+#define NET_BUF_SIZE        2048
+#define NET_BUF_START       256     // Room for various protocol headers + header below
+
+typedef struct Net_Buf
 {
-    Link link;
-
-    // Allow for up to 120 bytes to be used in the packet header for various protocols.  This allows
-    // for IPv4 and TCP to both use all but two optional fields.
-    u8 proto_headers[120];
-} NetBuf;
-
-#define MAX_PACKET_SIZE         1500
+    struct Net_Buf* next_buf;
+    u8*             start;          // offset to data start
+    u8*             end;            // offset to data end exclusive
+} Net_Buf;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-NetBuf* net_alloc_packet();
-void net_free_packet(NetBuf* buf);
+Net_Buf* net_alloc_buf();
+void net_free_buf(Net_Buf* buf);
+
+Net_Buf* net_create_send_buf();

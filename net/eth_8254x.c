@@ -82,6 +82,8 @@ typedef struct Device
     uint tx_write;
     RX_Desc* rx_descs;
     TX_Desc* tx_descs;
+    Net_Buf* rx_bufs[RX_DESC_COUNT];
+    Net_Buf* tx_bufs[TX_DESC_COUNT];
 } Device;
 
 static Device dev;
@@ -189,16 +191,17 @@ static void eth_8254x_poll(Net_Intf* intf)
 
     while (desc->status & RSTA_DD)
     {
-        u8* pkt = (u8*)desc->addr;
-        u8* end = pkt + desc->len;
-
         if (desc->errors)
         {
             console_print("Packet Error: (0x%x)\n", desc->errors);
         }
         else
         {
-            eth_rx(intf, pkt, end);
+            Net_Buf* buf = dev.rx_bufs[dev.rx_read];
+            buf->start = (u8*)(uintptr_t)desc->addr;
+            buf->end = buf->start + desc->len;
+
+            eth_rx(intf, buf);
         }
 
         desc->status = 0;
@@ -211,9 +214,10 @@ static void eth_8254x_poll(Net_Intf* intf)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void eth_8254x_tx(u8* pkt, u8* end)
+static void eth_8254x_tx(Net_Buf* buf)
 {
     TX_Desc* desc = &dev.tx_descs[dev.tx_write];
+    Net_Buf* old_buf = dev.tx_bufs[dev.tx_write];
 
     // Wait until packet is sent
     while (!(desc->status & 0xf))
@@ -224,17 +228,17 @@ static void eth_8254x_tx(u8* pkt, u8* end)
     // Free packet that was sent with this descriptor.
     // TODO - free packets earlier?
 
-    if (desc->addr)
+    if (old_buf)
     {
-        NetBuf* buf = (NetBuf*)((uintptr_t)desc->addr & ~0xfff);  // buffer starts page aligned
-        net_free_packet(buf);
+        net_free_buf(old_buf);
     }
 
     // Write new tx descriptor
-    desc->addr = (u64)pkt;
-    desc->len = end - pkt;
+    desc->addr = (u64)(uintptr_t)buf->start;
+    desc->len = buf->end - buf->start;
     desc->cmd = CMD_EOP | CMD_IFCS | CMD_RS;
     desc->status = 0;
+    dev.tx_bufs[dev.tx_write] = buf;
 
     dev.tx_write = (dev.tx_write + 1) & (TX_DESC_COUNT - 1);
     mmio_write32(dev.mmio_addr + REG_TDT, dev.tx_write);
@@ -321,7 +325,6 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
     mmio_read32(mmio_addr + REG_ICR);
 
     // Allocate memory
-    u8* rx_packet = vm_alloc(RX_DESC_COUNT * PACKET_SIZE);
     RX_Desc* rx_descs = vm_alloc(RX_DESC_COUNT * sizeof(RX_Desc));
     TX_Desc* tx_descs = vm_alloc(TX_DESC_COUNT * sizeof(TX_Desc));
 
@@ -329,11 +332,18 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
     dev.tx_descs = tx_descs;
 
     // Receive Setup
-    RX_Desc* rx_desc = rx_descs;
-    RX_Desc* rx_end = rx_desc + RX_DESC_COUNT;
-    for (; rx_desc != rx_end; ++rx_desc, rx_packet += PACKET_SIZE)
+    for (uint i = 0; i < RX_DESC_COUNT; ++i)
     {
-        rx_desc->addr = (u64)rx_packet;
+        Net_Buf* buf = net_alloc_buf();
+        buf->next_buf = 0;
+        buf->next_pkt = 0;
+        buf->start = (u8*)buf + NET_BUF_START;
+        buf->end = (u8*)buf + NET_BUF_START;
+
+        dev.rx_bufs[i] = buf;
+
+        RX_Desc* rx_desc = rx_descs + i;
+        rx_desc->addr = (u64)(uintptr_t)buf->start;
         rx_desc->status = 0;
     }
 
