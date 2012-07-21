@@ -198,10 +198,13 @@ static void eth_intel_poll(Net_Intf* intf)
         else
         {
             Net_Buf* buf = dev.rx_bufs[dev.rx_read];
-            buf->start = (u8*)(uintptr_t)desc->addr;
             buf->end = buf->start + desc->len;
 
             eth_rx(intf, buf);
+
+            net_release_buf(buf);
+            buf = net_alloc_buf();
+            desc->addr = (u64)(uintptr_t)buf->start;
         }
 
         desc->status = 0;
@@ -230,7 +233,7 @@ static void eth_intel_tx(Net_Buf* buf)
 
     if (old_buf)
     {
-        net_free_buf(old_buf);
+        net_release_buf(old_buf);
     }
 
     // Write new tx descriptor

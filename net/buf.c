@@ -7,6 +7,7 @@
 
 // ------------------------------------------------------------------------------------------------
 static Net_Buf* net_free_bufs;
+int net_buf_alloc_count;
 
 // ------------------------------------------------------------------------------------------------
 Net_Buf* net_alloc_buf()
@@ -24,13 +25,20 @@ Net_Buf* net_alloc_buf()
     buf->next_buf = 0;
     buf->start = (u8*)buf + NET_BUF_START;
     buf->end = (u8*)buf + NET_BUF_START;
+    buf->ref_count = 1;
 
+    ++net_buf_alloc_count;
     return buf;
 }
 
 // ------------------------------------------------------------------------------------------------
-void net_free_buf(Net_Buf* buf)
+void net_release_buf(Net_Buf* buf)
 {
-    buf->next_buf = net_free_bufs;
-    net_free_bufs = buf;
+    if (!--buf->ref_count)
+    {
+        --net_buf_alloc_count;
+
+        buf->next_buf = net_free_bufs;
+        net_free_bufs = buf;
+    }
 }

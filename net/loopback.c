@@ -33,6 +33,8 @@ static void loop_tx(Net_Intf* intf, const void* dst_addr, u16 ether_type, Net_Bu
         ipv6_rx(intf, pkt);
         break;
     }
+
+    net_release_buf(pkt);
 }
 
 // ------------------------------------------------------------------------------------------------

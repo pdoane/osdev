@@ -69,6 +69,8 @@ void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
     packet->end = packet->data + len;
 
     link_before(&out_packets, &packet->link);
+
+    net_release_buf(pkt);
 }
 
 void* vm_alloc(uint size)
@@ -113,7 +115,7 @@ static void tcp_input(Net_Buf* pkt)
     // Receive
     tcp_rx(intf, ip_hdr, pkt);
 
-    net_free_buf(pkt);
+    net_release_buf(pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -167,6 +169,7 @@ static void test_case_end()
 {
     ASSERT_TRUE(list_empty(&out_packets));
     ASSERT_TRUE(list_empty(&tcp_active_conns));
+    ASSERT_EQ_INT(net_buf_alloc_count, 0);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -327,6 +330,7 @@ int main(int argc, const char** argv)
     in_hdr->checksum = 0;
     in_hdr->urgent = 0;
     tcp_input(in_pkt);
+
     test_case_end();
 
     // --------------------------------------------------------------------------------------------

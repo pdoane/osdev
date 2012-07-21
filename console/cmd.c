@@ -25,10 +25,11 @@
 // ------------------------------------------------------------------------------------------------
 static void tcp_state(TCP_Conn* conn, uint old_state, uint new_state)
 {
+    /*
     console_print("\nTCP: %p %s -> %s\n",
         conn,
         tcp_state_strs[old_state],
-        tcp_state_strs[new_state]);
+        tcp_state_strs[new_state]);*/
 
     const char* msg = (const char*)conn->ctx;
 
@@ -168,6 +169,12 @@ static void cmd_lsroute(uint argc, const char** argv)
 }
 
 // ------------------------------------------------------------------------------------------------
+static void cmd_mem(uint argc, const char** argv)
+{
+    console_print("net buf: %d\n", net_buf_alloc_count);
+}
+
+// ------------------------------------------------------------------------------------------------
 static void cmd_net_trace(uint argc, const char** argv)
 {
     if (argc != 2)
@@ -259,6 +266,7 @@ const ConsoleCmd console_cmd_table[] =
     { "host", cmd_host },
     { "lsconn", cmd_lsconn },
     { "lsroute", cmd_lsroute },
+    { "mem", cmd_mem },
     { "net_trace", cmd_net_trace },
     { "ping", cmd_ping },
     { "reboot", cmd_reboot },

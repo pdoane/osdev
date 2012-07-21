@@ -17,12 +17,18 @@ typedef struct Net_Buf
     struct Net_Buf* next_buf;
     u8*             start;          // offset to data start
     u8*             end;            // offset to data end exclusive
+    uint            ref_count;
 } Net_Buf;
+
+// ------------------------------------------------------------------------------------------------
+// Globals
+
+extern int net_buf_alloc_count;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
 Net_Buf* net_alloc_buf();
-void net_free_buf(Net_Buf* buf);
+void net_release_buf(Net_Buf* buf);
 
 Net_Buf* net_create_send_buf();

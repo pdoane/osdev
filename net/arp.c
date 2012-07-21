@@ -186,7 +186,7 @@ void arp_request(Net_Intf* intf, const IPv4_Addr* tpa, u16 ether_type, Net_Buf* 
         // Drop any packet already queued
         if (entry->pkt)
         {
-            net_free_buf(entry->pkt);
+            net_release_buf(entry->pkt);
         }
 
         entry->intf = intf;
