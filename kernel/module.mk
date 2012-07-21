@@ -26,8 +26,8 @@ KERNEL_SOURCES := \
 	net/dhcp.c \
 	net/dns.c \
 	net/eth.c \
-	net/eth_8254x.c \
 	net/icmp.c \
+	net/intel.c \
 	net/intf.c \
 	net/ipv4.c \
 	net/ipv6.c \

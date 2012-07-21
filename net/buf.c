@@ -22,9 +22,8 @@ Net_Buf* net_alloc_buf()
     }
 
     buf->next_buf = 0;
-    buf->next_pkt = 0;
-    buf->start = (u8*)buf + 256;   // room for Net_Buf header + eth header + ip header + tcp header
-    buf->end = (u8*)buf + 256;
+    buf->start = (u8*)buf + NET_BUF_START;
+    buf->end = (u8*)buf + NET_BUF_START;
 
     return buf;
 }

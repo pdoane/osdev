@@ -1,8 +1,8 @@
 // ------------------------------------------------------------------------------------------------
-// net/eth_8254x.c
+// net/intel.c
 // ------------------------------------------------------------------------------------------------
 
-#include "net/eth_8254x.h"
+#include "net/intel.h"
 #include "net/buf.h"
 #include "net/ipv4.h"
 #include "net/eth.h"
@@ -185,7 +185,7 @@ static u16 eeprom_read(u8* mmio_addr, u8 eeprom_addr)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void eth_8254x_poll(Net_Intf* intf)
+static void eth_intel_poll(Net_Intf* intf)
 {
     RX_Desc* desc = &dev.rx_descs[dev.rx_read];
 
@@ -214,7 +214,7 @@ static void eth_8254x_poll(Net_Intf* intf)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void eth_8254x_tx(Net_Buf* buf)
+static void eth_intel_tx(Net_Buf* buf)
 {
     TX_Desc* desc = &dev.tx_descs[dev.tx_write];
     Net_Buf* old_buf = dev.tx_bufs[dev.tx_write];
@@ -245,7 +245,7 @@ static void eth_8254x_tx(Net_Buf* buf)
 }
 
 // ------------------------------------------------------------------------------------------------
-void eth_8254x_init(uint id, PCI_DeviceInfo* info)
+void eth_intel_init(uint id, PCI_DeviceInfo* info)
 {
     // Check device supported.
     if (info->vendor_id != 0x8086)
@@ -335,10 +335,6 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
     for (uint i = 0; i < RX_DESC_COUNT; ++i)
     {
         Net_Buf* buf = net_alloc_buf();
-        buf->next_buf = 0;
-        buf->next_pkt = 0;
-        buf->start = (u8*)buf + NET_BUF_START;
-        buf->end = (u8*)buf + NET_BUF_START;
 
         dev.rx_bufs[i] = buf;
 
@@ -396,9 +392,9 @@ void eth_8254x_init(uint id, PCI_DeviceInfo* info)
     intf->eth_addr = local_addr;
     intf->ip_addr = null_ipv4_addr;
     intf->name = "eth";
-    intf->poll = eth_8254x_poll;
+    intf->poll = eth_intel_poll;
     intf->tx = eth_tx_intf;
-    intf->dev_tx = eth_8254x_tx;
+    intf->dev_tx = eth_intel_tx;
 
     net_intf_add(intf);
 }

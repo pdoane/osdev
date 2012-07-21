@@ -6,14 +6,14 @@
 #include "cpu/io.h"
 
 #include "gfx/gfx.h"
-#include "net/eth_8254x.h"
+#include "net/intel.h"
 #include "usb/ehci.h"
 #include "usb/uhci.h"
 
 // ------------------------------------------------------------------------------------------------
 const PCI_Driver pci_driver_table[] =
 {
-    { eth_8254x_init },
+    { eth_intel_init },
     { uhci_init },
     { ehci_init },
     { gfx_init },

@@ -1,9 +1,9 @@
 // ------------------------------------------------------------------------------------------------
-// net/eth_8254x.h
+// net/intel.h
 // ------------------------------------------------------------------------------------------------
 
 #pragma once
 
 #include "pci/driver.h"
 
-void eth_8254x_init(uint id, PCI_DeviceInfo* info);
+void eth_intel_init(uint id, PCI_DeviceInfo* info);
