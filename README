@@ -86,6 +86,7 @@ What to expect:
 
 - Type 'help' to see available commands.  Some examples:
 
+  - 'http' fetches web pages
   - 'gfx' switches into graphics mode
   - 'host' performs a DNS lookup on a hostname
   - 'ping' sends an ICMP echo request to an IP address

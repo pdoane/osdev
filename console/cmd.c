@@ -23,79 +23,6 @@
 #include "time/rtc.h"
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_state(TCP_Conn* conn, uint old_state, uint new_state)
-{
-    /*
-    console_print("\nTCP: %p %s -> %s\n",
-        conn,
-        tcp_state_strs[old_state],
-        tcp_state_strs[new_state]);*/
-
-    const char* msg = (const char*)conn->ctx;
-
-    if (new_state == TCP_ESTABLISHED)
-    {
-        tcp_send(conn, msg, strlen(msg));
-    }
-
-    if (new_state == TCP_CLOSE_WAIT)
-    {
-        tcp_close(conn);
-    }
-}
-
-// ------------------------------------------------------------------------------------------------
-static void tcp_data(TCP_Conn* conn, const u8* data, uint len)
-{
-    uint col = 0;
-
-    for (uint i = 0; i < len; ++i)
-    {
-        char c = data[i];
-        console_putchar(c);
-        ++col;
-        if (c == '\n')
-        {
-            col = 0;
-        }
-        else if (col == 80)
-        {
-            console_putchar('\n');
-            col = 0;
-        }
-    }
-}
-
-// ------------------------------------------------------------------------------------------------
-static void cmd_connect(uint argc, const char** argv)
-{
-    if (argc != 3)
-    {
-        console_print("Usage: connect <dest ipv4 address> <path>\n");
-        return;
-    }
-
-    IPv4_Addr dst_addr;
-    if (!str_to_ipv4_addr(&dst_addr, argv[1]))
-    {
-        console_print("Failed to parse destination address\n");
-        return;
-    }
-
-    u16 port = 80;
-    static char buf[256];
-
-    snprintf(buf, sizeof(buf), "GET %s HTTP/1.0\r\n\r\n", argv[2]);
-
-    TCP_Conn* conn = tcp_create();
-    conn->ctx = buf;
-    conn->on_state = tcp_state;
-    conn->on_data = tcp_data;
-
-    tcp_connect(conn, &dst_addr, port);
-}
-
-// ------------------------------------------------------------------------------------------------
 static void cmd_datetime(uint argc, const char** argv)
 {
     char buf[TIME_STRING_SIZE];
@@ -145,6 +72,71 @@ static void cmd_help(uint argc, const char** argv)
 
         ++cmd;
     }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void tcp_state(TCP_Conn* conn, uint old_state, uint new_state)
+{
+    const char* msg = (const char*)conn->ctx;
+
+    if (new_state == TCP_ESTABLISHED)
+    {
+        tcp_send(conn, msg, strlen(msg));
+    }
+
+    if (new_state == TCP_CLOSE_WAIT)
+    {
+        tcp_close(conn);
+    }
+}
+
+static void tcp_data(TCP_Conn* conn, const u8* data, uint len)
+{
+    uint col = 0;
+
+    for (uint i = 0; i < len; ++i)
+    {
+        char c = data[i];
+        console_putchar(c);
+        ++col;
+        if (c == '\n')
+        {
+            col = 0;
+        }
+        else if (col == 80)
+        {
+            console_putchar('\n');
+            col = 0;
+        }
+    }
+}
+
+static void cmd_http(uint argc, const char** argv)
+{
+    if (argc != 3)
+    {
+        console_print("Usage: http <dest ipv4 address> <path>\n");
+        return;
+    }
+
+    IPv4_Addr dst_addr;
+    if (!str_to_ipv4_addr(&dst_addr, argv[1]))
+    {
+        console_print("Failed to parse destination address\n");
+        return;
+    }
+
+    u16 port = 80;
+    static char buf[256];
+
+    snprintf(buf, sizeof(buf), "GET %s HTTP/1.0\r\n\r\n", argv[2]);
+
+    TCP_Conn* conn = tcp_create();
+    conn->ctx = buf;
+    conn->on_state = tcp_state;
+    conn->on_data = tcp_data;
+
+    tcp_connect(conn, &dst_addr, port);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -279,7 +271,6 @@ static void cmd_ticks(uint argc, const char** argv)
 // ------------------------------------------------------------------------------------------------
 const ConsoleCmd console_cmd_table[] =
 {
-    { "connect", cmd_connect },
     { "datetime", cmd_datetime },
     { "detect", cmd_detect },
     { "echo", cmd_echo },
@@ -287,6 +278,7 @@ const ConsoleCmd console_cmd_table[] =
     { "hello", cmd_hello },
     { "help", cmd_help },
     { "host", cmd_host },
+    { "http", cmd_http },
     { "lsconn", cmd_lsconn },
     { "lsroute", cmd_lsroute },
     { "mem", cmd_mem },

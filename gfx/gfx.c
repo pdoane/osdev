@@ -139,6 +139,12 @@ void gfx_init(uint id, PCI_DeviceInfo* info)
 // ------------------------------------------------------------------------------------------------
 void gfx_start()
 {
+    if (!s_gfxDevice.pciId)
+    {
+        console_print("Graphics not supported\n");
+        return;
+    }
+
     // Read PCI registers
     PCI_Bar bar;
 
