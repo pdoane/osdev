@@ -271,11 +271,11 @@ static TCP_Conn* tcp_find(const IPv4_Addr* src_addr, u16 src_port,
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_error(TCP_Conn* conn, const char* msg)
+static void tcp_error(TCP_Conn* conn, uint error)
 {
     if (conn->on_error)
     {
-        conn->on_error(conn, msg);
+        conn->on_error(conn, error);
     }
 
     tcp_free(conn);
@@ -360,7 +360,7 @@ static void tcp_rx_syn_sent(TCP_Conn* conn, TCP_Header* hdr)
     {
         if (flags & TCP_ACK)
         {
-            tcp_error(conn, "connection reset");
+            tcp_error(conn, TCP_CONN_RESET);
         }
 
         return;
@@ -408,7 +408,7 @@ static void tcp_rx_rst(TCP_Conn* conn, TCP_Header* hdr)
 
         // TODO - If initiated with a passive open, go to LISTEN state
 
-        tcp_error(conn, "connection refused");
+        tcp_error(conn, TCP_CONN_REFUSED);
         break;
 
     case TCP_ESTABLISHED:
@@ -418,7 +418,7 @@ static void tcp_rx_rst(TCP_Conn* conn, TCP_Header* hdr)
         // TODO - All outstanding receives and sends should receive "reset" responses
         // TODO - All segment queues should be flushed.
 
-        tcp_error(conn, "connection reset");
+        tcp_error(conn, TCP_CONN_RESET);
         break;
 
     case TCP_CLOSING:
@@ -437,7 +437,7 @@ static void tcp_rx_syn(TCP_Conn* conn, TCP_Header* hdr)
 
     tcp_tx(conn, 0, TCP_RST | TCP_ACK, 0, 0);
 
-    tcp_error(conn, "connection reset");
+    tcp_error(conn, TCP_CONN_RESET);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -466,7 +466,6 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
         if (SEQ_GE(hdr->ack, conn->snd_nxt))
         {
             // TODO - is this the right way to detect that our FIN has been ACK'd?
-
             if (conn->state == TCP_FIN_WAIT_1)
             {
                 tcp_set_state(conn, TCP_FIN_WAIT_2);
@@ -527,8 +526,6 @@ static void tcp_rx_data(TCP_Conn* conn, TCP_Header* hdr, const u8* data, uint da
 // ------------------------------------------------------------------------------------------------
 static void tcp_rx_fin(TCP_Conn* conn, TCP_Header* hdr)
 {
-    uint flags = hdr->flags;
-
     // TODO - signal the user "connection closing" and return any pending receives
 
     conn->rcv_nxt = hdr->seq + 1;
@@ -542,8 +539,10 @@ static void tcp_rx_fin(TCP_Conn* conn, TCP_Header* hdr)
         break;
 
     case TCP_FIN_WAIT_1:
-        if (flags & TCP_ACK)
+        if (SEQ_GE(hdr->ack, conn->snd_nxt))
         {
+            // TODO - is this the right way to detect that our FIN has been ACK'd?
+
             // TODO - start the time-wait timer, turn off the other timers
             tcp_set_state(conn, TCP_TIME_WAIT);
         }
@@ -776,7 +775,7 @@ void tcp_close(TCP_Conn* conn)
     case TCP_TIME_WAIT:
         if (conn->on_error)
         {
-            conn->on_error(conn, "connection closing");
+            conn->on_error(conn, TCP_CONN_CLOSING);
         }
         break;
 

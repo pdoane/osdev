@@ -73,6 +73,13 @@ typedef struct TCP_Options
 extern const char* tcp_state_strs[];
 
 // ------------------------------------------------------------------------------------------------
+// TCP Errors
+
+#define TCP_CONN_RESET                  1
+#define TCP_CONN_REFUSED                2
+#define TCP_CONN_CLOSING                3
+
+// ------------------------------------------------------------------------------------------------
 // TCP Connection
 
 typedef struct TCP_Conn
@@ -104,7 +111,7 @@ typedef struct TCP_Conn
 
     // callbacks
     void* ctx;
-    void (*on_error)(struct TCP_Conn* conn, const char* msg);
+    void (*on_error)(struct TCP_Conn* conn, uint error);
     void (*on_state)(struct TCP_Conn* conn, uint old_state, uint new_state);
 } TCP_Conn;
 
