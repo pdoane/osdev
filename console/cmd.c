@@ -45,6 +45,16 @@ static void tcp_state(TCP_Conn* conn, uint old_state, uint new_state)
 }
 
 // ------------------------------------------------------------------------------------------------
+static void tcp_data(TCP_Conn* conn, const u8* data, uint len)
+{
+    char buf[2048];
+    memcpy(buf, data, len);
+    buf[len] = '\0';
+
+    console_print("%s", buf);
+}
+
+// ------------------------------------------------------------------------------------------------
 static void cmd_connect(uint argc, const char** argv)
 {
     if (argc != 3)
@@ -68,6 +78,7 @@ static void cmd_connect(uint argc, const char** argv)
     TCP_Conn* conn = tcp_create();
     conn->ctx = buf;
     conn->on_state = tcp_state;
+    conn->on_data = tcp_data;
 
     tcp_connect(conn, &dst_addr, port);
 }

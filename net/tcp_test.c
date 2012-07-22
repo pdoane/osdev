@@ -643,7 +643,7 @@ int main(int argc, const char** argv)
     enter_state(conn, TCP_SYN_RECEIVED);
 
     in_pkt = net_alloc_buf();
-    in_hdr = prepare_in_pkt(conn, in_pkt, 0, 0, TCP_RST);
+    in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, 0, TCP_RST);
     tcp_input(in_pkt);
 
     expect_error(TCP_CONN_REFUSED);

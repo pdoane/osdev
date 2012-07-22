@@ -113,6 +113,7 @@ typedef struct TCP_Conn
     void* ctx;
     void (*on_error)(struct TCP_Conn* conn, uint error);
     void (*on_state)(struct TCP_Conn* conn, uint old_state, uint new_state);
+    void (*on_data)(struct TCP_Conn* conn, const u8* data, uint len);
 } TCP_Conn;
 
 // ------------------------------------------------------------------------------------------------

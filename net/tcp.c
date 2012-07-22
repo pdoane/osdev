@@ -505,15 +505,20 @@ static void tcp_rx_data(TCP_Conn* conn, TCP_Header* hdr, const u8* data, uint da
     case TCP_ESTABLISHED:
     case TCP_FIN_WAIT_1:
     case TCP_FIN_WAIT_2:
+        if (conn->rcv_nxt == hdr->seq)
         {
-            char buf[2048];
-            memcpy(buf, data, data_len);
-            buf[data_len] = '\0';
-
-            console_print("%s", buf);
+            // Expected sequence
+            if (conn->on_data)
+            {
+                conn->on_data(conn, data, data_len);
+            }
 
             conn->rcv_nxt += data_len;
             tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
+        }
+        else
+        {
+            // TODO - queue out of order packet
         }
         break;
 
@@ -575,7 +580,17 @@ static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr, const u8* data, uint
 
     uint flags = hdr->flags;
 
-    // TODO - check sequence number
+    // Check that sequence and segment data is acceptable
+    if (!(SEQ_LE(conn->rcv_nxt, hdr->seq) && SEQ_LE(hdr->seq + data_len, conn->rcv_nxt + conn->rcv_wnd)))
+    {
+        // Unacceptable segment
+        if (~flags & TCP_RST)
+        {
+            tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
+        }
+
+        return;
+    }
 
     // Check RST bit
     if (flags & TCP_RST)
@@ -666,7 +681,7 @@ void tcp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt)
     else
     {
         uint hdr_len = hdr->off >> 2;
-        const u8* data = (pkt->start + hdr_len);
+        const u8* data = pkt->start + hdr_len;
         uint data_len = phdr->len - hdr_len;
 
         tcp_rx_general(conn, hdr, data, data_len);
