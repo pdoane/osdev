@@ -10,6 +10,7 @@
 // Configuration
 
 #define TCP_WINDOW_SIZE     8192
+#define TCP_MSL             120000      // Maximum Segment Lifetime (ms)
 
 // ------------------------------------------------------------------------------------------------
 // Sequence comparisons
@@ -112,6 +113,9 @@ typedef struct TCP_Conn
     // queues
     Link resequence;
 
+    // timers
+    u32 msl_wait;                       // when does the 2MSL time wait expire?
+
     // callbacks
     void* ctx;
     void (*on_error)(struct TCP_Conn* conn, uint error);
@@ -125,11 +129,15 @@ typedef struct TCP_Conn
 extern Link tcp_active_conns;
 
 // ------------------------------------------------------------------------------------------------
-// Functions
+// Internal Functions
 
 void tcp_init();
 void tcp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt);
+void tcp_poll();
 void tcp_swap(TCP_Header* hdr);
+
+// ------------------------------------------------------------------------------------------------
+// User API
 
 TCP_Conn* tcp_create();
 bool tcp_connect(TCP_Conn* conn, const IPv4_Addr* addr, u16 port);

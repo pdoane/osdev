@@ -508,6 +508,7 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
             else if (conn->state == TCP_CLOSING)
             {
                 tcp_set_state(conn, TCP_TIME_WAIT);
+                conn->msl_wait = pit_ticks + 2 * TCP_MSL;
             }
         }
 
@@ -524,7 +525,7 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
         break;
 
     case TCP_TIME_WAIT:
-        // TODO
+        // This case is handled in the FIN processing step.
         break;
     }
 }
@@ -685,8 +686,9 @@ static void tcp_rx_fin(TCP_Conn* conn, TCP_Header* hdr)
         {
             // TODO - is this the right way to detect that our FIN has been ACK'd?
 
-            // TODO - start the time-wait timer, turn off the other timers
+            // TODO - turn off the other timers
             tcp_set_state(conn, TCP_TIME_WAIT);
+            conn->msl_wait = pit_ticks + 2 * TCP_MSL;
         }
         else
         {
@@ -695,8 +697,9 @@ static void tcp_rx_fin(TCP_Conn* conn, TCP_Header* hdr)
         break;
 
     case TCP_FIN_WAIT_2:
-        // TODO - start the time-wait timer, turn off the other timers
+        // TODO - turn off the other timers
         tcp_set_state(conn, TCP_TIME_WAIT);
+        conn->msl_wait = pit_ticks + 2 * TCP_MSL;
         break;
 
     case TCP_CLOSE_WAIT:
@@ -705,7 +708,7 @@ static void tcp_rx_fin(TCP_Conn* conn, TCP_Header* hdr)
         break;
 
     case TCP_TIME_WAIT:
-        // TODO - restart the 2 MSL time-wait
+        conn->msl_wait = pit_ticks + 2 * TCP_MSL;
         break;
     }
 }
@@ -826,6 +829,20 @@ void tcp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt)
         pkt->flags = hdr->flags;
 
         tcp_rx_general(conn, hdr, pkt);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+void tcp_poll()
+{
+    TCP_Conn* conn;
+    TCP_Conn* next;
+    list_for_each_safe(conn, next, tcp_active_conns, link)
+    {
+        if (conn->state == TCP_TIME_WAIT && SEQ_GE(pit_ticks, conn->msl_wait))
+        {
+            tcp_free(conn);
+        }
     }
 }
 

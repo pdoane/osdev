@@ -41,4 +41,6 @@ void net_poll()
     {
         intf->poll(intf);
     }
+
+    tcp_poll();
 }
