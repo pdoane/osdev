@@ -185,16 +185,9 @@ static TCP_Header* prepare_in_pkt(TCP_Conn* conn, Net_Buf* in_pkt, uint seq, uin
 }
 
 // ------------------------------------------------------------------------------------------------
-static void test_case_begin(const char* fmt, ...)
+static void test_case_begin(uint state, const char* cond, const char* action)
 {
-    char buf[1024];
-    va_list args;
-
-    va_start(args, fmt);
-    vsnprintf(buf, sizeof(buf), fmt, args);
-    va_end(args);
-
-    printf("-- %s\n", buf);
+    printf("-- %12s: %-20s - %s\n", tcp_state_strs[state], cond, action);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -378,6 +371,42 @@ static void exit_state(TCP_Conn* conn, uint state)
         exit_state(conn, TCP_CLOSE_WAIT);
         break;
 
+    case TCP_FIN_WAIT_1:
+        in_pkt = net_alloc_buf();
+        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_FIN | TCP_ACK);
+        tcp_input(in_pkt);
+
+        out_pkt = pop_packet();
+        out_hdr = (TCP_Header*)out_pkt->data;
+        tcp_swap(out_hdr);
+        ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
+        ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
+        ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt);
+        ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
+        ASSERT_EQ_HEX8(out_hdr->flags, TCP_ACK);
+        free(out_pkt);
+
+        exit_state(conn, TCP_TIME_WAIT);
+        break;
+
+    case TCP_FIN_WAIT_2:
+        in_pkt = net_alloc_buf();
+        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_FIN | TCP_ACK);
+        tcp_input(in_pkt);
+
+        out_pkt = pop_packet();
+        out_hdr = (TCP_Header*)out_pkt->data;
+        tcp_swap(out_hdr);
+        ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
+        ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
+        ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt);
+        ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
+        ASSERT_EQ_HEX8(out_hdr->flags, TCP_ACK);
+        free(out_pkt);
+
+        exit_state(conn, TCP_TIME_WAIT);
+        break;
+
     case TCP_CLOSE_WAIT:
         tcp_close(conn);
 
@@ -394,16 +423,31 @@ static void exit_state(TCP_Conn* conn, uint state)
         exit_state(conn, TCP_LAST_ACK);
         break;
 
+    case TCP_CLOSING:
+        in_pkt = net_alloc_buf();
+        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_ACK);
+        tcp_input(in_pkt);
+
+        exit_state(conn, TCP_TIME_WAIT);
+        break;
+
     case TCP_LAST_ACK:
         in_pkt = net_alloc_buf();
         in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_ACK);
         tcp_input(in_pkt);
         break;
 
+    case TCP_TIME_WAIT:
+        pit_ticks += 2 * TCP_MSL;
+        tcp_poll();
+        break;
+
     default:
         ASSERT_EQ_UINT(state, 0);
         break;
     }
+
+    ASSERT_EQ_UINT(conn->state, TCP_CLOSED);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -419,7 +463,7 @@ int main(int argc, const char** argv)
     test_setup();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin("CLOSED: RST - segment dropped");
+    test_case_begin(TCP_CLOSED, "RST", "segment dropped");
 
     in_pkt = net_alloc_buf();
     in_hdr = (TCP_Header*)in_pkt->start;
@@ -437,7 +481,7 @@ int main(int argc, const char** argv)
     test_case_end();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin("CLOSED: ACK - RST sent");
+    test_case_begin(TCP_CLOSED, "ACK", "RST sent");
 
     in_pkt = net_alloc_buf();
     in_hdr = (TCP_Header*)in_pkt->start;
@@ -465,7 +509,7 @@ int main(int argc, const char** argv)
     test_case_end();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin("CLOSED: no ACK - RST/ACK sent");
+    test_case_begin(TCP_CLOSED, "no ACK", "RST/ACK sent");
 
     in_pkt = net_alloc_buf();
     in_hdr = (TCP_Header*)in_pkt->start;
@@ -493,7 +537,7 @@ int main(int argc, const char** argv)
     test_case_end();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin("CLOSED: transition to SYN_SENT");
+    test_case_begin(TCP_CLOSED, "connect", "goto SYN_SENT");
 
     conn = create_conn();
 
@@ -516,7 +560,7 @@ int main(int argc, const char** argv)
     test_case_end();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin("SYN_SENT: Bad ACK, no RST - RST sent");
+    test_case_begin(TCP_SYN_SENT, "Bad ACK, no RST", "RST sent");
 
     conn = create_conn();
     enter_state(conn, TCP_SYN_SENT);
@@ -540,7 +584,7 @@ int main(int argc, const char** argv)
     test_case_end();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin("SYN_SENT: Bad ACK, RST - segment dropped");
+    test_case_begin(TCP_SYN_SENT, "Bad ACK, RST", "segment dropped");
 
     conn = create_conn();
     enter_state(conn, TCP_SYN_SENT);
@@ -554,7 +598,7 @@ int main(int argc, const char** argv)
     test_case_end();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin("SYN_SENT: ACK, RST - connection locally reset");
+    test_case_begin(TCP_SYN_SENT, "ACK, RST", "conn locally reset");
 
     conn = create_conn();
     enter_state(conn, TCP_SYN_SENT);
@@ -569,7 +613,7 @@ int main(int argc, const char** argv)
     test_case_end();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin("SYN_SENT: no ACK, RST - segment dropped");
+    test_case_begin(TCP_SYN_SENT, "no ACK, RST", "segment dropped");
 
     conn = create_conn();
     enter_state(conn, TCP_SYN_SENT);
@@ -583,7 +627,7 @@ int main(int argc, const char** argv)
     test_case_end();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin("SYN_SENT: SYN, ACK - transition to ESTABLISHED");
+    test_case_begin(TCP_SYN_SENT, "SYN, ACK", "goto ESTABLISHED");
 
     conn = create_conn();
     enter_state(conn, TCP_SYN_SENT);
@@ -610,7 +654,7 @@ int main(int argc, const char** argv)
     test_case_end();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin("SYN_SENT: SYN, no ACK - transition to SYN_RECEIVED, resend SYN,ACK");
+    test_case_begin(TCP_SYN_SENT, "SYN, no ACK", "goto SYN_RECEIVED, resend SYN,ACK");
 
     conn = create_conn();
     enter_state(conn, TCP_SYN_SENT);
@@ -637,7 +681,68 @@ int main(int argc, const char** argv)
     test_case_end();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin("SYN_RECEIVED (active): RST - connection refused");
+    uint general_states[] =
+    {
+        TCP_SYN_RECEIVED,
+        TCP_ESTABLISHED,
+        TCP_FIN_WAIT_1,
+        TCP_FIN_WAIT_2,
+        TCP_CLOSE_WAIT,
+        TCP_CLOSING,
+        TCP_LAST_ACK,
+        TCP_TIME_WAIT,
+        0,
+    };
+
+    for (uint* statep = general_states; *statep; ++statep)
+    {
+        uint state = *statep;
+
+        test_case_begin(state, "Bad seq, no RST", "resend ACK");
+
+        conn = create_conn();
+        enter_state(conn, state);
+
+        in_pkt = net_alloc_buf();
+        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt - 1, conn->snd_nxt, TCP_ACK);
+        tcp_input(in_pkt);
+
+        out_pkt = pop_packet();
+        out_hdr = (TCP_Header*)out_pkt->data;
+        tcp_swap(out_hdr);
+        ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
+        ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
+        ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt);
+        ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
+        ASSERT_EQ_HEX8(out_hdr->flags, TCP_ACK);
+        free(out_pkt);
+
+        exit_state(conn, state);
+
+        test_case_end();
+    }
+
+    // --------------------------------------------------------------------------------------------
+    for (uint* statep = general_states; *statep; ++statep)
+    {
+        uint state = *statep;
+
+        test_case_begin(state, "Bad seq, RST", "segment dropped");
+
+        conn = create_conn();
+        enter_state(conn, state);
+
+        in_pkt = net_alloc_buf();
+        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt - 1, conn->snd_nxt, TCP_RST | TCP_ACK);
+        tcp_input(in_pkt);
+
+        exit_state(conn, state);
+
+        test_case_end();
+    }
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin(TCP_SYN_RECEIVED, "RST, active", "conn refused");
 
     conn = create_conn();
     enter_state(conn, TCP_SYN_RECEIVED);
@@ -660,11 +765,11 @@ int main(int argc, const char** argv)
         0,
     };
 
-    for (uint* rst_state = rst_states1; *rst_state; ++rst_state)
+    for (uint* statep = rst_states1; *statep; ++statep)
     {
-        uint state = *rst_state;
+        uint state = *statep;
 
-        test_case_begin("%s: RST - conn reset", tcp_state_strs[state]);
+        test_case_begin(state, "RST", "conn reset");
 
         conn = create_conn();
         enter_state(conn, state);
@@ -687,11 +792,11 @@ int main(int argc, const char** argv)
         0,
     };
 
-    for (uint* rst_state = rst_states2; *rst_state; ++rst_state)
+    for (uint* statep = rst_states2; *statep; ++statep)
     {
-        uint state = *rst_state;
+        uint state = *statep;
 
-        test_case_begin("%s: RST - conn closed", tcp_state_strs[state]);
+        test_case_begin(state, "RST", "conn closed");
 
         conn = create_conn();
         enter_state(conn, state);
