@@ -181,6 +181,14 @@ static void tcp_free(TCP_Conn* conn)
         tcp_set_state(conn, TCP_CLOSED);
     }
 
+    Net_Buf* pkt;
+    Net_Buf* next;
+    list_for_each_safe(pkt, next, conn->resequence, link)
+    {
+        link_remove(&pkt->link);
+        net_release_buf(pkt);
+    }
+
     link_move_before(&tcp_free_conns, &conn->link);
 }
 
@@ -413,8 +421,7 @@ static void tcp_rx_rst(TCP_Conn* conn, TCP_Header* hdr)
     case TCP_FIN_WAIT_1:
     case TCP_FIN_WAIT_2:
     case TCP_CLOSE_WAIT:
-        // TODO - All outstanding receives and sends should receive "reset" responses
-        // TODO - All segment queues should be flushed.
+        // TODO - All outstanding sends should receive "reset" responses
 
         tcp_error(conn, TCP_CONN_RESET);
         break;
@@ -430,8 +437,7 @@ static void tcp_rx_rst(TCP_Conn* conn, TCP_Header* hdr)
 // ------------------------------------------------------------------------------------------------
 static void tcp_rx_syn(TCP_Conn* conn, TCP_Header* hdr)
 {
-    // TODO - All outstanding receives and sends should receive "reset" responses
-    // TODO - All segment queues should be flushed.
+    // TODO - All outstanding sends should receive "reset" responses
 
     tcp_tx(conn, 0, TCP_RST | TCP_ACK, 0, 0);
 
@@ -567,8 +573,8 @@ static void tcp_rx_insert(TCP_Conn* conn, Net_Buf* pkt)
         while (&cur->link != &conn->resequence)
         {
             next = link_data(cur->link.next, Net_Buf, link);
-            net_release_buf(cur);
             link_remove(&cur->link);
+            net_release_buf(cur);
             cur = next;
         }
     }
@@ -594,8 +600,8 @@ static void tcp_rx_insert(TCP_Conn* conn, Net_Buf* pkt)
 
         // Complete overlap - remove
         next = link_data(cur->link.next, Net_Buf, link);
-        net_release_buf(cur);
         link_remove(&cur->link);
+        net_release_buf(cur);
         cur = next;
     }
 
@@ -623,8 +629,8 @@ static void tcp_rx_process(TCP_Conn* conn)
             conn->on_data(conn, pkt->start, data_len);
         }
 
-        net_release_buf(pkt);
         link_remove(&pkt->link);
+        net_release_buf(pkt);
     }
 }
 
@@ -901,12 +907,11 @@ void tcp_close(TCP_Conn* conn)
         break;
 
     case TCP_LISTEN:
-        // TODO - cancel queued receives
         tcp_free(conn);
         break;
 
     case TCP_SYN_SENT:
-        // TODO - cancel queued sends or receives
+        // TODO - cancel queued sends
         tcp_free(conn);
         break;
 
