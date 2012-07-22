@@ -109,6 +109,9 @@ typedef struct TCP_Conn
     u32 rcv_up;                         // receive urgent pointer
     u32 irs;                            // initial receive sequence number
 
+    // queues
+    Link resequence;
+
     // callbacks
     void* ctx;
     void (*on_error)(struct TCP_Conn* conn, uint error);
@@ -132,6 +135,5 @@ TCP_Conn* tcp_create();
 bool tcp_connect(TCP_Conn* conn, const IPv4_Addr* addr, u16 port);
 void tcp_close(TCP_Conn* conn);
 void tcp_send(TCP_Conn* conn, const void* data, uint count);
-uint tcp_recv(TCP_Conn* conn, void* data, uint count);
 
 // half-close, abort?

@@ -169,9 +169,7 @@ static TCP_Conn* tcp_alloc()
     }
     else
     {
-        TCP_Conn* conn = vm_alloc(sizeof(TCP_Conn));
-        memset(conn, 0, sizeof(TCP_Conn));
-        return conn;
+        return vm_alloc(sizeof(TCP_Conn));
     }
 }
 
@@ -526,7 +524,112 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_data(TCP_Conn* conn, TCP_Header* hdr, const u8* data, uint data_len)
+static void tcp_rx_insert(TCP_Conn* conn, Net_Buf* pkt)
+{
+    Net_Buf* prev;
+    Net_Buf* cur;
+    Net_Buf* next;
+
+    uint data_len = pkt->end - pkt->start;
+    uint pkt_end = pkt->seq + data_len;
+
+    // Find location to insert packet
+    list_for_each(cur, conn->resequence, link)
+    {
+        if (SEQ_LE(pkt->seq, cur->seq))
+        {
+            break;
+        }
+    }
+
+    // Check if we already have some of this data in the previous packet.
+    if (cur->link.prev != &conn->resequence)
+    {
+        prev = link_data(cur->link.prev, Net_Buf, link);
+        uint prev_end = prev->seq + prev->end - prev->start;
+
+        if (SEQ_GE(prev_end, pkt_end))
+        {
+            // Complete overlap with queued packet - drop incoming packet
+            net_release_buf(pkt);
+            return;
+        }
+        else if (SEQ_GT(prev_end, pkt->seq))
+        {
+            // Trim previous packet by overlap with this packet
+            prev->end -= prev_end - pkt->seq;
+        }
+    }
+
+    // Remove all later packets if a FIN has been received
+    if (pkt->flags & TCP_FIN)
+    {
+        while (&cur->link != &conn->resequence)
+        {
+            next = link_data(cur->link.next, Net_Buf, link);
+            net_release_buf(cur);
+            link_remove(&cur->link);
+            cur = next;
+        }
+    }
+
+    // Trim/remove later packets that overlap
+    while (&cur->link != &conn->resequence)
+    {
+        uint pkt_end = pkt->seq + data_len;
+        uint cur_end = cur->seq + cur->end - cur->start;
+
+        if (SEQ_LT(pkt_end, cur->seq))
+        {
+            // No overlap
+            break;
+        }
+
+        if (SEQ_LT(pkt_end, cur_end))
+        {
+            // Partial overlap - trim
+            pkt->end -= pkt_end - cur->seq;
+            break;
+        }
+
+        // Complete overlap - remove
+        next = link_data(cur->link.next, Net_Buf, link);
+        net_release_buf(cur);
+        link_remove(&cur->link);
+        cur = next;
+    }
+
+    // Add packet to the queue
+    link_before(&cur->link, &pkt->link);
+}
+
+// ------------------------------------------------------------------------------------------------
+static void tcp_rx_process(TCP_Conn* conn)
+{
+    Net_Buf* pkt;
+    Net_Buf* next;
+    list_for_each_safe(pkt, next, conn->resequence, link)
+    {
+        if (conn->rcv_nxt != pkt->seq)
+        {
+            break;
+        }
+
+        uint data_len = pkt->end - pkt->start;
+        conn->rcv_nxt += data_len;
+
+        if (conn->on_data)
+        {
+            conn->on_data(conn, pkt->start, data_len);
+        }
+
+        net_release_buf(pkt);
+        link_remove(&pkt->link);
+    }
+}
+
+// ------------------------------------------------------------------------------------------------
+static void tcp_rx_data(TCP_Conn* conn, Net_Buf* pkt)
 {
     switch (conn->state)
     {
@@ -537,21 +640,17 @@ static void tcp_rx_data(TCP_Conn* conn, TCP_Header* hdr, const u8* data, uint da
     case TCP_ESTABLISHED:
     case TCP_FIN_WAIT_1:
     case TCP_FIN_WAIT_2:
-        if (conn->rcv_nxt == hdr->seq)
-        {
-            // Expected sequence
-            if (conn->on_data)
-            {
-                conn->on_data(conn, data, data_len);
-            }
+        // Increase ref count on packet
+        ++pkt->ref_count;
 
-            conn->rcv_nxt += data_len;
-            tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
-        }
-        else
-        {
-            // TODO - queue out of order packet
-        }
+        // Insert packet on to input queue sorted by sequence
+        tcp_rx_insert(conn, pkt);
+
+        // Process packets that are now in order
+        tcp_rx_process(conn);
+
+        // Acknowledge receipt of data
+        tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
         break;
 
     default:
@@ -606,11 +705,12 @@ static void tcp_rx_fin(TCP_Conn* conn, TCP_Header* hdr)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr, const u8* data, uint data_len)
+static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr, Net_Buf* pkt)
 {
     // Process segments not in the CLOSED, LISTEN, or SYN-SENT states.
 
     uint flags = hdr->flags;
+    uint data_len = pkt->end - pkt->start;
 
     // Check that sequence and segment data is acceptable
     if (!(SEQ_LE(conn->rcv_nxt, hdr->seq) && SEQ_LE(hdr->seq + data_len, conn->rcv_nxt + conn->rcv_wnd)))
@@ -650,7 +750,7 @@ static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr, const u8* data, uint
     // Process segment data
     if (data_len)
     {
-        tcp_rx_data(conn, hdr, data, data_len);
+        tcp_rx_data(conn, pkt);
     }
 
     // Check FIN
@@ -712,11 +812,14 @@ void tcp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt)
     }
     else
     {
+        // Update packet to point to data, and store parts of
+        // header needed for out of order handling.
         uint hdr_len = hdr->off >> 2;
-        const u8* data = pkt->start + hdr_len;
-        uint data_len = phdr->len - hdr_len;
+        pkt->start += hdr_len;
+        pkt->seq = hdr->seq;
+        pkt->flags = hdr->flags;
 
-        tcp_rx_general(conn, hdr, data, data_len);
+        tcp_rx_general(conn, hdr, pkt);
     }
 }
 
@@ -735,7 +838,12 @@ void tcp_swap(TCP_Header* hdr)
 // ------------------------------------------------------------------------------------------------
 TCP_Conn* tcp_create()
 {
-    return tcp_alloc();
+    TCP_Conn* conn = tcp_alloc();
+    memset(conn, 0, sizeof(TCP_Conn));
+    conn->resequence.next = &conn->resequence;
+    conn->resequence.prev = &conn->resequence;
+
+    return conn;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -838,10 +946,4 @@ void tcp_close(TCP_Conn* conn)
 void tcp_send(TCP_Conn* conn, const void* data, uint count)
 {
     tcp_tx(conn, conn->snd_nxt, TCP_ACK, data, count);
-}
-
-// ------------------------------------------------------------------------------------------------
-uint tcp_recv(TCP_Conn* conn, void* data, uint count)
-{
-    return 0;
 }

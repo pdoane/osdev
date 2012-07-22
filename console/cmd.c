@@ -47,11 +47,23 @@ static void tcp_state(TCP_Conn* conn, uint old_state, uint new_state)
 // ------------------------------------------------------------------------------------------------
 static void tcp_data(TCP_Conn* conn, const u8* data, uint len)
 {
-    char buf[2048];
-    memcpy(buf, data, len);
-    buf[len] = '\0';
+    uint col = 0;
 
-    console_print("%s", buf);
+    for (uint i = 0; i < len; ++i)
+    {
+        char c = data[i];
+        console_putchar(c);
+        ++col;
+        if (c == '\n')
+        {
+            col = 0;
+        }
+        else if (col == 80)
+        {
+            console_putchar('\n');
+            col = 0;
+        }
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
