@@ -461,8 +461,39 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
     case TCP_FIN_WAIT_2:
     case TCP_CLOSE_WAIT:
     case TCP_CLOSING:
-        // TODO - process ACK
+        // Handle expected acks
+        if (SEQ_LT(conn->snd_una, hdr->ack) && SEQ_LE(hdr->ack, conn->snd_nxt))
+        {
+            // Update acknowledged pointer
+            conn->snd_una = hdr->ack;
 
+            // Update send window
+            if (SEQ_LT(conn->snd_wl1, hdr->seq) ||
+                (conn->snd_wl1 == hdr->seq && SEQ_LE(conn->snd_wl2, hdr->ack)))
+            {
+                conn->snd_wnd = hdr->window_size;
+                conn->snd_wl1 = hdr->seq;
+                conn->snd_wl2 = hdr->ack;
+            }
+
+            // TODO - remove segments on the retransmission queue which have been ack'd
+            // TODO - acknowledge buffers which have sent to user
+        }
+
+        // Check for duplicate ack
+        if (SEQ_LT(hdr->ack, conn->snd_una))
+        {
+            // TODO - anything to do here?
+        }
+
+        // Check for ack of unsent data
+        if (SEQ_GT(hdr->ack, conn->snd_nxt))
+        {
+            tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
+            return;
+        }
+
+        // Check for ack of FIN
         if (SEQ_GE(hdr->ack, conn->snd_nxt))
         {
             // TODO - is this the right way to detect that our FIN has been ACK'd?
@@ -479,6 +510,7 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
         break;
 
     case TCP_LAST_ACK:
+        // Check for ack of FIN
         if (SEQ_GE(hdr->ack, conn->snd_nxt))
         {
             // TODO - is this the right way to detect that our FIN has been ACK'd?
