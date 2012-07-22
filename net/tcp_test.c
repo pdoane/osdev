@@ -808,5 +808,38 @@ int main(int argc, const char** argv)
         test_case_end();
     }
 
+    // --------------------------------------------------------------------------------------------
+    for (uint* statep = general_states; *statep; ++statep)
+    {
+        uint state = *statep;
+
+        test_case_begin(state, "SYN", "conn reset");
+
+        conn = create_conn();
+        enter_state(conn, state);
+
+        u16 local_port = conn->local_port;
+        u16 remote_port = conn->remote_port;
+        u32 rcv_nxt = conn->rcv_nxt;
+
+        in_pkt = net_alloc_buf();
+        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_SYN);
+        tcp_input(in_pkt);
+
+        out_pkt = pop_packet();
+        out_hdr = (TCP_Header*)out_pkt->data;
+        tcp_swap(out_hdr);
+        ASSERT_EQ_UINT(out_hdr->src_port, local_port);
+        ASSERT_EQ_UINT(out_hdr->dst_port, remote_port);
+        ASSERT_EQ_UINT(out_hdr->seq, 0);
+        ASSERT_EQ_UINT(out_hdr->ack, rcv_nxt);
+        ASSERT_EQ_HEX8(out_hdr->flags, TCP_RST | TCP_ACK);
+        free(out_pkt);
+
+        expect_error(TCP_CONN_RESET);
+
+        test_case_end();
+    }
+
     return EXIT_SUCCESS;
 }
