@@ -23,14 +23,18 @@ typedef struct GfxDevice
     bool    active;
     uint    pciId;
 
-    void   *pApertureBar;
-    void   *pMMIOBar;
-    u32    *pGTTAddr;
-    u16     ioBarAddr;
+    void   *aperture_bar;
+    void   *mmio_bar;
+    u32    *gtt_addr;
+    u16     iobase;
 
-    u8     *pGraphicsMem;
-    u8     *pSurfaceMem;
-    u8     *pCursorMem;
+    u8     *gfx_mem_base;
+    u8     *gfx_mem_next;
+
+    u8     *surface;
+    u8     *cursor;
+    u8     *blitter_cs;
+    u8     *blitter_status;
 } GfxDevice;
 
 static GfxDevice s_gfxDevice;
@@ -38,13 +42,34 @@ static GfxDevice s_gfxDevice;
 // ------------------------------------------------------------------------------------------------
 static u32 gfx_read(uint reg)
 {
-    return *(u32*)((u8*)s_gfxDevice.pMMIOBar + reg);
+    return mmio_read32((u8*)s_gfxDevice.mmio_bar + reg);
 }
 
 // ------------------------------------------------------------------------------------------------
 static void gfx_write(uint reg, u32 value)
 {
-    *(u32*)((u8*)s_gfxDevice.pMMIOBar + reg) = value;
+    mmio_write32((u8*)s_gfxDevice.mmio_bar + reg, value);
+}
+
+// ------------------------------------------------------------------------------------------------
+static u32 gfx_addr(u8* phy_addr)
+{
+    return (u32)(phy_addr - s_gfxDevice.gfx_mem_base);
+}
+
+// ------------------------------------------------------------------------------------------------
+static void* gfx_alloc(uint size, uint align)
+{
+    // Align memory request
+    u8* result = s_gfxDevice.gfx_mem_next;
+    uintptr_t offset = (uintptr_t)result & (align - 1);
+    if (offset)
+    {
+        result += align - offset;
+    }
+
+    s_gfxDevice.gfx_mem_next = result + size;
+    return result;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -116,6 +141,17 @@ static void gfx_print_pipe_state()
 }
 
 // ------------------------------------------------------------------------------------------------
+static void gfx_print_ring_state()
+{
+    rlog_print("  BCS_HWS_PGA: 0x%08X\n", gfx_read(BCS_HWS_PGA));
+
+    rlog_print("  BCS_RING_BUFFER_TAIL: 0x%08X\n", gfx_read(BCS_RING_BUFFER_TAIL));
+    rlog_print("  BCS_RING_BUFFER_HEAD: 0x%08X\n", gfx_read(BCS_RING_BUFFER_HEAD));
+    rlog_print("  BCS_RING_BUFFER_START: 0x%08X\n", gfx_read(BCS_RING_BUFFER_START));
+    rlog_print("  BCS_RING_BUFFER_CTL: 0x%08X\n", gfx_read(BCS_RING_BUFFER_CTL));
+}
+
+// ------------------------------------------------------------------------------------------------
 void gfx_init(uint id, PCI_DeviceInfo* info)
 {
     if (!(((info->class_code << 8) | info->subclass) == PCI_DISPLAY_VGA &&
@@ -153,45 +189,57 @@ void gfx_start()
 
     // GTTMMADDR
     pci_get_bar(&bar, s_gfxDevice.pciId, 0);
-    s_gfxDevice.pMMIOBar = bar.u.address;
-    s_gfxDevice.pGTTAddr = (u32*)((u8*)bar.u.address + (2 * 1024 * 1024));
+    s_gfxDevice.mmio_bar = bar.u.address;
+    s_gfxDevice.gtt_addr = (u32*)((u8*)bar.u.address + (2 * 1024 * 1024));
     rlog_print("    GTTMMADR:     0x%llX (%llu MB)\n", bar.u.address, bar.size / (1024 * 1024));
 
     // GMADR
     pci_get_bar(&bar, s_gfxDevice.pciId, 2);
-    s_gfxDevice.pApertureBar = bar.u.address;
+    s_gfxDevice.aperture_bar = bar.u.address;
     rlog_print("    GMADR:        0x%llX (%llu MB)\n", bar.u.address, bar.size / (1024 * 1024));
 
     // IOBASE
     pci_get_bar(&bar, s_gfxDevice.pciId, 4);
-    s_gfxDevice.ioBarAddr = bar.u.port;
+    s_gfxDevice.iobase = bar.u.port;
     rlog_print("    IOBASE:       0x%X (%u bytes)\n", bar.u.port, bar.size);
 
     // Log initial port state
     gfx_print_port_state();
 
     // Initialize Graphics Memory
-    uint graphicsMemSize = 512 * 1024 * 1024;       // TODO: how to know size of GTT?
-    uint graphicsMemAlign = 256 * 1024;             // Alignment needed for primary surface
-    s_gfxDevice.pGraphicsMem = vm_alloc_align(graphicsMemSize, graphicsMemAlign);
-    u8* gfxNextAlloc = s_gfxDevice.pGraphicsMem;
+    uint gfx_mem_size = 512 * 1024 * 1024;       // TODO: how to know size of GTT?
+    uint gfx_mem_align = 256 * 1024;             // TODO: Max alignment needed for primary surface
+    s_gfxDevice.gfx_mem_base = vm_alloc_align(gfx_mem_size, gfx_mem_align);
+    s_gfxDevice.gfx_mem_next = s_gfxDevice.gfx_mem_base;
 
-    uint surfaceMemSize = 16 * 1024 * 1024;         // TODO: compute appropriate surface size
-    s_gfxDevice.pSurfaceMem = gfxNextAlloc;         // 256KB aligned, +512 PTEs
-    gfxNextAlloc += surfaceMemSize;
+    // Map memory uncached
+    vm_map_pages(s_gfxDevice.gfx_mem_base, gfx_mem_size, PAGE_WRITE_THROUGH | PAGE_CACHE_DISABLE);
 
-    uint cursorMemSize = 64 * 64 * sizeof(u32);
-    s_gfxDevice.pCursorMem = gfxNextAlloc;          // 64KB aligned, +2 PTEs
-    gfxNextAlloc += cursorMemSize;
+    // Allocate Surface - 256KB aligned, +512 PTEs
+    uint surface_mem_size = 16 * 1024 * 1024;         // TODO: compute appropriate surface size
+    s_gfxDevice.surface = gfx_alloc(surface_mem_size, 256 * 1024);
+    memset(s_gfxDevice.surface, 0x77, 720 * 400 * 4);
 
-    vm_map_pages(s_gfxDevice.pGraphicsMem, graphicsMemSize, PAGE_WRITE_THROUGH | PAGE_CACHE_DISABLE);
+    // Allocate Cursor - 64KB aligned, +2 PTEs
+    uint cursor_mem_size = 64 * 64 * sizeof(u32) + 8 * 1024;
+    s_gfxDevice.cursor = gfx_alloc(cursor_mem_size, 64 * 1024);
+    memcpy(s_gfxDevice.cursor, cursor_image.pixel_data, 64 * 64 * sizeof(u32));
 
-    memset(s_gfxDevice.pSurfaceMem, 0x77, 720 * 400 * 4);
-    memcpy(s_gfxDevice.pCursorMem, cursor_image.pixel_data, 64 * 64 * sizeof(u32));
+    // Allocate Blitter Command Stream - 4KB aligned
+    uint bcs_mem_size = 4 * 1024;
+    s_gfxDevice.blitter_cs = gfx_alloc(bcs_mem_size, 4 * 1024);
 
-    rlog_print("pGraphicsMem = 0x%x\n", s_gfxDevice.pGraphicsMem);
-    rlog_print("pSurfaceMem = 0x%x\n", s_gfxDevice.pSurfaceMem);
-    rlog_print("pCursorMem = 0x%x\n", s_gfxDevice.pCursorMem);
+    // Allocate BCS Hardware Status Page - 4KB aligned
+    s_gfxDevice.blitter_status = gfx_alloc(4 * 1024, 4 * 1024);
+    memset(s_gfxDevice.blitter_status, 0, 4 * 1024);
+
+    // Log Memory locations
+    rlog_print("gfx_mem_base = 0x%x\n", s_gfxDevice.gfx_mem_base);
+    rlog_print("aperture_bar = 0x%x\n", s_gfxDevice.aperture_bar);
+    rlog_print("surface = 0x%x\n", s_gfxDevice.surface);
+    rlog_print("cursor = 0x%x\n", s_gfxDevice.cursor);
+    rlog_print("blitter_cs = 0x%x\n", s_gfxDevice.blitter_cs);
+    rlog_print("blitter_status = 0x%x\n", s_gfxDevice.blitter_status);
 
     // Disable the VGA Plane
     out8(SR_INDEX, SEQ_CLOCKING);
@@ -202,13 +250,13 @@ void gfx_start()
     rlog_print("VGA Plane disabled\n");
 
     // Setup Virtual Memory
-    u8* phys_page = s_gfxDevice.pGraphicsMem;
+    u8* phys_page = s_gfxDevice.gfx_mem_base;
     for (uint i = 0; i < 512 * 1024; ++i)
     {
         uintptr_t addr = (uintptr_t)phys_page;
 
         // Mark as Uncached and Valid
-        s_gfxDevice.pGTTAddr[i] = addr | ((addr >> 28) & 0xff0) | (1 << 1) | (1 << 0);
+        s_gfxDevice.gtt_addr[i] = addr | ((addr >> 28) & 0xff0) | (1 << 1) | (1 << 0);
 
         phys_page += 4096;
     }
@@ -221,14 +269,42 @@ void gfx_start()
     gfx_write(PRI_CTL_A, PRI_PLANE_ENABLE | PRI_PLANE_32BPP);
     gfx_write(PRI_LINOFF_A, 0);
     gfx_write(PRI_STRIDE_A, stride);
-    gfx_write(PRI_SURF_A, (u32)(s_gfxDevice.pSurfaceMem - s_gfxDevice.pGraphicsMem));
+    gfx_write(PRI_SURF_A, gfx_addr(s_gfxDevice.surface));
 
     // Setup Cursor Plane
     gfx_write(CUR_CTL_A, CUR_MODE_ARGB | CUR_MODE_64_32BPP);
-    gfx_write(CUR_BASE_A, (u32)(s_gfxDevice.pCursorMem - s_gfxDevice.pGraphicsMem));
+    gfx_write(CUR_BASE_A, gfx_addr(s_gfxDevice.cursor));
 
     // Pipe State
     gfx_print_pipe_state();
+
+    // BCS Data
+    uint rop = 0xf0;                        // P
+    u32 blt_addr = gfx_addr(s_gfxDevice.surface);
+    uint blt_height = 200;
+    uint blt_width = width * sizeof(u32);
+
+    volatile u32 *pCmd = (volatile u32 *)s_gfxDevice.blitter_cs;
+    *pCmd++ = COLOR_BLT | WRITE_ALPHA | WRITE_RGB;
+    *pCmd++ = COLOR_DEPTH_32 | (rop << ROP_SHIFT) | stride;
+    *pCmd++ = (blt_height << HEIGHT_SHIFT) | blt_width;
+    *pCmd++ = blt_addr;
+    *pCmd++ = 0xffffffff;
+    *pCmd++ = 0;
+
+    // Blitter Virtual Memory Control
+    gfx_write(BCS_HWS_PGA, gfx_addr(s_gfxDevice.blitter_status));
+
+    // Setup Blitter Ring Buffer
+    gfx_write(BCS_RING_BUFFER_TAIL, 3);     // Number of quad words
+    gfx_write(BCS_RING_BUFFER_HEAD, 0);
+    gfx_write(BCS_RING_BUFFER_START, gfx_addr(s_gfxDevice.blitter_cs));
+    gfx_write(BCS_RING_BUFFER_CTL,
+          (0 << 12)         // # of pages - 1
+        | 1                 // Ring Buffer Enable
+        );
+
+    gfx_print_ring_state();
 
     s_gfxDevice.active = true;
 }
@@ -241,6 +317,13 @@ void gfx_poll()
         return;
     }
 
+    static u32 last_cursor_pos = 0;
+
     // Update cursor position
-    gfx_write(CUR_POS_A, (g_mouse_y << 16) | g_mouse_x);
+    u32 cursor_pos = (g_mouse_y << 16) | g_mouse_x;
+    if (cursor_pos != last_cursor_pos)
+    {
+        last_cursor_pos = cursor_pos;
+        gfx_write(CUR_POS_A, cursor_pos);
+    }
 }
