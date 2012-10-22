@@ -269,6 +269,34 @@ static void cmd_ticks(uint argc, const char** argv)
 }
 
 // ------------------------------------------------------------------------------------------------
+static void cmd_peek(uint argc, const char** argv)
+{
+    if (argc != 2)
+    {
+        console_print("Usage: peek <address>\n");
+        return;
+    }
+
+    volatile u32 *pAddress = (u32 *)(strtoul(argv[1], 0, 0));
+    rlog_print("Value of %p is 0x%X", pAddress, *pAddress);
+}
+
+// ------------------------------------------------------------------------------------------------
+static void cmd_poke(uint argc, const char** argv)
+{
+    if (argc != 3)
+    {
+        console_print("Usage: poke <address> <value>\n");
+        return;
+    }
+
+    volatile u32 *pAddress = (u32 *)(strtoul(argv[1], 0, 0));
+    u32 value    = (u32)(strtoul(argv[2], 0, 0));
+    rlog_print("Writing to %p: 0x%X", pAddress, value);
+    *pAddress = value;
+}
+
+// ------------------------------------------------------------------------------------------------
 const ConsoleCmd console_cmd_table[] =
 {
     { "datetime", cmd_datetime },
@@ -288,5 +316,7 @@ const ConsoleCmd console_cmd_table[] =
     { "rlog", cmd_rlog },
     { "synctime", cmd_synctime },
     { "ticks", cmd_ticks },
+    { "peek", cmd_peek },
+    { "poke", cmd_poke },
     { 0, 0 },
 };

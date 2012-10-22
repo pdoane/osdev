@@ -416,3 +416,109 @@ int sscanf(const char* str, const char* fmt, ...)
 
     return count;
 }
+
+// ------------------------------------------------------------------------------------------------
+unsigned long int strtoul(const char *nptr, char **endptr, int base)
+{
+    const char *pCurrentChar = nptr;
+
+    // Skip whitespace
+    while (is_space(*pCurrentChar))
+    {
+        ++pCurrentChar;
+    }
+
+    // Optionally there maybe a sign.
+    bool neg = false;
+    if (*pCurrentChar == '-')
+    {
+        neg = true;
+        ++pCurrentChar;
+    }
+    else if (*pCurrentChar == '+')
+    {
+        ++pCurrentChar;
+    }
+
+    if (base == 0)
+    {
+        // detect base;
+        if (*pCurrentChar == '0')
+        {
+            ++pCurrentChar;
+            if (*pCurrentChar == 'x')
+            {
+                base = 16;
+                ++pCurrentChar;
+            }
+            else
+            {
+                base = 8;
+            }
+        }
+        else
+        {
+            base = 10;
+        }
+    }
+    else if (base == 16)
+    {
+        if (*pCurrentChar == '0' && *(pCurrentChar + 1) == 'x')
+        {
+            pCurrentChar += 2;
+        }
+    }
+    // Don't really need to skip leading 0 for oct.
+
+
+    // I've not worried about limit error handling
+    unsigned long int result = 0;
+    bool done = false;
+    while (!done)
+    {
+        char currentChar = *pCurrentChar;
+        int  currentValue = 0;
+        if (currentChar >= '0' && currentChar <= '9')
+        {
+            currentValue = currentChar - '0';
+        }
+        else if (currentChar >= 'a' && currentChar <= 'z')
+        {
+            currentValue = currentChar - 'a' + 10;
+        }
+        else if (currentChar >= 'A' && currentChar <= 'Z')
+        {
+            currentValue = currentChar - 'A' + 10;
+        }
+        else
+        {
+            done = true;
+        }
+
+        if (!done)
+        {
+            if (currentValue >= base)
+            {
+                done = true;
+            }
+            else
+            {
+                ++pCurrentChar;
+                result *= base;
+                result += currentValue;
+            }
+        }
+    }
+
+    if (neg)
+    {
+        result = -result;
+    }
+
+    if (endptr != 0)
+    {
+        *endptr = (char *)pCurrentChar;
+    }
+
+    return result;
+}
