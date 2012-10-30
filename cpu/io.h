@@ -92,3 +92,16 @@ static inline u64 mmio_read64(void* p)
 {
     return *(volatile u64*)(p);
 }
+
+static inline void mmio_readN(void *dst, const volatile void *src, size_t bytes)
+{
+    volatile u8 *s = (volatile u8 *)src;
+    u8 *d = (u8 *)dst;
+    while (bytes > 0)
+    {
+        *d =  *s;
+        ++s;
+        ++d;
+        --bytes;
+    }
+}

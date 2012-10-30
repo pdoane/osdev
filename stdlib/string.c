@@ -81,6 +81,25 @@ void* memchr(const void* buf, int c, size_t n)
 }
 
 // ------------------------------------------------------------------------------------------------
+int memcmp(const void *s1, const void *s2, size_t n)
+{
+    const u8 *byte1 = (const u8 *)s1;
+    const u8 *byte2 = (const u8 *)s2;
+    while ((*byte1 == *byte2) && (n > 0))
+    {
+        ++byte1;
+        ++byte2;
+        --n;
+    }
+
+    if (n == 0)
+    {
+        return 0;
+    }
+    return *byte1 - *byte2;
+}
+
+// ------------------------------------------------------------------------------------------------
 size_t strlen(const char* str)
 {
     const char* s = str;

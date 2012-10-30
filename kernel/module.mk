@@ -8,6 +8,10 @@ KERNEL_SOURCES := \
 	cpu/detect.c \
 	cpu/smp.c \
 	gfx/gfx.c \
+	gfx/gfxdisplay.c \
+	gfx/gfxmem.c \
+	gfx/gfxpci.c \
+	gfx/gtt.c \
 	gfx/vga.c \
 	input/input.c \
 	input/keymap.c \

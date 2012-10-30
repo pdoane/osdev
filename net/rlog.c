@@ -12,6 +12,8 @@
 #include "stdlib/stdarg.h"
 #include "stdlib/string.h"
 
+#include "console/console.h"
+
 // ------------------------------------------------------------------------------------------------
 void rlog_print(const char* fmt, ...)
 {
@@ -21,6 +23,8 @@ void rlog_print(const char* fmt, ...)
     va_start(args, fmt);
     vsnprintf(msg, sizeof(msg), fmt, args);
     va_end(args);
+
+    console_print(msg);
 
     uint len = strlen(msg) + 1;
 

@@ -3,7 +3,10 @@
 // ------------------------------------------------------------------------------------------------
 
 #include "gfx/gfx.h"
-#include "gfx/reg.h"
+#include "gfx/gfxpci.h"
+#include "gfx/gtt.h"
+#include "gfx/gfxmem.h"
+#include "gfx/gfxdisplay.h"
 #include "console/console.h"
 #include "cpu/io.h"
 #include "input/input.h"
@@ -15,49 +18,40 @@
 
 #include "cursor.c"
 
-#define DEVICE_HD3000 0x0162
+#define DEVICE_HD3000       0x0162
+#define DEVICE_PANTHERPOINT 0x1e00
 
 // ------------------------------------------------------------------------------------------------
 typedef struct GfxDevice
 {
     bool    active;
-    uint    pciId;
 
-    void   *aperture_bar;
-    void   *mmio_bar;
-    u32    *gtt_addr;
-    u16     iobase;
+    GfxPCI        pci;
+    GfxGTT        gtt;
+    GfxMemManager memManager;
+    GfxDisplay    display;
 
     u8     *gfx_mem_base;
     u8     *gfx_mem_next;
 
     u8     *surface;
     u8     *cursor;
-    u8     *blitter_cs;
-    u8     *blitter_status;
+    u8     *render_cs;
+    u8     *render_status;
 } GfxDevice;
 
 static GfxDevice s_gfxDevice;
 
-// ------------------------------------------------------------------------------------------------
-static u32 gfx_read(uint reg)
-{
-    return mmio_read32((u8*)s_gfxDevice.mmio_bar + reg);
-}
 
 // ------------------------------------------------------------------------------------------------
-static void gfx_write(uint reg, u32 value)
-{
-    mmio_write32((u8*)s_gfxDevice.mmio_bar + reg, value);
-}
-
-// ------------------------------------------------------------------------------------------------
+/*
 static u32 gfx_addr(u8* phy_addr)
 {
     return (u32)(phy_addr - s_gfxDevice.gfx_mem_base);
-}
+}*/
 
 // ------------------------------------------------------------------------------------------------
+/*
 static void* gfx_alloc(uint size, uint align)
 {
     // Align memory request
@@ -71,16 +65,18 @@ static void* gfx_alloc(uint size, uint align)
     s_gfxDevice.gfx_mem_next = result + size;
     return result;
 }
+*/
 
 // ------------------------------------------------------------------------------------------------
 static void gfx_print_port_state()
 {
-    rlog_print("HDMI_CTL_B: 0x%08X\n", gfx_read(HDMI_CTL_B));
-    rlog_print("HDMI_CTL_C: 0x%08X\n", gfx_read(HDMI_CTL_C));
-    rlog_print("HDMI_CTL_D: 0x%08X\n", gfx_read(HDMI_CTL_D));
+    rlog_print("HDMI_CTL_B: 0x%08X\n", gfx_read32(&s_gfxDevice.pci, HDMI_CTL_B));
+    rlog_print("HDMI_CTL_C: 0x%08X\n", gfx_read32(&s_gfxDevice.pci, HDMI_CTL_C));
+    rlog_print("HDMI_CTL_D: 0x%08X\n", gfx_read32(&s_gfxDevice.pci, HDMI_CTL_D));
 }
 
 // ------------------------------------------------------------------------------------------------
+/*
 static void gfx_print_pipe_state()
 {
     //for (uint i = 0; i < 3; ++i)
@@ -139,8 +135,10 @@ static void gfx_print_pipe_state()
         rlog_print("  PRI_SURF: %08x\n", gfx_read(PRI_SURF_A + pipe));
     }
 }
+*/
 
 // ------------------------------------------------------------------------------------------------
+/*
 static void gfx_print_ring_state()
 {
     rlog_print("  BCS_HWS_PGA: 0x%08X\n", gfx_read(BCS_HWS_PGA));
@@ -150,6 +148,7 @@ static void gfx_print_ring_state()
     rlog_print("  BCS_RING_BUFFER_START: 0x%08X\n", gfx_read(BCS_RING_BUFFER_START));
     rlog_print("  BCS_RING_BUFFER_CTL: 0x%08X\n", gfx_read(BCS_RING_BUFFER_CTL));
 }
+*/
 
 // ------------------------------------------------------------------------------------------------
 void gfx_init(uint id, PCI_DeviceInfo* info)
@@ -169,44 +168,113 @@ void gfx_init(uint id, PCI_DeviceInfo* info)
 
 
     memset(&s_gfxDevice, 0, sizeof(s_gfxDevice));
-    s_gfxDevice.pciId = id;
+    s_gfxDevice.pci.id = id;
 }
+
+/*
+static void enter_force_wake()
+{
+    rlog_print("Try entering force wake...\n");
+
+    while ((gfx_read(FORCE_WAKE_ACK) & 0x1) != 0)
+        ;
+
+    rlog_print("ACK cleared...\n");
+
+    gfx_write(FORCE_WAKE, 1);
+    gfx_read(0xa180);
+
+    rlog_print("Wake written...\n");
+
+    while ((gfx_read(FORCE_WAKE_ACK) & 0x1) == 0)
+        ;
+
+    rlog_print("Wake Ack...\n");
+}
+
+static void exit_force_wake()
+{
+    // If cacheable, need to do force the post
+    gfx_write(FORCE_WAKE, 0);
+}
+*/
+
+// ------------------------------------------------------------------------------------------------
+bool ValidateChipset()
+{
+    // Check we are on Pather Point Chipset
+    uint isaBridgeId = PCI_MAKE_ID(0, 0x1f, 0);  // Assume location of ISA Bridge
+    u16 classCode     = ((u16)pci_in8(isaBridgeId, PCI_CONFIG_CLASS_CODE) << 8) | (u16)pci_in8(isaBridgeId, PCI_CONFIG_SUBCLASS);
+    if (classCode != PCI_BRIDGE_ISA)
+    {
+        console_print("Isa Bridge not found at expected location! (Found: 0x%X, Expected: 0x%X)\n", classCode, PCI_BRIDGE_ISA);
+        return false;
+    }
+
+    u16 deviceId = pci_in16(isaBridgeId, PCI_CONFIG_DEVICE_ID) & 0xFF00;
+    if (deviceId != DEVICE_PANTHERPOINT)
+    {
+        console_print("Chipset is not expect panther point (needed for display handling)! (Found: 0x%X, Expected: 0x%X)\n", deviceId, DEVICE_PANTHERPOINT);
+        return false;
+    }
+
+    return true;
+}
+
 
 // ------------------------------------------------------------------------------------------------
 void gfx_start()
 {
-    if (!s_gfxDevice.pciId)
+    if (!s_gfxDevice.pci.id)
     {
         console_print("Graphics not supported\n");
         return;
     }
+    
+    if (!ValidateChipset())
+    {
+        return;
+    }
 
-    // Read PCI registers
-    PCI_Bar bar;
+    gfx_init_pci(&s_gfxDevice.pci);
+    gfx_init_gtt(&s_gfxDevice.gtt, &s_gfxDevice.pci);
+    gfx_init_mem_manager(&s_gfxDevice.memManager, &s_gfxDevice.gtt, &s_gfxDevice.pci);
+    gfx_init_display(&s_gfxDevice.display);
 
-    rlog_print("...Probing PCIe Config:\n");
-    rlog_print("    PCI id:       0x%X\n",             s_gfxDevice.pciId);
+    // Assume Dimms are same size, so bit 6 swizzling is on.
 
-    // GTTMMADDR
-    pci_get_bar(&bar, s_gfxDevice.pciId, 0);
-    s_gfxDevice.mmio_bar = bar.u.address;
-    s_gfxDevice.gtt_addr = (u32*)((u8*)bar.u.address + (2 * 1024 * 1024));
-    rlog_print("    GTTMMADR:     0x%llX (%llu MB)\n", bar.u.address, bar.size / (1024 * 1024));
+    // MWDD FIX: Enable MSI
 
-    // GMADR
-    pci_get_bar(&bar, s_gfxDevice.pciId, 2);
-    s_gfxDevice.aperture_bar = bar.u.address;
-    rlog_print("    GMADR:        0x%llX (%llu MB)\n", bar.u.address, bar.size / (1024 * 1024));
-
-    // IOBASE
-    pci_get_bar(&bar, s_gfxDevice.pciId, 4);
-    s_gfxDevice.iobase = bar.u.port;
-    rlog_print("    IOBASE:       0x%X (%u bytes)\n", bar.u.port, bar.size);
+    // Disable the VGA Plane
+    gfx_disable_vga(&s_gfxDevice.pci);
 
     // Log initial port state
     gfx_print_port_state();
 
-    // Initialize Graphics Memory
+/*
+    enter_force_wake();
+    {
+        rlog_print("Setting Ring...\n");
+
+        // Setup Blitter Ring Buffer
+        gfx_write(BCS_RING_BUFFER_TAIL, 0);     // Number of quad words
+        gfx_write(BCS_RING_BUFFER_HEAD, 0);
+        gfx_write(BCS_RING_BUFFER_START, 8 * MB);
+        gfx_write(BCS_RING_BUFFER_CTL,
+              (0 << 12)         // # of pages - 1
+            | 1                 // Ring Buffer Enable
+            );
+        rlog_print("...done\n");
+
+    }
+    exit_force_wake();
+    gfx_print_ring_state();
+*/
+
+
+
+    /*
+
     uint gfx_mem_size = 512 * 1024 * 1024;       // TODO: how to know size of GTT?
     uint gfx_mem_align = 256 * 1024;             // TODO: Max alignment needed for primary surface
     s_gfxDevice.gfx_mem_base = vm_alloc_align(gfx_mem_size, gfx_mem_align);
@@ -225,27 +293,15 @@ void gfx_start()
     s_gfxDevice.cursor = gfx_alloc(cursor_mem_size, 64 * 1024);
     memcpy(s_gfxDevice.cursor, cursor_image.pixel_data, 64 * 64 * sizeof(u32));
 
-    // Allocate Blitter Command Stream - 4KB aligned
-    uint bcs_mem_size = 4 * 1024;
-    s_gfxDevice.blitter_cs = gfx_alloc(bcs_mem_size, 4 * 1024);
+    // Allocate Render Engine Command Stream - 4KB aligned
+    uint rcs_mem_size = 4 * 1024;
+    s_gfxDevice.render_cs = gfx_alloc(rcs_mem_size, 4 * 1024);
 
-    // Allocate BCS Hardware Status Page - 4KB aligned
-    s_gfxDevice.blitter_status = gfx_alloc(4 * 1024, 4 * 1024);
-    memset(s_gfxDevice.blitter_status, 0, 4 * 1024);
+    // Allocate RCS Hardware Status Page - 4KB aligned
+    s_gfxDevice.render_status = gfx_alloc(4 * 1024, 4 * 1024);
+    memset(s_gfxDevice.render_status, 0, 4 * 1024);
 
-    // Log Memory locations
-    rlog_print("gfx_mem_base = 0x%x\n", s_gfxDevice.gfx_mem_base);
-    rlog_print("aperture_bar = 0x%x\n", s_gfxDevice.aperture_bar);
-    rlog_print("surface = 0x%x\n", s_gfxDevice.surface);
-    rlog_print("cursor = 0x%x\n", s_gfxDevice.cursor);
-    rlog_print("blitter_cs = 0x%x\n", s_gfxDevice.blitter_cs);
-    rlog_print("blitter_status = 0x%x\n", s_gfxDevice.blitter_status);
 
-    // Disable the VGA Plane
-    out8(SR_INDEX, SEQ_CLOCKING);
-    out8(SR_DATA, in8(SR_DATA) | SCREEN_OFF);
-    pit_wait(100);
-    gfx_write(VGA_CONTROL, VGA_DISABLE);
 
     rlog_print("VGA Plane disabled\n");
 
@@ -263,7 +319,7 @@ void gfx_start()
 
     // Setup Primary Plane
     uint width = 720;                       // TODO: mode support
-    //uint height = 400;
+    uint height = 400;
     uint stride = (width * sizeof(u32) + 63) & ~63;   // 64-byte aligned
 
     gfx_write(PRI_CTL_A, PRI_PLANE_ENABLE | PRI_PLANE_32BPP);
@@ -277,6 +333,17 @@ void gfx_start()
 
     // Pipe State
     gfx_print_pipe_state();
+
+    
+    // Set up H/W Status Page
+
+
+    
+    // Initalise ring buffer
+
+
+    
+    // First command has to be a flush
 
     // BCS Data
     uint rop = 0xf0;                        // P
@@ -305,7 +372,7 @@ void gfx_start()
         );
 
     gfx_print_ring_state();
-
+*/
     s_gfxDevice.active = true;
 }
 
@@ -324,6 +391,6 @@ void gfx_poll()
     if (cursor_pos != last_cursor_pos)
     {
         last_cursor_pos = cursor_pos;
-        gfx_write(CUR_POS_A, cursor_pos);
+        gfx_write32(&s_gfxDevice.pci, CUR_POS_A, cursor_pos);
     }
 }

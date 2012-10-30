@@ -2,7 +2,36 @@
 // gfx/reg.h
 // ------------------------------------------------------------------------------------------------
 
+#pragma once
+
 #include "stdlib/types.h"
+
+#define MB (1024 * 1024)   // MWDD FIX: Hacky - need to find a proper home
+
+// ------------------------------------------------------------------------------------------------
+// Vol 1. Part 2. MMIO, Media Registers, and Programming Environment
+// ------------------------------------------------------------------------------------------------
+
+typedef u64 GfxAddress;    // Address in Gfx Virtual space
+
+// ------------------------------------------------------------------------------------------------
+// 2.1.2.1 Instruction Parser Mode
+#define GTT_PAGE_SHIFT 12
+#define GTT_PAGE_SIZE (1 << GTT_PAGE_SHIFT)
+
+typedef union GttEntry
+{
+    struct GttEntry_Bits
+    {
+        u32 valid            :  1;
+        u32 l3CacheControl   :  1;
+        u32 llcCacheControl  :  1;
+        u32 gfxDataType      :  1;
+        u32 physStartAddrExt :  8;
+        u32 physPageAddr     : 20;
+    } bits;
+    u32 word;
+} GttEntry;
 
 // ------------------------------------------------------------------------------------------------
 // Vol 1. Part 3. Memory Interface and Commands for the Render Engine
@@ -86,6 +115,7 @@
 // ------------------------------------------------------------------------------------------------
 // 1.10.12 BR16 - Pattern Expansion Background and Solid Pattern Color
 
+
 // ------------------------------------------------------------------------------------------------
 // 2.1.6.1 BCS Hardware Status Page Address
 
@@ -117,6 +147,80 @@
 
 #define SEQ_CLOCKING                    0x01
 #define SCREEN_OFF                      (1 << 5)
+
+// ------------------------------------------------------------------------------------------------
+// Vol 3. Part 2. PCI Registers
+// ------------------------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------
+// 1.25 MGGC0 - Mirror of GMCH Graphics Control Register
+#define MGGC0                          0x50 // In PCI Config Space
+
+typedef enum RegMGGCO_GMS
+{
+    RegMGGCO_GMS_32MB     = 0x05,
+    RegMGGCO_GMS_48MB     = 0x06,
+    RegMGGCO_GMS_64MB     = 0x07,
+    RegMGGCO_GMS_128MB    = 0x08,
+    RegMGGCO_GMS_256MB    = 0x09,
+    RegMGGCO_GMS_96MB     = 0x0A,
+    RegMGGCO_GMS_160MB    = 0x0B,
+    RegMGGCO_GMS_224MB    = 0x0C,
+    RegMGGCO_GMS_352MB    = 0x0D,
+    RegMGGCO_GMS_0MB      = 0x00,
+    RegMGGCO_GMS_32MB_1   = 0x01,
+    RegMGGCO_GMS_64MB_1   = 0x02,
+    RegMGGCO_GMS_96MB_1   = 0x03,
+    RegMGGCO_GMS_128MB_1  = 0x04,
+    RegMGGCO_GMS_448MB    = 0x0E,
+    RegMGGCO_GMS_480MB    = 0x0F,
+    RegMGGCO_GMS_512MB    = 0x10,
+} RegMGGCO_GMS;
+
+typedef enum RegMGGCO_GGMS
+{
+    RegMGGCO_GGMS_None = 0x0,
+    RegMGGCO_GGMS_1MB  = 0x1,
+    RegMGGCO_GGMS_2MB  = 0x2,
+} RegMGGCO_GGMS;
+
+typedef union RegMGGCO
+{
+    struct RegMGGCO_Bits
+    {
+        u16 lock               : 1;
+        u16 igdVGADisable      : 1;
+        u16 reserved0          : 1;
+        u16 graphicsModeSelect : 5;  // RegMGGCO_GMS
+        u16 gttMemSize         : 2;  // RegMGGCO_GGMS
+        u16 reserved1          : 4;
+        u16 vesatileAccModeEna : 1;
+        u16 reserved2          : 1;
+    } bits;
+    u16 word;
+} RegMGGCO;
+
+
+// ------------------------------------------------------------------------------------------------
+// 1.27 BDSM - Base Data of Stolen Memory
+#define BDSM                          0x5C // In PCI Config Space
+
+typedef union RegBDSM
+{
+    struct RegBDSM_Bits
+    {
+        u32 lock               : 1;
+        u32 reserved0          : 19;
+        u32 address            : 12;
+    } bits;
+    u32 dword;
+} RegBDSM;
+
+// ------------------------------------------------------------------------------------------------
+// 1.45 ASLS - ASL Storage
+// Software scratch register (BIOS sets the opregion address in here)
+//
+#define ASLS                          0xFC // In PCI Config Space
 
 
 // ------------------------------------------------------------------------------------------------
@@ -261,3 +365,147 @@
 #define HDMI_CTL_D                      0xe1160     // R/W
 
 #define PORT_DETECTED                   (1 << 2)    // RO
+
+
+// ------------------------------------------------------------------------------------------------
+// Vol 3. Part 4. South Display Engine Registers
+// ------------------------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------
+// 3.6.1 HDMI Port Control
+
+#define HDMI_CTL_B                      0xe1140     // R/W
+#define HDMI_CTL_C                      0xe1150     // R/W
+#define HDMI_CTL_D                      0xe1160     // R/W
+
+#define PORT_DETECTED                   (1 << 2)    // RO
+
+// ------------------------------------------------------------------------------------------------
+// IGD OpRegion Specification
+// ------------------------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------
+// 2.2.1 OpRegion Header
+typedef struct OpRegionHeader
+{
+    char sign[0x10];
+    u32  size;
+    u32  over;
+    char sver[0x20];
+    char vver[0x10];
+    char gver[0x10];
+    union OpRegionHeader_MBox
+    {
+        struct OpRegionHeader_MBox_Bits
+        {
+            u32 acpi  :  1;
+            u32 swsci :  1;
+            u32 asle  :  1;
+            u32 rsvd  : 29;
+        } bits;
+        u32 dword;
+    } mbox;
+    u32  dmod;
+    u8   rsv1[0xA0];
+} OpRegionHeader;
+
+// ------------------------------------------------------------------------------------------------
+// 3.1 Mailbox #1: Public ACPI Methods Mailbox
+#define OPREGION_MAILBOX1_OFFSET 0x0100
+
+typedef struct OpRegionMailbox1ACPI
+{
+    u32 drdy;            // Driver Ready
+    u32 csts;            // STATUS
+    u32 cevt;            // Current Event
+    u8  rsv2[0x14];
+    u32 didl[8];         // Supported Display Devices ID List (_DOD)
+    u32 cpdl[8];         // Current Attached (or Present) Display Devices List
+    u32 cadl[8];         // Current Active Display DevicesLists (_DCS)
+    u32 nadl[8];         // Next Active Devices List (_DGS use)
+    u32 aslp;            // ASL Sleep Time Out
+    u32 tidx;            // Toggle Table Index
+    u32 chpd;            // Current Hotplug Enable Indicator
+    u32 clid;            // Current Lid State Indicator
+    u32 cdck;            // Current Docking State Indicator
+    u32 sxsw;            // Request ASL to issue Display Switch notification on Sx State resume
+    u32 evts;            // Events Supported by ASL
+    u32 cnot;            // Current OS Notification
+    u32 nrdy;            // Driver Status
+    u8  rsv3[0x40];
+} OpRegionMailbox1ACPI;
+
+// ------------------------------------------------------------------------------------------------
+// 2.2.1 OpRegion Header
+#define OPREGION_MAILBOX2_OFFSET 0x0200
+
+typedef struct OpRegionMailbox2SWSCI
+{
+    u32 scic;             // SWSCI Command/Status/Data
+    u32 parm;             // Parameters
+    u32 dslp;             // Driver Sleep Time Out
+    u8  rsv4[0xF4];
+} OpRegionMailbox2SWSCI;
+
+// ------------------------------------------------------------------------------------------------
+// 2.2.1 OpRegion Header
+#define OPREGION_MAILBOX3_OFFSET 0x0300
+typedef struct OpRegionMailbox3ASLE
+{
+    u32 ardy;             // Driver Readiness
+    u32 aslc;             // ASLE Interrupt Command/Status
+    u32 tche;             // Technology Enable Indicator
+    u32 alsi;             // Current ALS Luminance Reading (in Lux)
+    u32 bclp;             // Requested Backlight Brightness
+    u32 pfit;             // Panel Fitting State or Request
+    u32 cblv;             // Current Brightness Level
+    u16 bclm[20];         // Backlight Brightness Levels Duty Cycle Mapping Table
+    u32 cpfm;             // Current Panel Fitting Mode
+    u32 epfm;             // Enabled Panel Fitting Modes
+    struct PLUT
+    {
+        u8 lutHeader;     // MWDD FIX: Prob need to break down to bits
+        struct PanelId
+        {
+            u16 manufacturingId;
+            u16 productId;
+            u32 serialNumbers;
+            u8  weekOfManufacture;
+            u8  yearOfManufacture;
+        } panelId;
+        u8 lutTable[7][9]; // MWDD FIX: Do I have rows/cols backwards?
+    } plut;               // Panel LUT & Identifer
+    u32 pfmb;             // PWM Frequency and Minimum Brightness
+    u32 ccdv;             // Color Correction Default Values
+    u8  rsv4[0xF4];
+} OpRegionMailbox3ASLE;
+
+// ------------------------------------------------------------------------------------------------
+// 2.2.1 OpRegion Header
+#define OPREGION_VBT_OFFSET 0x0500
+
+
+// ------------------------------------------------------------------------------------------------
+// Registers not in the Spec (Found in Linux Driver)
+// ------------------------------------------------------------------------------------------------
+#define FORCE_WAKE                      0xA18C 
+#define FORCE_WAKE_ACK                  0x130090 
+
+// ------------------------------------------------------------------------------------------------
+// Fence registers.  Mentioned lots of times
+// and the base address is in Vol2 Part3: MFX, but the defintion is not
+#define FENCE_BASE                      0x100000
+#define FENCE_COUNT                     16
+typedef struct RegFence
+{
+    struct RegFence_Bits
+    {
+        u64 valid              : 1;
+        u64 ytile              : 1;
+        u64 rsvd               : 10;
+        u64 startPage          : 20;
+        u64 pitch              : 12;
+        u64 endPage            : 20;  // inclusive
+    } bits;
+    u64 qword;
+} RegFence;
