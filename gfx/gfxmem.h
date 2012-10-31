@@ -22,3 +22,4 @@ typedef struct GfxMemManager
 } GfxMemManager;
 
 void gfx_init_mem_manager(GfxMemManager *pMemMgr, const GfxGTT *pGTT, GfxPCI *pPci);
+void gfx_mem_enable_swizzle(GfxPCI *pPci);

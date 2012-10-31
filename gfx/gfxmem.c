@@ -3,6 +3,8 @@
 // ------------------------------------------------------------------------------------------------
 
 #include "gfx/gfxmem.h"
+#include "net/rlog.h"
+
 
 void gfx_init_mem_manager(GfxMemManager *pMemMgr, const GfxGTT *pGTT, GfxPCI *pPCI)
 {
@@ -24,4 +26,32 @@ void gfx_init_mem_manager(GfxMemManager *pMemMgr, const GfxGTT *pGTT, GfxPCI *pP
     {
         gfx_write64(pPCI, FENCE_BASE + sizeof(RegFence) * fenceNum, 0);
     }
+}
+
+void gfx_mem_enable_swizzle(GfxPCI *pPci)
+{
+    // Assume Dimms are same size, so bit 6 swizzling is on.
+    // So enable DRAM swizzling.
+    RegArbCtl  arbCtrl;
+    RegTileCtl tileCtrl;
+    RegArbMode arbMode; 
+
+    arbCtrl.dword = gfx_read32(pPci, ARB_CTL);
+    arbCtrl.bits.tiledAddressSwizzling = 1;
+    gfx_write32(pPci, ARB_CTL, arbCtrl.dword);
+
+    tileCtrl.dword = gfx_read32(pPci, TILE_CTL);
+    tileCtrl.bits.swzctl = 1;
+    gfx_write32(pPci, TILE_CTL, tileCtrl.dword);
+
+    arbMode.dword = 0;
+    arbMode.bits.data.as4ts = 1;
+    arbMode.bits.mask.as4ts = 1;
+    gfx_write32(pPci, ARB_MODE, arbMode.dword);
+
+    // Tile Control may not be implemented.  It's not in the docs
+    // and writes don't seem to work
+    rlog_print("ARB_CTL: 0x%08X\n", gfx_read32(pPci, ARB_CTL));
+    rlog_print("TILECTL: 0x%08X\n", gfx_read32(pPci, TILE_CTL));
+    rlog_print("ARB_MODE: 0x%08X\n", gfx_read32(pPci, ARB_MODE));
 }

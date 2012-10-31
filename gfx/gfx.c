@@ -171,33 +171,38 @@ void gfx_init(uint id, PCI_DeviceInfo* info)
     s_gfxDevice.pci.id = id;
 }
 
-/*
 static void enter_force_wake()
 {
-    rlog_print("Try entering force wake...\n");
+    rlog_print("Trying to entering force wake...\n");
 
-    while ((gfx_read(FORCE_WAKE_ACK) & 0x1) != 0)
-        ;
+    int trys = 0;
+    int forceWakeAck;
+    do {
+        ++trys;
+        forceWakeAck = gfx_read32(&s_gfxDevice.pci, FORCE_WAKE_MT_ACK);
+        console_print("Waiting for Force Ack to Clear: Try=%d - Ack=0x%X\n", trys, forceWakeAck);
+    } while (forceWakeAck != 0);
 
-    rlog_print("ACK cleared...\n");
+    rlog_print("  ACK cleared...\n");
 
-    gfx_write(FORCE_WAKE, 1);
-    gfx_read(0xa180);
+    gfx_write32(&s_gfxDevice.pci, FORCE_WAKE_MT, (1 << 16) | 1);
+    gfx_read32(&s_gfxDevice.pci, ECOBUS);
 
     rlog_print("Wake written...\n");
-
-    while ((gfx_read(FORCE_WAKE_ACK) & 0x1) == 0)
-        ;
-
-    rlog_print("Wake Ack...\n");
+    do {
+        ++trys;
+        forceWakeAck = gfx_read32(&s_gfxDevice.pci, FORCE_WAKE_MT_ACK);
+        console_print("Waiting for Force Ack to be Set: Try=%d - Ack=0x%X\n", trys, forceWakeAck);
+    } while (forceWakeAck == 0);
+    rlog_print("...Force Wake done\n");
 }
 
 static void exit_force_wake()
 {
-    // If cacheable, need to do force the post
-    gfx_write(FORCE_WAKE, 0);
+    gfx_write32(&s_gfxDevice.pci, FORCE_WAKE_MT, 0);
+    gfx_read32(&s_gfxDevice.pci, ECOBUS);
 }
-*/
+
 
 // ------------------------------------------------------------------------------------------------
 bool ValidateChipset()
@@ -240,13 +245,17 @@ void gfx_start()
     gfx_init_gtt(&s_gfxDevice.gtt, &s_gfxDevice.pci);
     gfx_init_mem_manager(&s_gfxDevice.memManager, &s_gfxDevice.gtt, &s_gfxDevice.pci);
     gfx_init_display(&s_gfxDevice.display);
+    gfx_disable_vga(&s_gfxDevice.pci);
 
-    // Assume Dimms are same size, so bit 6 swizzling is on.
+    // Need to force out of D6 state before we can read/write to registers
+    enter_force_wake();
+    {
+        gfx_mem_enable_swizzle(&s_gfxDevice.pci);
+    }
+    exit_force_wake();
+
 
     // MWDD FIX: Enable MSI
-
-    // Disable the VGA Plane
-    gfx_disable_vga(&s_gfxDevice.pci);
 
     // Log initial port state
     gfx_print_port_state();

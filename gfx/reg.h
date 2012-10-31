@@ -38,6 +38,38 @@ typedef union GttEntry
 // ------------------------------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------------------------------
+// 1.1.1.1 ARB_MODE – Arbiter Mode Control register
+#define ARB_MODE                        0x04030 // R/W
+
+typedef struct RegArbMode_Data
+{
+    u16 gttAccessesGdr     : 1;
+    u16 colorCacheGdrEna   : 1;
+    u16 depthCacheGdrEna   : 1;
+    u16 textureCacheGdrEna : 1;
+    u16 vmcGdrEna          : 1;
+    u16 as4ts              : 1; // Address swizzling for Tiled-Surfaces
+    u16 reserved0          : 2;
+    u16 cdps               : 1; // Color/Depth Port Share Bit
+    u16 gampd_gdr          : 1; // GAM PD GDR
+    u16 blb_gdr            : 1;
+    u16 stc_gdr            : 1;
+    u16 hiz_gdr            : 1;
+    u16 dc_gdr             : 1;
+    u16 gam2bgttt          : 1; // GAM to Bypass GTT Translation
+} RegArbMode_Data;
+
+typedef union RegArbMode
+{
+    struct RegArbMode_Bits
+    {
+        RegArbMode_Data data;
+        RegArbMode_Data mask;
+    } bits;
+    u32 dword;
+} RegArbMode;
+
+// ------------------------------------------------------------------------------------------------
 // 1.1.9 Instruction Parser Mode
 
 #define INSTPM                          0x020c0     // R/W
@@ -233,6 +265,27 @@ typedef union RegBDSM
 #define VGA_CONTROL                     0x41000     // R/W
 
 #define VGA_DISABLE                     (1 << 31)
+
+// ------------------------------------------------------------------------------------------------
+// 3.7.1 ARB_CTL-Display Arbitration Control 1
+#define ARB_CTL                         0x45000     // R/W
+typedef union RegArbCtl
+{
+    struct RegArbCtl_Bits
+    {
+        u32 hpDataRequestLimit      : 7;
+        u32 reserved0               : 1;
+        u32 hpPageBreakLimit        : 5;
+        u32 tiledAddressSwizzling   : 2;
+        u32 tlbRequestInFlightLimit : 3;
+        u32 tlbRequestLimit         : 3;
+        u32 lpWriteRequestLimit     : 2;
+        u32 hpQueueWatermark        : 3;
+        u32 reserved1               : 3;
+    } bits;
+    u32 dword;
+} RegArbCtl;
+
 
 // ------------------------------------------------------------------------------------------------
 // 4.1.1 Horizontal Total
@@ -488,7 +541,14 @@ typedef struct OpRegionMailbox3ASLE
 // ------------------------------------------------------------------------------------------------
 // Registers not in the Spec (Found in Linux Driver)
 // ------------------------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------
+// Force Wake
+// Bring the card out of D6 state
+#define ECOBUS                          0xA180
+#define FORCE_WAKE_MT                   0xA188 
 #define FORCE_WAKE                      0xA18C 
+#define FORCE_WAKE_MT_ACK               0x130040 
 #define FORCE_WAKE_ACK                  0x130090 
 
 // ------------------------------------------------------------------------------------------------
@@ -509,3 +569,18 @@ typedef struct RegFence
     } bits;
     u64 qword;
 } RegFence;
+
+// ------------------------------------------------------------------------------------------------
+// Tile Ctrl - control register for cpu gtt access
+#define TILE_CTL                         0x101000     // R/W
+typedef struct RegTileCtl
+{
+    struct RegTileCtl_Bits
+    {
+        u32 swzctl              : 2;
+        u32 tlbPrefetchDis      : 1;
+        u32 backSnoopDis        : 1;
+        u32 unknown             : 28;
+    } bits;
+    u32 dword;
+} RegTileCtl;
