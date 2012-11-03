@@ -383,11 +383,15 @@ static void tcp_rx_syn_sent(TCP_Conn* conn, TCP_Header* hdr)
         if (flags & TCP_ACK)
         {
             conn->snd_una = hdr->ack;
+            conn->snd_wnd = hdr->window_size;
+            conn->snd_wl1 = hdr->seq;
+            conn->snd_wl2 = hdr->ack;
 
             // TODO - Segments on the retransmission queue which are ack'd should be removed
 
             tcp_set_state(conn, TCP_ESTABLISHED);
             tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
+
 
             // TODO - Data queued for transmission may be included with the ACK.
 
@@ -452,6 +456,9 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
     case TCP_SYN_RECEIVED:
         if (conn->snd_una <= hdr->ack && hdr->ack <= conn->snd_nxt)
         {
+            conn->snd_wnd = hdr->window_size;
+            conn->snd_wl1 = hdr->seq;
+            conn->snd_wl2 = hdr->ack;
             tcp_set_state(conn, TCP_ESTABLISHED);
         }
         else
@@ -466,7 +473,7 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
     case TCP_CLOSE_WAIT:
     case TCP_CLOSING:
         // Handle expected acks
-        if (SEQ_LT(conn->snd_una, hdr->ack) && SEQ_LE(hdr->ack, conn->snd_nxt))
+        if (SEQ_LE(conn->snd_una, hdr->ack) && SEQ_LE(hdr->ack, conn->snd_nxt))
         {
             // Update acknowledged pointer
             conn->snd_una = hdr->ack;
@@ -485,7 +492,7 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
         }
 
         // Check for duplicate ack
-        if (SEQ_LT(hdr->ack, conn->snd_una))
+        if (SEQ_LE(hdr->ack, conn->snd_una))
         {
             // TODO - anything to do here?
         }
@@ -733,6 +740,8 @@ static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr, Net_Buf* pkt)
         return;
     }
 
+    // TODO - trim segment data?
+
     // Check RST bit
     if (flags & TCP_RST)
     {
@@ -762,7 +771,7 @@ static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr, Net_Buf* pkt)
         tcp_rx_data(conn, pkt);
     }
 
-    // Check FIN
+    // Check FIN - TODO, needs to handle out of sequence
     if (flags & TCP_FIN)
     {
         tcp_rx_fin(conn, hdr);

@@ -813,7 +813,7 @@ int main(int argc, const char** argv)
     {
         uint state = *statep;
 
-        test_case_begin(state, "SYN", "conn reset");
+        test_case_begin(state, "SYN", "conn reset, RST sent");
 
         conn = create_conn();
         enter_state(conn, state);
@@ -840,6 +840,140 @@ int main(int argc, const char** argv)
 
         test_case_end();
     }
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin(TCP_SYN_RECEIVED, "bad ACK", "RST sent");
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin(TCP_SYN_RECEIVED, "ACK", "goto ESTABLISHED");
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    uint ack_states[] =
+    {
+        TCP_ESTABLISHED,
+        TCP_FIN_WAIT_1,
+        TCP_FIN_WAIT_2,
+        TCP_CLOSE_WAIT,
+        TCP_CLOSING,
+        0
+    };
+
+    for (uint* statep = ack_states; *statep; ++statep)
+    {
+        uint state = *statep;
+        test_case_begin(state, "ACK", "update pointers");
+
+        test_case_end();
+    }
+
+    // --------------------------------------------------------------------------------------------
+    for (uint* statep = ack_states; *statep; ++statep)
+    {
+        uint state = *statep;
+        test_case_begin(state, "dup ACK", "ignore");
+
+        test_case_end();
+    }
+
+    // --------------------------------------------------------------------------------------------
+    for (uint* statep = ack_states; *statep; ++statep)
+    {
+        uint state = *statep;
+        test_case_begin(state, "unsent ACK", "resend ACK");
+
+        test_case_end();
+    }
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin(TCP_FIN_WAIT_1, "ACK, FIN not ACK'd", "ignore");
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin(TCP_CLOSING, "ACK, FIN not ACK'd", "ignore");
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin(TCP_FIN_WAIT_1, "ACK, FIN ACK'd", "goto FIN-WAIT-2");
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin(TCP_CLOSING, "ACK, FIN ACK'd", "goto TIME-WAIT");
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin(TCP_LAST_ACK, "ACK, FIN not ACK'd", "ignore");
+
+    conn = create_conn();
+    enter_state(conn, TCP_LAST_ACK);
+
+    in_pkt = net_alloc_buf();
+    in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt - 1, TCP_ACK);
+    tcp_input(in_pkt);
+
+    exit_state(conn, TCP_LAST_ACK);
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin(TCP_LAST_ACK, "ACK, FIN ACK'd", "goto CLOSED");
+
+    conn = create_conn();
+    enter_state(conn, TCP_LAST_ACK);
+
+    in_pkt = net_alloc_buf();
+    in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_ACK);
+    tcp_input(in_pkt);
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin(TCP_TIME_WAIT, "ACK, no FIN", "ignore");
+
+    conn = create_conn();
+    enter_state(conn, TCP_TIME_WAIT);
+
+    in_pkt = net_alloc_buf();
+    in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_ACK);
+    tcp_input(in_pkt);
+
+    exit_state(conn, TCP_TIME_WAIT);
+
+    test_case_end();
+
+    // --------------------------------------------------------------------------------------------
+    test_case_begin(TCP_TIME_WAIT, "FIN", "reset 2MSL timer");
+
+    conn = create_conn();
+    enter_state(conn, TCP_TIME_WAIT);
+
+    pit_ticks += 1000;
+    in_pkt = net_alloc_buf();
+    in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_FIN | TCP_ACK);
+    tcp_input(in_pkt);
+
+    out_pkt = pop_packet();
+    out_hdr = (TCP_Header*)out_pkt->data;
+    tcp_swap(out_hdr);
+    ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
+    ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
+    ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt);
+    ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
+    ASSERT_EQ_HEX8(out_hdr->flags, TCP_ACK);
+    free(out_pkt);
+
+    ASSERT_EQ_UINT(conn->msl_wait, pit_ticks + 2 * TCP_MSL);
+
+    exit_state(conn, TCP_TIME_WAIT);
+
+    test_case_end();
 
     return EXIT_SUCCESS;
 }
