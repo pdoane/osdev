@@ -14,7 +14,7 @@ typedef long long           i64;
 typedef unsigned long long  u64;
 
 #ifdef CROSS
-typedef u32                 size_t;
+typedef u64                 size_t;
 typedef u64                 uintptr_t;
 #else
 #include <stddef.h>
@@ -29,3 +29,6 @@ typedef unsigned int        uint;
 #define bool _Bool
 #define true 1
 #define false 0
+
+#define KB 1024
+#define MB (1024 * 1024)
