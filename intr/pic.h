@@ -6,4 +6,4 @@
 
 #include "stdlib/types.h"
 
-void pic_init();
+void PicInit();

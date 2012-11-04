@@ -29,26 +29,26 @@ static uint s_col;
 static uint s_row;
 
 static uint s_cursor;
-static char s_input_line[TEXT_COLS];
-static uint s_line_index;
+static char s_inputLine[TEXT_COLS];
+static uint s_lineIndex;
 
 static HistoryLine s_history[MAX_HISTORY_SIZE];
-static uint s_history_count;
+static uint s_historyCount;
 
 // ------------------------------------------------------------------------------------------------
-static void console_update_input()
+static void ConsoleUpdateInput()
 {
     u16 attr = TEXT_ATTR(TEXT_WHITE, TEXT_BLUE);
-    char* line = console_get_input_line();
+    char *line = ConsoleGetInputLine();
 
     uint offset = (TEXT_ROWS-1) * TEXT_COLS;
-    vga_text_setcursor(offset + s_cursor + 2);
+    VgaTextSetCursor(offset + s_cursor + 2);
 
     VGA_TEXT_BASE[offset++] = attr | '$';
     VGA_TEXT_BASE[offset++] = attr | ' ';
 
     char c;
-    char* s = line;
+    char *s = line;
     while ((c = *s++))
     {
         VGA_TEXT_BASE[offset++] = attr | c;
@@ -61,11 +61,11 @@ static void console_update_input()
 }
 
 // ------------------------------------------------------------------------------------------------
-static void console_exec()
+static void ConsoleExec()
 {
     // Save current line
     char line[TEXT_COLS];
-    strcpy(line, console_get_input_line());
+    strcpy(line, ConsoleGetInputLine());
 
     // Skip empty commands
     if (!line[0])
@@ -74,39 +74,39 @@ static void console_exec()
     }
 
     // If editing an old entry, restore it to the original state
-    if (s_line_index > 0)
+    if (s_lineIndex > 0)
     {
-        HistoryLine* update = &s_history[s_history_count - s_line_index];
+        HistoryLine *update = &s_history[s_historyCount - s_lineIndex];
         strcpy(update->edit, update->original);
     }
 
     // Remove last history entry at maximum size
-    if (s_history_count == MAX_HISTORY_SIZE)
+    if (s_historyCount == MAX_HISTORY_SIZE)
     {
         memcpy(s_history, s_history + 1, sizeof(HistoryLine) * (MAX_HISTORY_SIZE - 1));
-        --s_history_count;
+        --s_historyCount;
     }
 
     // Add new history entry
-    HistoryLine* new_line = &s_history[s_history_count];
-    ++s_history_count;
-    strcpy(new_line->original, line);
-    strcpy(new_line->edit, line);
+    HistoryLine *newLine = &s_history[s_historyCount];
+    ++s_historyCount;
+    strcpy(newLine->original, line);
+    strcpy(newLine->edit, line);
 
     // Echo input
-    console_print("\n$ %s\n", line);
+    ConsolePrint("\n$ %s\n", line);
 
     // Update input state
-    s_input_line[0] = '\0';
-    s_line_index = 0;
+    s_inputLine[0] = '\0';
+    s_lineIndex = 0;
     s_cursor = 0;
 
     // Split command line arguments
     uint argc = 0;
-    const char* argv[16];
+    const char *argv[16];
 
-    bool in_arg = false;
-    char* p = line;
+    bool inArg = false;
+    char *p = line;
     for (;;)
     {
         char ch = *p;
@@ -115,18 +115,18 @@ static void console_exec()
             break;
         }
 
-        bool is_space = ch == ' ' || ch == '\t';
-        if (in_arg)
+        bool isSpace = ch == ' ' || ch == '\t';
+        if (inArg)
         {
-            if (is_space)
+            if (isSpace)
             {
                 *p = '\0';
-                in_arg = false;
+                inArg = false;
             }
         }
         else
         {
-            if (!is_space)
+            if (!isSpace)
             {
                 if (argc < 16)
                 {
@@ -134,7 +134,7 @@ static void console_exec()
                     ++argc;
                 }
 
-                in_arg = true;
+                inArg = true;
             }
         }
 
@@ -144,7 +144,7 @@ static void console_exec()
     // Execute command
     if (argc > 0)
     {
-        const ConsoleCmd* cmd = console_cmd_table;
+        const ConsoleCmd *cmd = g_consoleCmdTable;
         while (cmd->name)
         {
             if (strcmp(cmd->name, argv[0]) == 0)
@@ -156,18 +156,18 @@ static void console_exec()
             ++cmd;
         }
 
-        console_print("Unknown command %s\n", argv[0]);
+        ConsolePrint("Unknown command %s\n", argv[0]);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void console_init()
+void ConsoleInit()
 {
-    console_update_input();
+    ConsoleUpdateInput();
 }
 
 // ------------------------------------------------------------------------------------------------
-void console_putchar(char c)
+void ConsolePutChar(char c)
 {
     if (c == '\n')
     {
@@ -204,7 +204,7 @@ void console_putchar(char c)
 }
 
 // ------------------------------------------------------------------------------------------------
-void console_print(const char* fmt, ...)
+void ConsolePrint(const char *fmt, ...)
 {
     char buf[1024];
     va_list args;
@@ -214,35 +214,35 @@ void console_print(const char* fmt, ...)
     va_end(args);
 
     char c;
-    char* s = buf;
+    char *s = buf;
     while ((c = *s++))
     {
-        console_putchar(c);
+        ConsolePutChar(c);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-uint console_get_cursor()
+uint ConsoleGetCursor()
 {
     return s_cursor;
 }
 
 // ------------------------------------------------------------------------------------------------
-char* console_get_input_line()
+char *ConsoleGetInputLine()
 {
-    return s_line_index ? s_history[s_history_count - s_line_index].edit : s_input_line;
+    return s_lineIndex ? s_history[s_historyCount - s_lineIndex].edit : s_inputLine;
 }
 
 // ------------------------------------------------------------------------------------------------
-void console_on_keydown(uint code)
+void ConsoleOnKeyDown(uint code)
 {
-    char* line;
+    char *line;
     uint len;
 
     switch (code)
     {
     case KEY_BACKSPACE:
-        line = console_get_input_line();
+        line = ConsoleGetInputLine();
         if (s_cursor > 0)
         {
             s_cursor--;
@@ -254,7 +254,7 @@ void console_on_keydown(uint code)
 
     case KEY_KP_DEC: // QEMU does not seem to send the right code.
     case KEY_DELETE:
-        line = console_get_input_line();
+        line = ConsoleGetInputLine();
         len = strlen(line);
         if (len > s_cursor)
         {
@@ -265,25 +265,25 @@ void console_on_keydown(uint code)
 
     case KEY_ENTER:
     case KEY_RETURN:
-        console_exec();
+        ConsoleExec();
         break;
 
     case KEY_KP8: // QEMU does not seem to send the right code.
     case KEY_UP:
-        if (s_line_index < s_history_count)
+        if (s_lineIndex < s_historyCount)
         {
-            ++s_line_index;
-            line = console_get_input_line();
+            ++s_lineIndex;
+            line = ConsoleGetInputLine();
             s_cursor = strlen(line);
         }
         break;
 
     case KEY_KP2: // QEMU does not seem to send the right code.
     case KEY_DOWN:
-        if (s_line_index > 0)
+        if (s_lineIndex > 0)
         {
-            --s_line_index;
-            line = console_get_input_line();
+            --s_lineIndex;
+            line = ConsoleGetInputLine();
             s_cursor = strlen(line);
         }
         break;
@@ -298,7 +298,7 @@ void console_on_keydown(uint code)
 
     case KEY_KP6: // QEMU does not seem to send the right code.
     case KEY_RIGHT:
-        line = console_get_input_line();
+        line = ConsoleGetInputLine();
         len = strlen(line);
         if (s_cursor < len)
         {
@@ -313,24 +313,24 @@ void console_on_keydown(uint code)
 
     case KEY_KP1: // QEMU does not seem to send the right code.
     case KEY_END:
-        line = console_get_input_line();
+        line = ConsoleGetInputLine();
         len = strlen(line);
         s_cursor = len;
         break;
     }
 
-    console_update_input();
+    ConsoleUpdateInput();
 }
 
 // ------------------------------------------------------------------------------------------------
-void console_on_keyup(uint code)
+void ConsoleOnKeyUp(uint code)
 {
 }
 
 // ------------------------------------------------------------------------------------------------
-void console_on_char(char ch)
+void ConsoleOnChar(char ch)
 {
-    char* line = console_get_input_line();
+    char *line = ConsoleGetInputLine();
     uint len = strlen(line);
     if (len + 1 >= TEXT_COLS)
     {
@@ -342,5 +342,5 @@ void console_on_char(char ch)
     s_cursor++;
     line[len+1] = '\0';
 
-    console_update_input();
+    ConsoleUpdateInput();
 }

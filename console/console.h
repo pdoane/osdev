@@ -6,13 +6,13 @@
 
 #include "stdlib/types.h"
 
-void console_init();
-void console_putchar(char c);
-void console_print(const char* fmt, ...);
+void ConsoleInit();
+void ConsolePutChar(char c);
+void ConsolePrint(const char *fmt, ...);
 
-uint console_get_cursor();
-char* console_get_input_line();
+uint ConsoleGetCursor();
+char *ConsoleGetInputLine();
 
-void console_on_keydown(uint code);
-void console_on_keyup(uint code);
-void console_on_char(char ch);
+void ConsoleOnKeyDown(uint code);
+void ConsoleOnKeyUp(uint code);
+void ConsoleOnChar(char ch);

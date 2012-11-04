@@ -7,6 +7,7 @@
 #include "gfx/reg.h"
 #include "gfx/gtt.h"
 
+// ------------------------------------------------------------------------------------------------
 typedef struct GfxMemRange
 {
     GfxAddress base;
@@ -14,6 +15,7 @@ typedef struct GfxMemRange
     GfxAddress current;
 } GfxMemRange;
 
+// ------------------------------------------------------------------------------------------------
 typedef struct GfxMemManager
 {
     GfxMemRange vram;      // Stollen Memory
@@ -21,5 +23,6 @@ typedef struct GfxMemManager
     GfxMemRange private;   // Only accessable by GPU, but allocated by CPU.
 } GfxMemManager;
 
-void gfx_init_mem_manager(GfxMemManager *pMemMgr, const GfxGTT *pGTT, GfxPCI *pPci);
-void gfx_mem_enable_swizzle(GfxPCI *pPci);
+// ------------------------------------------------------------------------------------------------
+void GfxInitMemManager(GfxMemManager *memMgr, const GfxGTT *gtt, GfxPCI *pci);
+void GfxMemEnableSwizzle(GfxPCI *pci);

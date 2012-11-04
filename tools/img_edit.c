@@ -16,12 +16,12 @@ static void Usage()
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool ReadFile(const char* path, u8** outData, uint* outLen)
+static bool ReadFile(const char *path, u8 **outData, uint *outLen)
 {
     bool result = false;
 
     // Open File for Input
-    FILE* fp = fopen(path, "rb");
+    FILE *fp = fopen(path, "rb");
     if (fp)
     {
         // Determine File Size
@@ -30,7 +30,7 @@ static bool ReadFile(const char* path, u8** outData, uint* outLen)
         fseek(fp, 0, SEEK_SET);
 
         // Allocate Storage
-        u8* data = malloc(len);
+        u8 *data = malloc(len);
         if (data)
         {
             // Read File
@@ -50,12 +50,12 @@ static bool ReadFile(const char* path, u8** outData, uint* outLen)
 
 
 // ------------------------------------------------------------------------------------------------
-static bool WriteFile(const char* path, u8* data, uint len)
+static bool WriteFile(const char *path, u8 *data, uint len)
 {
     bool result = false;
 
     // Open File for Output
-    FILE* fp = fopen(path, "wb");
+    FILE *fp = fopen(path, "wb");
     if (fp)
     {
         // Write Image
@@ -71,12 +71,12 @@ static bool WriteFile(const char* path, u8* data, uint len)
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool CreateImage(const char* imagePath, const char* bootSectorPath)
+static bool CreateImage(const char *imagePath, const char *bootSectorPath)
 {
     bool result = false;
 
-    u8* image = 0;
-    u8* bootSector = 0;
+    u8 *image = 0;
+    u8 *bootSector = 0;
 
     uint bytesPerSector = 512;
     uint sectorCount = 64416;
@@ -104,7 +104,7 @@ static bool CreateImage(const char* imagePath, const char* bootSectorPath)
     }
 
     // Prepare Bios Parameter Block
-    BiosParamBlock* bpb = (BiosParamBlock*)bootSector;
+    BiosParamBlock *bpb = (BiosParamBlock *)bootSector;
     memcpy(bpb->oem, "POS     ", sizeof(bpb->oem));
     bpb->bytesPerSector = bytesPerSector;
     bpb->sectorsPerCluster = 1;
@@ -148,11 +148,11 @@ static bool CreateImage(const char* imagePath, const char* bootSectorPath)
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool AddFile(const char* imagePath, const char* dataPath)
+static bool AddFile(const char *imagePath, const char *dataPath)
 {
     bool result = false;
-    u8* image = 0;
-    u8* data = 0;
+    u8 *image = 0;
+    u8 *data = 0;
 
     // Read Image
     uint imageSize;
@@ -171,7 +171,7 @@ static bool AddFile(const char* imagePath, const char* dataPath)
     }
 
     // Find Directory Entry
-    DirEntry* entry = FatFindFreeRootEntry(image);
+    DirEntry *entry = FatFindFreeRootEntry(image);
     if (!entry)
     {
         fprintf(stderr, "Failed to find directory entry\n");
@@ -201,7 +201,7 @@ failure:
 }
 
 // ------------------------------------------------------------------------------------------------
-int main(int argc, const char** argv)
+int main(int argc, const char **argv)
 {
     // Parse arguments
     if (argc < 2)
@@ -210,7 +210,7 @@ int main(int argc, const char** argv)
         return EXIT_FAILURE;
     }
 
-    const char* cmd = argv[1];
+    const char *cmd = argv[1];
     if (!strcmp(cmd, "create"))
     {
         if (argc != 4)
@@ -219,8 +219,8 @@ int main(int argc, const char** argv)
             return EXIT_FAILURE;
         }
 
-        const char* imagePath = argv[2];
-        const char* bootSectorPath = argv[3];
+        const char *imagePath = argv[2];
+        const char *bootSectorPath = argv[3];
 
         if (!CreateImage(imagePath, bootSectorPath))
         {
@@ -235,8 +235,8 @@ int main(int argc, const char** argv)
             return EXIT_FAILURE;
         }
 
-        const char* imagePath = argv[2];
-        const char* dataPath = argv[3];
+        const char *imagePath = argv[2];
+        const char *dataPath = argv[3];
 
         if (!AddFile(imagePath, dataPath))
         {

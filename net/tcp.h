@@ -23,18 +23,18 @@
 // ------------------------------------------------------------------------------------------------
 // TCP Header
 
-typedef struct TCP_Header
+typedef struct TcpHeader
 {
-    u16 src_port;
-    u16 dst_port;
+    u16 srcPort;
+    u16 dstPort;
     u32 seq;
     u32 ack;
     u8 off;
     u8 flags;
-    u16 window_size;
+    u16 windowSize;
     u16 checksum;
     u16 urgent;
-} PACKED TCP_Header;
+} PACKED TcpHeader;
 
 // Flags
 #define TCP_FIN                         (1 << 0)
@@ -51,10 +51,10 @@ typedef struct TCP_Header
 #define OPT_NOP                         1
 #define OPT_MSS                         2
 
-typedef struct TCP_Options
+typedef struct TcpOptions
 {
     u16 mss;
-} TCP_Options;
+} TcpOptions;
 
 // ------------------------------------------------------------------------------------------------
 // TCP State
@@ -71,7 +71,7 @@ typedef struct TCP_Options
 #define TCP_LAST_ACK                    9
 #define TCP_TIME_WAIT                   10
 
-extern const char* tcp_state_strs[];
+extern const char *g_tcpStateStrs[];
 
 // ------------------------------------------------------------------------------------------------
 // TCP Errors
@@ -83,65 +83,65 @@ extern const char* tcp_state_strs[];
 // ------------------------------------------------------------------------------------------------
 // TCP Connection
 
-typedef struct TCP_Conn
+typedef struct TcpConn
 {
     Link link;
     uint state;
-    Net_Intf* intf;
+    NetIntf *intf;
 
-    IPv4_Addr local_addr;
-    IPv4_Addr next_addr;
-    IPv4_Addr remote_addr;
-    u16 local_port;
-    u16 remote_port;
+    Ipv4Addr localAddr;
+    Ipv4Addr nextAddr;
+    Ipv4Addr remoteAddr;
+    u16 localPort;
+    u16 remotePort;
 
     // send state
-    u32 snd_una;                        // send unacknowledged
-    u32 snd_nxt;                        // send next
-    u32 snd_wnd;                        // send window
-    u32 snd_up;                         // send urgent pointer
-    u32 snd_wl1;                        // segment sequence number used for last window update
-    u32 snd_wl2;                        // segment acknowledgment number used for last window update
+    u32 sndUna;                         // send unacknowledged
+    u32 sndNxt;                         // send next
+    u32 sndWnd;                         // send window
+    u32 sndUP;                          // send urgent pointer
+    u32 sndWl1;                         // segment sequence number used for last window update
+    u32 sndWl2;                         // segment acknowledgment number used for last window update
     u32 iss;                            // initial send sequence number
 
     // receive state
-    u32 rcv_nxt;                        // receive next
-    u32 rcv_wnd;                        // receive window
-    u32 rcv_up;                         // receive urgent pointer
+    u32 rcvNxt;                        // receive next
+    u32 rcvWnd;                        // receive window
+    u32 rcvUP;                         // receive urgent pointer
     u32 irs;                            // initial receive sequence number
 
     // queues
     Link resequence;
 
     // timers
-    u32 msl_wait;                       // when does the 2MSL time wait expire?
+    u32 mslWait;                       // when does the 2MSL time wait expire?
 
     // callbacks
-    void* ctx;
-    void (*on_error)(struct TCP_Conn* conn, uint error);
-    void (*on_state)(struct TCP_Conn* conn, uint old_state, uint new_state);
-    void (*on_data)(struct TCP_Conn* conn, const u8* data, uint len);
-} TCP_Conn;
+    void *ctx;
+    void (*onError)(struct TcpConn *conn, uint error);
+    void (*onState)(struct TcpConn *conn, uint oldState, uint newState);
+    void (*onData)(struct TcpConn *conn, const u8 *data, uint len);
+} TcpConn;
 
 // ------------------------------------------------------------------------------------------------
 // Globals
 
-extern Link tcp_active_conns;
+extern Link g_tcpActiveConns;
 
 // ------------------------------------------------------------------------------------------------
 // Internal Functions
 
-void tcp_init();
-void tcp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt);
-void tcp_poll();
-void tcp_swap(TCP_Header* hdr);
+void TcpInit();
+void TcpRecv(NetIntf *intf, const Ipv4Header *ipHdr, NetBuf *pkt);
+void TcpPoll();
+void TcpSwap(TcpHeader *hdr);
 
 // ------------------------------------------------------------------------------------------------
 // User API
 
-TCP_Conn* tcp_create();
-bool tcp_connect(TCP_Conn* conn, const IPv4_Addr* addr, u16 port);
-void tcp_close(TCP_Conn* conn);
-void tcp_send(TCP_Conn* conn, const void* data, uint count);
+TcpConn *TcpCreate();
+bool TcpConnect(TcpConn *conn, const Ipv4Addr *addr, u16 port);
+void TcpClose(TcpConn *conn);
+void TcpSend(TcpConn *conn, const void *data, uint count);
 
 // half-close, abort?

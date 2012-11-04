@@ -7,46 +7,46 @@
 
 // ------------------------------------------------------------------------------------------------
 
-int tz_local = -7 * 60;   // Time zone offset in minutes
+int g_localTimeZone = -7 * 60;   // Time zone offset in minutes
 
 // ------------------------------------------------------------------------------------------------
-void split_time(DateTime* dt, abs_time t, int tz_offset)
+void SplitTime(DateTime *dt, abs_time t, int tzOffset)
 {
     // Adjust t for time zone
-    t += tz_offset * 60;
+    t += tzOffset * 60;
 
     // Start of each month based on day of the year
-    static const int reg_mstart[]  = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
-    static const int leap_mstart[] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 };
+    static const int monthStart[]  = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365 };
+    static const int leapMonthStart[] = { 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366 };
 
     // Split time into days since the epoch and seconds in that day
-    int epoch_days = t / (24 * 60 * 60);
-    int day_secs = t % (24 * 60 * 60);
+    int epochDays = t / (24 * 60 * 60);
+    int daySecs = t % (24 * 60 * 60);
 
     // Compute time
-    int sec = day_secs % 60;
-    int min = (day_secs % 3600) / 60;
-    int hour = day_secs / 3600;
+    int sec = daySecs % 60;
+    int min = (daySecs % 3600) / 60;
+    int hour = daySecs / 3600;
 
     // Compute years since the epoch and days in that year
-    int epoch_years = (epoch_days - (epoch_days + 365) / 1460) / 365;
-    int year_day = epoch_days - (epoch_years * 365 + (epoch_years + 1) / 4);
+    int epochYears = (epochDays - (epochDays + 365) / 1460) / 365;
+    int yearDay = epochDays - (epochYears * 365 + (epochYears + 1) / 4);
 
     // Adjust year based on epoch
-    int year = 1970 + epoch_years;
+    int year = 1970 + epochYears;
 
     // Search for month based on days in the year
-    const int* mstart = year & 3 ? reg_mstart : leap_mstart;
+    const int *mstart = year & 3 ? monthStart : leapMonthStart;
 
     int month = 1;
-    while (year_day >= mstart[month])
+    while (yearDay >= mstart[month])
     {
         ++month;
     }
 
     // Compute day of the month and day of the week
-    int day = 1 + year_day - mstart[month - 1];
-    int week_day = (epoch_days + 4) % 7;
+    int day = 1 + yearDay - mstart[month - 1];
+    int weekDay = (epochDays + 4) % 7;
 
     // Store results
     dt->sec = sec;
@@ -55,13 +55,13 @@ void split_time(DateTime* dt, abs_time t, int tz_offset)
     dt->day = day;
     dt->month = month;
     dt->year = year;
-    dt->week_day = week_day;
-    dt->year_day = year_day;
-    dt->tz_offset = tz_offset;
+    dt->weekDay = weekDay;
+    dt->yearDay = yearDay;
+    dt->tzOffset = tzOffset;
 }
 
 // ------------------------------------------------------------------------------------------------
-abs_time join_time(const DateTime* dt)
+abs_time JoinTime(const DateTime *dt)
 {
     // From the Posix specification (4.14 Seconds Since the Epoch).
     // Could be simplified as the last two cases only apply starting in 2100.
@@ -69,7 +69,7 @@ abs_time join_time(const DateTime* dt)
         dt->sec +
         dt->min * 60 +
         dt->hour * 3600 +
-        dt->year_day * 86400 +
+        dt->yearDay * 86400 +
         (dt->year - 70) * 31536000 +
         ((dt->year - 69) / 4) * 86400 -
         ((dt->year - 1) / 100) * 86400 +
@@ -77,26 +77,26 @@ abs_time join_time(const DateTime* dt)
 }
 
 // ------------------------------------------------------------------------------------------------
-void format_time(char* str, size_t size, const DateTime* dt)
+void FormatTime(char *str, size_t size, const DateTime *dt)
 {
-    static const char* week_days[] =
+    static const char *weekDays[] =
     {
         "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
     };
 
-    static const char* months[] =
+    static const char *months[] =
     {
         "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
     };
 
-    uint w = dt->week_day;
+    uint w = dt->weekDay;
     uint m = dt->month - 1;
 
     snprintf(str, size, "%s, %02d %s %d %02d:%02d:%02d %02d%02d",
-        w < 7 ? week_days[w] : "XXX",
+        w < 7 ? weekDays[w] : "XXX",
         dt->day,
         m < 12 ? months[m] : "XXX",
         dt->year, dt->hour, dt->min, dt->sec,
-        dt->tz_offset / 60,
-        dt->tz_offset % 60);
+        dt->tzOffset / 60,
+        dt->tzOffset % 60);
 }

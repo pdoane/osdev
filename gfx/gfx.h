@@ -6,6 +6,6 @@
 
 #include "pci/driver.h"
 
-void gfx_init(uint id, PCI_DeviceInfo* info);
-void gfx_start();
-void gfx_poll();
+void GfxInit(uint id, PciDeviceInfo *info);
+void GfxStart();
+void GfxPoll();

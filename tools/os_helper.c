@@ -14,12 +14,12 @@
 #define MAXBUFLEN 2048
 
 // ------------------------------------------------------------------------------------------------
-static void sockaddr_to_str(char* buf, size_t len, struct sockaddr *sa)
+static void SockAddrToStr(char *buf, size_t len, struct sockaddr *sa)
 {
-    const void* src;
+    const void *src;
     if (sa->sa_family == AF_INET)
     {
-        src = &(((struct sockaddr_in*)sa)->sin_addr);
+        src = &(((struct sockaddr_in *)sa)->sin_addr);
         inet_ntop(sa->sa_family, src, buf, len);
     }
 }
@@ -28,7 +28,7 @@ static void sockaddr_to_str(char* buf, size_t len, struct sockaddr *sa)
 int main(void)
 {
     struct sockaddr_storage storage;
-    struct sockaddr* addr = (struct sockaddr *)&storage;
+    struct sockaddr *addr = (struct sockaddr *)&storage;
 
     // Create socket
     int sockfd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -47,7 +47,7 @@ int main(void)
     }
 
     // Bind
-    struct sockaddr_in* ipv4_addr = (struct sockaddr_in*)addr;
+    struct sockaddr_in *ipv4_addr = (struct sockaddr_in *)addr;
     ipv4_addr->sin_family = AF_INET;
     ipv4_addr->sin_port = htons(PORT);
     ipv4_addr->sin_addr.s_addr = 0;
@@ -73,8 +73,8 @@ int main(void)
             exit(EXIT_FAILURE);
         }
 
-        char addr_str[INET6_ADDRSTRLEN];
-        sockaddr_to_str(addr_str, sizeof(addr_str), addr);
+        char addrStr[INET6_ADDRSTRLEN];
+        SockAddrToStr(addrStr, sizeof(addrStr), addr);
 
         printf("%s", buf);
     }

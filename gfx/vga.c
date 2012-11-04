@@ -7,17 +7,17 @@
 #include "mem/lowmem.h"
 
 // ------------------------------------------------------------------------------------------------
-void vga_text_init()
+void VgaTextInit()
 {
-    vga_text_clear();
-    vga_text_setcursor(0);
+    VgaTextClear();
+    VgaTextSetCursor(0);
 }
 
 // ------------------------------------------------------------------------------------------------
-void vga_text_clear()
+void VgaTextClear()
 {
-    volatile u64* p = (volatile u64*)VGA_TEXT_BASE;
-    volatile u64* end = p + 500;
+    volatile u64 *p = (volatile u64 *)VGA_TEXT_BASE;
+    volatile u64 *end = p + 500;
 
     for (; p != end; ++p)
     {
@@ -26,11 +26,10 @@ void vga_text_clear()
 }
 
 // ------------------------------------------------------------------------------------------------
-void vga_text_setcursor(uint offset)
+void VgaTextSetCursor(uint offset)
 {
-    out8(0x3d4, 0x0e);
-    out8(0x3d5, offset >> 8);
-    out8(0x3d4, 0x0f);
-    out8(0x3d5, offset);
+    IoWrite8(0x3d4, 0x0e);
+    IoWrite8(0x3d5, offset >> 8);
+    IoWrite8(0x3d4, 0x0f);
+    IoWrite8(0x3d5, offset);
 }
-

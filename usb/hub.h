@@ -6,4 +6,4 @@
 
 #include "usb/dev.h"
 
-bool usb_hub_init(USB_Device* dev);
+bool UsbHubInit(UsbDevice *dev);

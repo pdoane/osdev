@@ -6,6 +6,7 @@
 
 #include "stdlib/types.h"
 
+// ------------------------------------------------------------------------------------------------
 typedef struct Keymap
 {
     u8 base[128];
@@ -13,4 +14,5 @@ typedef struct Keymap
     u8 numlock[128];
 } Keymap;
 
-extern const Keymap keymap_us101;
+// ------------------------------------------------------------------------------------------------
+extern const Keymap g_keymapUs101;

@@ -6,4 +6,4 @@
 
 #include "usb/dev.h"
 
-bool usb_mouse_init(USB_Device* dev);
+bool UsbMouseInit(UsbDevice *dev);

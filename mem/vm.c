@@ -6,6 +6,7 @@
 #include "mem/lowmem.h"
 #include "console/console.h"
 
+// ------------------------------------------------------------------------------------------------
 #define PAGE_PRESENT                    0x01    // Must be 1 to reference page-directory
 #define PAGE_WRITE                      0x02    // Write access
 #define PAGE_USER                       0x04    // User-mode access
@@ -14,7 +15,7 @@
 
 #define PD_2MB                          0x80    // 2MB Page
 
-static uintptr_t s_mem_next;
+static uintptr_t s_nextAlloc;
 
 // ------------------------------------------------------------------------------------------------
 typedef struct MemoryRegion
@@ -26,14 +27,14 @@ typedef struct MemoryRegion
 } MemoryRegion;
 
 // ------------------------------------------------------------------------------------------------
-static void dump_memory_map()
+static void DumpMemoryMap()
 {
     int i = 0;
 
-    MemoryRegion* region = (MemoryRegion*)MEMORY_MAP;
+    MemoryRegion *region = (MemoryRegion *)MEMORY_MAP;
     while (region->type)
     {
-        console_print("region %d: start: 0x%016llx end: 0x%016llx type: %d\n", i++,
+        ConsolePrint("region %d: start: 0x%016llx end: 0x%016llx type: %d\n", i++,
             region->start, region->start + region->size, region->type);
 
         ++region;
@@ -41,9 +42,9 @@ static void dump_memory_map()
 }
 
 // ------------------------------------------------------------------------------------------------
-static void vm_enable_pd(u64 pd_offset, u64 base, uint flags)
+static void VMEnablePD(u64 pdOffset, u64 base, uint flags)
 {
-    u64* pd = (u64*)pd_offset;
+    u64 *pd = (u64 *)pdOffset;
     for (uint i = 0; i < 512; ++i)
     {
         pd[i] = base | PD_2MB | flags;
@@ -52,97 +53,97 @@ static void vm_enable_pd(u64 pd_offset, u64 base, uint flags)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void vm_enable_pdp(uint pdp_index, u64 pd_offset, u64 base, uint flags)
+static void VMEnablePDP(uint pdpIndex, u64 pdOffset, u64 base, uint flags)
 {
-    vm_enable_pd(pd_offset, base, flags);
-    u64* pdp = (u64*)VM_PDP;
-    pdp[pdp_index] = pd_offset | flags;
+    VMEnablePD(pdOffset, base, flags);
+    u64 *pdp = (u64 *)VM_PDP;
+    pdp[pdpIndex] = pdOffset | flags;
 }
 
 // ------------------------------------------------------------------------------------------------
-static void vm_update_page(uintptr_t addr, uint flags)
+static void VMUpdatePage(uintptr_t addr, uint flags)
 {
     // Break address into table indices
-    uint pdp_index = (addr >> 30) & 0x1ff;
-    uint pd_index = (addr >> 21) & 0x1ff;
-    uint pt_index = (addr >> 12) & 0x1ff;
+    uint pdpIndex = (addr >> 30) & 0x1ff;
+    uint pdIndex = (addr >> 21) & 0x1ff;
+    uint ptIndex = (addr >> 12) & 0x1ff;
 
-    u64* pdp_base = (u64*)VM_PDP;
-    u64 pdp = pdp_base[pdp_index];
-    u64* pd_base = (u64*)(pdp & ~0xfff);
-    u64 pd = pd_base[pd_index];
+    u64 *pdpBase = (u64 *)VM_PDP;
+    u64 pdp = pdpBase[pdpIndex];
+    u64 *pdBase = (u64 *)(pdp & ~0xfff);
+    u64 pd = pdBase[pdIndex];
 
-    u64* pt_base = (u64*)(pd & ~0xfff);
+    u64 *ptBase = (u64 *)(pd & ~0xfff);
     if (pd & PD_2MB)
     {
         // Switch to page table
-        u64 old_base = (u64)pt_base;
-        uint old_flags = pd & 0x1f;
+        u64 oldBase = (u64)ptBase;
+        uint oldFlags = pd & 0x1f;
 
-        pt_base = vm_alloc(4096);
+        ptBase = VMAlloc(4096);
 
         for (uint i = 0; i < 512; ++i)
         {
-            pt_base[i] = old_base | old_flags;
-            old_base += 0x1000;
+            ptBase[i] = oldBase | oldFlags;
+            oldBase += 0x1000;
         }
 
-        pd = (uintptr_t)pt_base | PAGE_PRESENT | PAGE_WRITE | PAGE_USER;
-        pd_base[pd_index] = pd;
+        pd = (uintptr_t)ptBase | PAGE_PRESENT | PAGE_WRITE | PAGE_USER;
+        pdBase[pdIndex] = pd;
     }
 
     // Update entry
-    pt_base[pt_index] = addr | flags;
+    ptBase[ptIndex] = addr | flags;
 }
 
 // ------------------------------------------------------------------------------------------------
-void vm_init()
+void VMInit()
 {
     // Enable 4GB of memory access
     uint flags = PAGE_PRESENT | PAGE_WRITE | PAGE_USER;
-    vm_enable_pdp(0, VM_PD + 0x0000, 0x00000000, flags);
-    vm_enable_pdp(1, VM_PD + 0x1000, 0x40000000, flags);
-    vm_enable_pdp(2, VM_PD + 0x2000, 0x80000000, flags);
-    vm_enable_pdp(3, VM_PD + 0x3000, 0xc0000000, flags | PAGE_CACHE_DISABLE);   // TODO - call vm_map_pages
+    VMEnablePDP(0, VM_PD + 0x0000, 0x00000000, flags);
+    VMEnablePDP(1, VM_PD + 0x1000, 0x40000000, flags);
+    VMEnablePDP(2, VM_PD + 0x2000, 0x80000000, flags);
+    VMEnablePDP(3, VM_PD + 0x3000, 0xc0000000, flags | PAGE_CACHE_DISABLE);   // TODO - call VMMapPages
 
-    dump_memory_map();
+    DumpMemoryMap();
 
-    s_mem_next = 0x00200000;
+    s_nextAlloc = 0x00200000;
 }
 
 // ------------------------------------------------------------------------------------------------
-void* vm_alloc(uint size)
+void *VMAlloc(uint size)
 {
     // Align to 4k for now
-    return vm_alloc_align(size, 4096);
+    return VMAllocAlign(size, 4096);
 }
 
 // ------------------------------------------------------------------------------------------------
-void* vm_alloc_align(uint size, uint align)
+void *VMAllocAlign(uint size, uint align)
 {
     // Align memory request
-    uintptr_t offset = s_mem_next & (align - 1);
+    uintptr_t offset = s_nextAlloc & (align - 1);
     if (offset)
     {
-        s_mem_next += align - offset;
+        s_nextAlloc += align - offset;
     }
 
-    void* result = (void*)s_mem_next;
-    s_mem_next += size;
+    void *result = (void *)s_nextAlloc;
+    s_nextAlloc += size;
     return result;
 }
 
 // ------------------------------------------------------------------------------------------------
-void vm_map_pages(void* addr, uint size, uint flags)
+void VMMapPages(void *addr, uint size, uint flags)
 {
     flags |= PAGE_PRESENT | PAGE_WRITE | PAGE_USER;
 
-    u8* page = (u8*)addr;
-    u8* end = page + size;
+    u8 *page = (u8 *)addr;
+    u8 *end = page + size;
 
     while (page < end)
     {
-        vm_update_page((uintptr_t)page & ~0xfff, flags);
+        VMUpdatePage((uintptr_t)page & ~0xfff, flags);
         page += 4096;
     }
 

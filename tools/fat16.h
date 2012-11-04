@@ -63,27 +63,27 @@ typedef struct DirEntry
 #define ENTRY_ERASED 0xe5
 
 // ------------------------------------------------------------------------------------------------
-uint FatGetTotalSectorCount(u8* image);
-uint FatGetMetaSectorCount(u8* image);
-uint FatGetClusterCount(u8* image);
-uint FatGetImageSize(u8* image);
+uint FatGetTotalSectorCount(u8 *image);
+uint FatGetMetaSectorCount(u8 *image);
+uint FatGetClusterCount(u8 *image);
+uint FatGetImageSize(u8 *image);
 
-u16* FatGetTable(u8* image, uint fatIndex);
-u16 FatGetClusterValue(u8* image, uint fatIndex, uint clusterIndex);
-void FatSetClusterValue(u8* image, uint fatIndex, uint clusterIndex, u16 value);
-uint FatGetClusterOffset(u8* image, uint clusterIndex);
-DirEntry* FatGetRootDirectory(u8* image);
+u16 *FatGetTable(u8 *image, uint fatIndex);
+u16 FatGetClusterValue(u8 *image, uint fatIndex, uint clusterIndex);
+void FatSetClusterValue(u8 *image, uint fatIndex, uint clusterIndex, u16 value);
+uint FatGetClusterOffset(u8 *image, uint clusterIndex);
+DirEntry *FatGetRootDirectory(u8 *image);
 
-u8* FatAllocImage(uint imageSize);
-bool FatInitImage(u8* image, u8* bootSector);
+u8 *FatAllocImage(uint imageSize);
+bool FatInitImage(u8 *image, u8 *bootSector);
 
-void FatSplitPath(u8 dstName[8], u8 dstExt[3], const char* path);
-u16 FatFindFreeCluster(u8* image);
-void FatUpdateCluster(u8* image, uint clusterIndex, u16 value);
-DirEntry* FatFindFreeRootEntry(u8* image);
-void FatUpdateDirEntry(DirEntry* entry, u16 clusterIndex, const u8 name[8], const u8 ext[3], uint fileSize);
-void FatRemoveDirEntry(DirEntry* entry);
-u16 FatAddData(u8* image, const void* data, uint len);
-void FatRemoveData(u8* image, uint rootClusterIndex);
-DirEntry* FatAddFile(u8* image, const char* path, const void* data, uint len);
-void FatRemoveFile(u8* image, DirEntry* entry);
+void FatSplitPath(u8 dstName[8], u8 dstExt[3], const char *path);
+u16 FatFindFreeCluster(u8 *image);
+void FatUpdateCluster(u8 *image, uint clusterIndex, u16 value);
+DirEntry *FatFindFreeRootEntry(u8 *image);
+void FatUpdateDirEntry(DirEntry *entry, u16 clusterIndex, const u8 name[8], const u8 ext[3], uint fileSize);
+void FatRemoveDirEntry(DirEntry *entry);
+u16 FatAddData(u8 *image, const void *data, uint len);
+void FatRemoveData(u8 *image, uint rootClusterIndex);
+DirEntry *FatAddFile(u8 *image, const char *path, const void *data, uint len);
+void FatRemoveFile(u8 *image, DirEntry *entry);

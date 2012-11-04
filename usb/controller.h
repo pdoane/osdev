@@ -9,15 +9,15 @@
 // ------------------------------------------------------------------------------------------------
 // USB Controller
 
-typedef struct USB_Controller
+typedef struct UsbController
 {
-    struct USB_Controller* next;
-    void* hc;
+    struct UsbController *next;
+    void *hc;
 
-    void (*poll)(struct USB_Controller* controller);
-} USB_Controller;
+    void (*poll)(struct UsbController *controller);
+} UsbController;
 
 // ------------------------------------------------------------------------------------------------
 // Globals
 
-extern USB_Controller* usb_controller_list;
+extern UsbController *g_usbControllerList;

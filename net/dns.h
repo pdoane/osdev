@@ -9,12 +9,12 @@
 // ------------------------------------------------------------------------------------------------
 // Globals
 
-extern IPv4_Addr dns_server;
+extern Ipv4Addr g_dnsServer;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void dns_rx(Net_Intf* intf, const Net_Buf* buf);
-void dns_query_host(const char* host, uint id);
+void DnsRecv(NetIntf *intf, const NetBuf *buf);
+void DnsQueryHost(const char *host, uint id);
 
-void dns_print(const Net_Buf* buf);
+void DnsPrint(const NetBuf *buf);

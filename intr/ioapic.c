@@ -8,7 +8,7 @@
 
 // ------------------------------------------------------------------------------------------------
 // Globals
-u8* ioapic_address;
+u8 *g_ioApicAddr;
 
 // ------------------------------------------------------------------------------------------------
 // Memory mapped registers for IO APIC register access
@@ -23,38 +23,38 @@ u8* ioapic_address;
 #define IOREDTBL                        0x10
 
 // ------------------------------------------------------------------------------------------------
-static void ioapic_out(u8* base, u8 reg, u32 val)
+static void IoApicOut(u8 *base, u8 reg, u32 val)
 {
-    mmio_write32(base + IOREGSEL, reg);
-    mmio_write32(base + IOWIN, val);
+    MmioWrite32(base + IOREGSEL, reg);
+    MmioWrite32(base + IOWIN, val);
 }
 
 // ------------------------------------------------------------------------------------------------
-static u32 ioapic_in(u8* base, u8 reg)
+static u32 IoApicIn(u8 *base, u8 reg)
 {
-    mmio_write32(base + IOREGSEL, reg);
-    return mmio_read32(base + IOWIN);
+    MmioWrite32(base + IOREGSEL, reg);
+    return MmioRead32(base + IOWIN);
 }
 
 // ------------------------------------------------------------------------------------------------
-void ioapic_set_entry(u8* base, u8 index, u64 data)
+void IoApicSetEntry(u8 *base, u8 index, u64 data)
 {
-    ioapic_out(base, IOREDTBL + index * 2, (u32)data);
-    ioapic_out(base, IOREDTBL + index * 2 + 1, (u32)(data >> 32));
+    IoApicOut(base, IOREDTBL + index * 2, (u32)data);
+    IoApicOut(base, IOREDTBL + index * 2 + 1, (u32)(data >> 32));
 }
 
 // ------------------------------------------------------------------------------------------------
-void ioapic_init()
+void IoApicInit()
 {
     // Get number of entries supported by the IO APIC
-    u32 x = ioapic_in(ioapic_address, IOAPICVER);
+    u32 x = IoApicIn(g_ioApicAddr, IOAPICVER);
     uint count = ((x >> 16) & 0xff) + 1;    // maximum redirection entry
 
-    console_print("I/O APIC pins = %d\n", count);
+    ConsolePrint("I/O APIC pins = %d\n", count);
 
     // Disable all entries
     for (uint i = 0; i < count; ++i)
     {
-        ioapic_set_entry(ioapic_address, i, 1 << 16);
+        IoApicSetEntry(g_ioApicAddr, i, 1 << 16);
     }
 }

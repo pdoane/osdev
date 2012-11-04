@@ -5,17 +5,17 @@
 #include "net/checksum.h"
 
 // ------------------------------------------------------------------------------------------------
-u16 net_checksum(const u8* data, const u8* end)
+u16 NetChecksum(const u8 *data, const u8 *end)
 {
-    uint sum = net_checksum_acc(data, end, 0);
-    return net_checksum_final(sum);
+    uint sum = NetChecksumAcc(data, end, 0);
+    return NetChecksumFinal(sum);
 }
 
 // ------------------------------------------------------------------------------------------------
-uint net_checksum_acc(const u8* data, const u8* end, uint sum)
+uint NetChecksumAcc(const u8 *data, const u8 *end, uint sum)
 {
     uint len = end - data;
-    u16* p = (u16*)data;
+    u16 *p = (u16 *)data;
 
     while (len > 1)
     {
@@ -25,14 +25,14 @@ uint net_checksum_acc(const u8* data, const u8* end, uint sum)
 
     if (len)
     {
-        sum += *(u8*)p;
+        sum += *(u8 *)p;
     }
 
     return sum;
 }
 
 // ------------------------------------------------------------------------------------------------
-u16 net_checksum_final(uint sum)
+u16 NetChecksumFinal(uint sum)
 {
     sum = (sum & 0xffff) + (sum >> 16);
     sum += (sum >> 16);

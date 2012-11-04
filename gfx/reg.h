@@ -39,6 +39,7 @@ typedef union GttEntry
 
 // ------------------------------------------------------------------------------------------------
 // 1.1.1.1 ARB_MODE – Arbiter Mode Control register
+
 #define ARB_MODE                        0x04030 // R/W
 
 typedef struct RegArbMode_Data
@@ -186,6 +187,7 @@ typedef union RegArbMode
 
 // ------------------------------------------------------------------------------------------------
 // 1.25 MGGC0 - Mirror of GMCH Graphics Control Register
+
 #define MGGC0                          0x50 // In PCI Config Space
 
 typedef enum RegMGGCO_GMS
@@ -235,6 +237,7 @@ typedef union RegMGGCO
 
 // ------------------------------------------------------------------------------------------------
 // 1.27 BDSM - Base Data of Stolen Memory
+
 #define BDSM                          0x5C // In PCI Config Space
 
 typedef union RegBDSM
@@ -251,7 +254,7 @@ typedef union RegBDSM
 // ------------------------------------------------------------------------------------------------
 // 1.45 ASLS - ASL Storage
 // Software scratch register (BIOS sets the opregion address in here)
-//
+
 #define ASLS                          0xFC // In PCI Config Space
 
 
@@ -268,6 +271,7 @@ typedef union RegBDSM
 
 // ------------------------------------------------------------------------------------------------
 // 3.7.1 ARB_CTL-Display Arbitration Control 1
+
 #define ARB_CTL                         0x45000     // R/W
 typedef union RegArbCtl
 {
@@ -439,6 +443,7 @@ typedef union RegArbCtl
 
 // ------------------------------------------------------------------------------------------------
 // 2.2.1 OpRegion Header
+
 typedef struct OpRegionHeader
 {
     char sign[0x10];
@@ -464,6 +469,7 @@ typedef struct OpRegionHeader
 
 // ------------------------------------------------------------------------------------------------
 // 3.1 Mailbox #1: Public ACPI Methods Mailbox
+
 #define OPREGION_MAILBOX1_OFFSET 0x0100
 
 typedef struct OpRegionMailbox1ACPI
@@ -490,6 +496,7 @@ typedef struct OpRegionMailbox1ACPI
 
 // ------------------------------------------------------------------------------------------------
 // 2.2.1 OpRegion Header
+
 #define OPREGION_MAILBOX2_OFFSET 0x0200
 
 typedef struct OpRegionMailbox2SWSCI
@@ -502,6 +509,7 @@ typedef struct OpRegionMailbox2SWSCI
 
 // ------------------------------------------------------------------------------------------------
 // 2.2.1 OpRegion Header
+
 #define OPREGION_MAILBOX3_OFFSET 0x0300
 typedef struct OpRegionMailbox3ASLE
 {
@@ -535,6 +543,7 @@ typedef struct OpRegionMailbox3ASLE
 
 // ------------------------------------------------------------------------------------------------
 // 2.2.1 OpRegion Header
+
 #define OPREGION_VBT_OFFSET 0x0500
 
 
@@ -545,6 +554,7 @@ typedef struct OpRegionMailbox3ASLE
 // ------------------------------------------------------------------------------------------------
 // Force Wake
 // Bring the card out of D6 state
+
 #define ECOBUS                          0xA180
 #define FORCE_WAKE_MT                   0xA188 
 #define FORCE_WAKE                      0xA18C 
@@ -554,6 +564,7 @@ typedef struct OpRegionMailbox3ASLE
 // ------------------------------------------------------------------------------------------------
 // Fence registers.  Mentioned lots of times
 // and the base address is in Vol2 Part3: MFX, but the defintion is not
+
 #define FENCE_BASE                      0x100000
 #define FENCE_COUNT                     16
 typedef struct RegFence
@@ -572,6 +583,7 @@ typedef struct RegFence
 
 // ------------------------------------------------------------------------------------------------
 // Tile Ctrl - control register for cpu gtt access
+
 #define TILE_CTL                         0x101000     // R/W
 typedef struct RegTileCtl
 {

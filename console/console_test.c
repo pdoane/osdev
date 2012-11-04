@@ -8,155 +8,156 @@
 #include "input/keycode.h"
 #include "gfx/vga.h"
 
-u16 vga_text_base[80*25];
+// ------------------------------------------------------------------------------------------------
+u16 g_vgaTextBase[80*25];
 
-const ConsoleCmd console_cmd_table[] =
+const ConsoleCmd g_consoleCmdTable[] =
 {
     { 0, 0 },
 };
 
 // ------------------------------------------------------------------------------------------------
-void vga_text_setcursor(uint offset)
+void VgaTextSetCursor(uint offset)
 {
-    ASSERT_EQ_UINT(offset - (TEXT_ROWS-1) * TEXT_COLS - 2, console_get_cursor());
+    ASSERT_EQ_UINT(offset - (TEXT_ROWS-1) * TEXT_COLS - 2, ConsoleGetCursor());
 }
 
 // ------------------------------------------------------------------------------------------------
-int main(int argc, const char** argv)
+int main(int argc, const char **argv)
 {
-    console_init();
+    ConsoleInit();
 
     // initial state
-    ASSERT_EQ_STR(console_get_input_line(), "");
-    ASSERT_EQ_UINT(console_get_cursor(), 0);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 0);
 
     // put a character to the screen
-    console_putchar('a');
-    ASSERT_EQ_HEX16(vga_text_base[0], DEFAULT_TEXT_ATTR | 'a');
+    ConsolePutChar('a');
+    ASSERT_EQ_HEX16(g_vgaTextBase[0], DEFAULT_TEXT_ATTR | 'a');
 
     // overflow the line
     for (uint i = 0; i < 100; ++i)
     {
-        console_putchar('a');
+        ConsolePutChar('a');
     }
 
-    console_putchar('\n');
+    ConsolePutChar('\n');
 
     for (uint i = 0; i < TEXT_COLS; ++i)
     {
-        ASSERT_EQ_HEX16(vga_text_base[i], DEFAULT_TEXT_ATTR | 'a');
+        ASSERT_EQ_HEX16(g_vgaTextBase[i], DEFAULT_TEXT_ATTR | 'a');
     }
 
-    ASSERT_EQ_HEX16(vga_text_base[TEXT_COLS], 0);
+    ASSERT_EQ_HEX16(g_vgaTextBase[TEXT_COLS], 0);
 
     // fill screen
     for (uint i = 1; i < TEXT_ROWS - 2; ++i)
     {
-        console_print("%c\n", 'a' + i);
+        ConsolePrint("%c\n", 'a' + i);
     }
 
     for (uint i = 0; i < TEXT_ROWS - 2; ++i)
     {
-        ASSERT_EQ_HEX16(vga_text_base[TEXT_COLS * i], DEFAULT_TEXT_ATTR | ('a' + i));
+        ASSERT_EQ_HEX16(g_vgaTextBase[TEXT_COLS * i], DEFAULT_TEXT_ATTR | ('a' + i));
     }
 
     // scroll text
-    console_print("%c\n", 'a' + TEXT_ROWS - 2);
+    ConsolePrint("%c\n", 'a' + TEXT_ROWS - 2);
 
     for (uint i = 0; i < TEXT_ROWS - 2; ++i)
     {
-        ASSERT_EQ_HEX16(vga_text_base[TEXT_COLS * i], DEFAULT_TEXT_ATTR | ('a' + i + 1));
+        ASSERT_EQ_HEX16(g_vgaTextBase[TEXT_COLS * i], DEFAULT_TEXT_ATTR | ('a' + i + 1));
     }
 
     // control on empty input
-    console_on_keydown(KEY_BACKSPACE);
-    ASSERT_EQ_STR(console_get_input_line(), "");
-    ASSERT_EQ_UINT(console_get_cursor(), 0);
+    ConsoleOnKeyDown(KEY_BACKSPACE);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 0);
 
-    console_on_keydown(KEY_DELETE);
-    ASSERT_EQ_STR(console_get_input_line(), "");
-    ASSERT_EQ_UINT(console_get_cursor(), 0);
+    ConsoleOnKeyDown(KEY_DELETE);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 0);
 
-    console_on_keydown(KEY_LEFT);
-    ASSERT_EQ_STR(console_get_input_line(), "");
-    ASSERT_EQ_UINT(console_get_cursor(), 0);
+    ConsoleOnKeyDown(KEY_LEFT);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 0);
 
-    console_on_keydown(KEY_RIGHT);
-    ASSERT_EQ_STR(console_get_input_line(), "");
-    ASSERT_EQ_UINT(console_get_cursor(), 0);
+    ConsoleOnKeyDown(KEY_RIGHT);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 0);
 
-    console_on_keydown(KEY_HOME);
-    ASSERT_EQ_STR(console_get_input_line(), "");
-    ASSERT_EQ_UINT(console_get_cursor(), 0);
+    ConsoleOnKeyDown(KEY_HOME);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 0);
 
-    console_on_keydown(KEY_END);
-    ASSERT_EQ_STR(console_get_input_line(), "");
-    ASSERT_EQ_UINT(console_get_cursor(), 0);
+    ConsoleOnKeyDown(KEY_END);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 0);
 
     // input characters
-    console_on_char('a');
-    ASSERT_EQ_STR(console_get_input_line(), "a");
-    ASSERT_EQ_UINT(console_get_cursor(), 1);
+    ConsoleOnChar('a');
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "a");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 1);
 
-    console_on_char('b');
-    ASSERT_EQ_STR(console_get_input_line(), "ab");
-    ASSERT_EQ_UINT(console_get_cursor(), 2);
+    ConsoleOnChar('b');
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "ab");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 2);
 
-    console_on_char('c');
-    ASSERT_EQ_STR(console_get_input_line(), "abc");
-    ASSERT_EQ_UINT(console_get_cursor(), 3);
+    ConsoleOnChar('c');
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "abc");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 3);
 
     // navigation on input
-    console_on_keydown(KEY_LEFT);
-    ASSERT_EQ_UINT(console_get_cursor(), 2);
+    ConsoleOnKeyDown(KEY_LEFT);
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 2);
 
-    console_on_keydown(KEY_RIGHT);
-    ASSERT_EQ_UINT(console_get_cursor(), 3);
+    ConsoleOnKeyDown(KEY_RIGHT);
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 3);
 
-    console_on_keydown(KEY_RIGHT);
-    ASSERT_EQ_UINT(console_get_cursor(), 3);
+    ConsoleOnKeyDown(KEY_RIGHT);
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 3);
 
-    console_on_keydown(KEY_HOME);
-    ASSERT_EQ_UINT(console_get_cursor(), 0);
+    ConsoleOnKeyDown(KEY_HOME);
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 0);
 
-    console_on_keydown(KEY_END);
-    ASSERT_EQ_UINT(console_get_cursor(), 3);
+    ConsoleOnKeyDown(KEY_END);
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 3);
 
     // update input in middle
-    console_on_keydown(KEY_LEFT);
-    console_on_char('d');
-    ASSERT_EQ_STR(console_get_input_line(), "abdc");
-    ASSERT_EQ_UINT(console_get_cursor(), 3);
+    ConsoleOnKeyDown(KEY_LEFT);
+    ConsoleOnChar('d');
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "abdc");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 3);
 
     // deletion of input
-    console_on_keydown(KEY_BACKSPACE);
-    ASSERT_EQ_STR(console_get_input_line(), "abc");
-    ASSERT_EQ_UINT(console_get_cursor(), 2);
+    ConsoleOnKeyDown(KEY_BACKSPACE);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "abc");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 2);
 
-    console_on_keydown(KEY_RIGHT);
-    console_on_keydown(KEY_DELETE);
-    ASSERT_EQ_STR(console_get_input_line(), "abc");
-    ASSERT_EQ_UINT(console_get_cursor(), 3);
+    ConsoleOnKeyDown(KEY_RIGHT);
+    ConsoleOnKeyDown(KEY_DELETE);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "abc");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 3);
 
-    console_on_keydown(KEY_BACKSPACE);
-    ASSERT_EQ_STR(console_get_input_line(), "ab");
-    ASSERT_EQ_UINT(console_get_cursor(), 2);
+    ConsoleOnKeyDown(KEY_BACKSPACE);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "ab");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 2);
 
-    console_on_keydown(KEY_LEFT);
-    console_on_keydown(KEY_LEFT);
-    ASSERT_EQ_UINT(console_get_cursor(), 0);
+    ConsoleOnKeyDown(KEY_LEFT);
+    ConsoleOnKeyDown(KEY_LEFT);
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 0);
 
-    console_on_keydown(KEY_DELETE);
-    ASSERT_EQ_STR(console_get_input_line(), "b");
-    ASSERT_EQ_UINT(console_get_cursor(), 0);
+    ConsoleOnKeyDown(KEY_DELETE);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "b");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 0);
 
-    console_on_keydown(KEY_BACKSPACE);
-    ASSERT_EQ_STR(console_get_input_line(), "b");
-    ASSERT_EQ_UINT(console_get_cursor(), 0);
+    ConsoleOnKeyDown(KEY_BACKSPACE);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "b");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 0);
 
-    console_on_keydown(KEY_DELETE);
-    ASSERT_EQ_STR(console_get_input_line(), "");
-    ASSERT_EQ_UINT(console_get_cursor(), 0);
+    ConsoleOnKeyDown(KEY_DELETE);
+    ASSERT_EQ_STR(ConsoleGetInputLine(), "");
+    ASSERT_EQ_UINT(ConsoleGetCursor(), 0);
 
     return EXIT_SUCCESS;
 }

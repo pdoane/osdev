@@ -11,36 +11,36 @@
 // ------------------------------------------------------------------------------------------------
 // Globals
 
-u8 net_trace = 0;
+u8 g_netTrace = 0;
 
 // ------------------------------------------------------------------------------------------------
-void net_init()
+void NetInit()
 {
-    loopback_init();
-    arp_init();
-    tcp_init();
+    LoopbackInit();
+    ArpInit();
+    TcpInit();
 
     // Initialize interfaces
-    Net_Intf* intf;
-    list_for_each(intf, net_intf_list, link)
+    NetIntf *intf;
+    ListForEach(intf, g_netIntfList, link)
     {
         // Check if interface needs IP address dynamically assigned
-        if (!intf->ip_addr.u.bits)
+        if (!intf->ipAddr.u.bits)
         {
-            dhcp_discover(intf);
+            DhcpDiscover(intf);
         }
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void net_poll()
+void NetPoll()
 {
     // Poll interfaces
-    Net_Intf* intf;
-    list_for_each(intf, net_intf_list, link)
+    NetIntf *intf;
+    ListForEach(intf, g_netIntfList, link)
     {
         intf->poll(intf);
     }
 
-    tcp_poll();
+    TcpPoll();
 }

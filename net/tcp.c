@@ -19,15 +19,15 @@
 // ------------------------------------------------------------------------------------------------
 // Static/Global Variables
 
-static u32 tcp_base_isn;
-static Link tcp_free_conns = { &tcp_free_conns, &tcp_free_conns };
+static u32 s_baseIsn;
+static Link s_freeConns = { &s_freeConns, &s_freeConns };
 
-Link tcp_active_conns = { &tcp_active_conns, &tcp_active_conns};
+Link g_tcpActiveConns = { &g_tcpActiveConns, &g_tcpActiveConns};
 
 // ------------------------------------------------------------------------------------------------
 // TCP state strings
 
-const char* tcp_state_strs[] =
+const char *g_tcpStateStrs[] =
 {
     "CLOSED",
     "LISTEN",
@@ -43,7 +43,7 @@ const char* tcp_state_strs[] =
 };
 
 // ------------------------------------------------------------------------------------------------
-static bool tcp_parse_options(TCP_Options* opt, const u8* p, const u8* end)
+static bool TcpParseOptions(TcpOptions *opt, const u8 *p, const u8 *end)
 {
     memset(opt, 0, sizeof(*opt));
 
@@ -61,14 +61,14 @@ static bool tcp_parse_options(TCP_Options* opt, const u8* p, const u8* end)
         }
         else
         {
-            u8 opt_len = *p++;
+            u8 optLen = *p++;
 
-            if (opt_len < 2)
+            if (optLen < 2)
             {
                 return false;
             }
 
-            const u8* next = p + opt_len - 2;
+            const u8 *next = p + optLen - 2;
             if (next > end)
             {
                 return false;
@@ -77,7 +77,7 @@ static bool tcp_parse_options(TCP_Options* opt, const u8* p, const u8* end)
             switch (type)
             {
             case OPT_MSS:
-                opt->mss = net_swap16(*(u16*)p);
+                opt->mss = NetSwap16(*(u16 *)p);
                 break;
             }
 
@@ -89,135 +89,135 @@ static bool tcp_parse_options(TCP_Options* opt, const u8* p, const u8* end)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_print(const Net_Buf* pkt)
+static void TcpPrint(const NetBuf *pkt)
 {
-    if (~net_trace & TRACE_TRANSPORT)
+    if (~g_netTrace & TRACE_TRANSPORT)
     {
         return;
     }
 
-    if (pkt->start + sizeof(TCP_Header) > pkt->end)
+    if (pkt->start + sizeof(TcpHeader) > pkt->end)
     {
         return;
     }
 
-    Checksum_Header* phdr = (Checksum_Header*)(pkt->start - sizeof(Checksum_Header));
-    char src_addr_str[IPV4_ADDR_STRING_SIZE];
-    char dst_addr_str[IPV4_ADDR_STRING_SIZE];
-    ipv4_addr_to_str(src_addr_str, sizeof(src_addr_str), &phdr->src);
-    ipv4_addr_to_str(dst_addr_str, sizeof(dst_addr_str), &phdr->dst);
+    ChecksumHeader *phdr = (ChecksumHeader *)(pkt->start - sizeof(ChecksumHeader));
+    char srcAddrStr[IPV4_ADDR_STRING_SIZE];
+    char dstAddrStr[IPV4_ADDR_STRING_SIZE];
+    Ipv4AddrToStr(srcAddrStr, sizeof(srcAddrStr), &phdr->src);
+    Ipv4AddrToStr(dstAddrStr, sizeof(dstAddrStr), &phdr->dst);
 
-    const TCP_Header* hdr = (const TCP_Header*)pkt->start;
+    const TcpHeader *hdr = (const TcpHeader *)pkt->start;
 
-    u16 src_port = net_swap16(hdr->src_port);
-    u16 dst_port = net_swap16(hdr->dst_port);
-    u32 seq = net_swap32(hdr->seq);
-    u32 ack = net_swap32(hdr->ack);
-    u16 window_size = net_swap16(hdr->window_size);
-    u16 checksum = net_swap16(hdr->checksum);
-    u16 urgent = net_swap16(hdr->urgent);
+    u16 srcPort = NetSwap16(hdr->srcPort);
+    u16 dstPort = NetSwap16(hdr->dstPort);
+    u32 seq = NetSwap32(hdr->seq);
+    u32 ack = NetSwap32(hdr->ack);
+    u16 windowSize = NetSwap16(hdr->windowSize);
+    u16 checksum = NetSwap16(hdr->checksum);
+    u16 urgent = NetSwap16(hdr->urgent);
 
-    u16 checksum2 = net_checksum(pkt->start - sizeof(Checksum_Header), pkt->end);
+    u16 checksum2 = NetChecksum(pkt->start - sizeof(ChecksumHeader), pkt->end);
 
-    uint hdr_len = hdr->off >> 2;
-    //const u8* data = (pkt->start + hdr_len);
-    uint data_len = (pkt->end - pkt->start) - hdr_len;
+    uint hdrLen = hdr->off >> 2;
+    //const u8 *data = (pkt->start + hdrLen);
+    uint dataLen = (pkt->end - pkt->start) - hdrLen;
 
-    console_print("  TCP: src=%s:%d dst=%s:%d\n",
-            src_addr_str, src_port, dst_addr_str, dst_port);
-    console_print("  TCP: seq=%u ack=%u data_len=%u\n",
-            seq, ack, data_len);
-    console_print("  TCP: flags=%02x window=%u urgent=%u checksum=%u%c\n",
-            hdr->flags, window_size, urgent, checksum,
+    ConsolePrint("  TCP: src=%s:%d dst=%s:%d\n",
+            srcAddrStr, srcPort, dstAddrStr, dstPort);
+    ConsolePrint("  TCP: seq=%u ack=%u dataLen=%u\n",
+            seq, ack, dataLen);
+    ConsolePrint("  TCP: flags=%02x window=%u urgent=%u checksum=%u%c\n",
+            hdr->flags, windowSize, urgent, checksum,
             checksum2 ? '!' : ' ');
 
-    if (hdr_len > sizeof(TCP_Header))
+    if (hdrLen > sizeof(TcpHeader))
     {
-        const u8* p = pkt->start + sizeof(TCP_Header);
-        const u8* end = p + hdr_len;
+        const u8 *p = pkt->start + sizeof(TcpHeader);
+        const u8 *end = p + hdrLen;
 
-        TCP_Options opt;
-        tcp_parse_options(&opt, p, end);
+        TcpOptions opt;
+        TcpParseOptions(&opt, p, end);
 
         if (opt.mss)
         {
-            console_print("  TCP: mss=%u\n", opt.mss);
+            ConsolePrint("  TCP: mss=%u\n", opt.mss);
         }
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_set_state(TCP_Conn* conn, uint state)
+static void TcpSetState(TcpConn *conn, uint state)
 {
-    uint old_state = conn->state;
+    uint oldState = conn->state;
     conn->state = state;
 
-    if (conn->on_state)
+    if (conn->onState)
     {
-        conn->on_state(conn, old_state, state);
+        conn->onState(conn, oldState, state);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static TCP_Conn* tcp_alloc()
+static TcpConn *TcpAlloc()
 {
-    Link* p = tcp_free_conns.next;
-    if (p != &tcp_free_conns)
+    Link *p = s_freeConns.next;
+    if (p != &s_freeConns)
     {
-        link_remove(p);
-        return link_data(p, TCP_Conn, link);
+        LinkRemove(p);
+        return LinkData(p, TcpConn, link);
     }
     else
     {
-        return vm_alloc(sizeof(TCP_Conn));
+        return VMAlloc(sizeof(TcpConn));
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_free(TCP_Conn* conn)
+static void TcpFree(TcpConn *conn)
 {
     if (conn->state != TCP_CLOSED)
     {
-        tcp_set_state(conn, TCP_CLOSED);
+        TcpSetState(conn, TCP_CLOSED);
     }
 
-    Net_Buf* pkt;
-    Net_Buf* next;
-    list_for_each_safe(pkt, next, conn->resequence, link)
+    NetBuf *pkt;
+    NetBuf *next;
+    ListForEachSafe(pkt, next, conn->resequence, link)
     {
-        link_remove(&pkt->link);
-        net_release_buf(pkt);
+        LinkRemove(&pkt->link);
+        NetReleaseBuf(pkt);
     }
 
-    link_move_before(&tcp_free_conns, &conn->link);
+    LinkMoveBefore(&s_freeConns, &conn->link);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_tx(TCP_Conn* conn, u32 seq, u8 flags, const void* data, uint count)
+static void TcpSendPacket(TcpConn *conn, u32 seq, u8 flags, const void *data, uint count)
 {
-    Net_Buf* pkt = net_alloc_buf();
+    NetBuf *pkt = NetAllocBuf();
 
     // Header
-    TCP_Header* hdr = (TCP_Header*)pkt->start;
-    hdr->src_port = conn->local_port;
-    hdr->dst_port = conn->remote_port;
+    TcpHeader *hdr = (TcpHeader *)pkt->start;
+    hdr->srcPort = conn->localPort;
+    hdr->dstPort = conn->remotePort;
     hdr->seq = seq;
-    hdr->ack = flags & TCP_ACK ? conn->rcv_nxt : 0;
+    hdr->ack = flags & TCP_ACK ? conn->rcvNxt : 0;
     hdr->off = 0;
     hdr->flags = flags;
-    hdr->window_size = TCP_WINDOW_SIZE;
+    hdr->windowSize = TCP_WINDOW_SIZE;
     hdr->checksum = 0;
     hdr->urgent = 0;
-    tcp_swap(hdr);
+    TcpSwap(hdr);
 
-    u8* p = pkt->start + sizeof(TCP_Header);
+    u8 *p = pkt->start + sizeof(TcpHeader);
 
     if (flags & TCP_SYN)
     {
         // Maximum Segment Size
         p[0] = OPT_MSS;
         p[1] = 4;
-        *(u16*)(p + 2) = net_swap16(1460);
+        *(u16 *)(p + 2) = NetSwap16(1460);
         p += p[1];
     }
 
@@ -234,40 +234,40 @@ static void tcp_tx(TCP_Conn* conn, u32 seq, u8 flags, const void* data, uint cou
     pkt->end = p + count;
 
     // Pseudo Header
-    Checksum_Header* phdr = (Checksum_Header*)(pkt->start - sizeof(Checksum_Header));
-    phdr->src = conn->local_addr;
-    phdr->dst = conn->remote_addr;
+    ChecksumHeader *phdr = (ChecksumHeader *)(pkt->start - sizeof(ChecksumHeader));
+    phdr->src = conn->localAddr;
+    phdr->dst = conn->remoteAddr;
     phdr->reserved = 0;
     phdr->protocol = IP_PROTOCOL_TCP;
-    phdr->len = net_swap16(pkt->end - pkt->start);
+    phdr->len = NetSwap16(pkt->end - pkt->start);
 
     // Checksum
-    u16 checksum = net_checksum(pkt->start - sizeof(Checksum_Header), pkt->end);
-    hdr->checksum = net_swap16(checksum);
+    u16 checksum = NetChecksum(pkt->start - sizeof(ChecksumHeader), pkt->end);
+    hdr->checksum = NetSwap16(checksum);
 
     // Transmit
-    tcp_print(pkt);
-    ipv4_tx_intf(conn->intf, &conn->next_addr, &conn->remote_addr, IP_PROTOCOL_TCP, pkt);
+    TcpPrint(pkt);
+    Ipv4SendIntf(conn->intf, &conn->nextAddr, &conn->remoteAddr, IP_PROTOCOL_TCP, pkt);
 
     // Update State
-    conn->snd_nxt += count;
+    conn->sndNxt += count;
     if (flags & (TCP_SYN | TCP_FIN))
     {
-        ++conn->snd_nxt;
+        ++conn->sndNxt;
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static TCP_Conn* tcp_find(const IPv4_Addr* src_addr, u16 src_port,
-    const IPv4_Addr* dst_addr, u16 dst_port)
+static TcpConn *TcpFind(const Ipv4Addr *srcAddr, u16 srcPort,
+    const Ipv4Addr *dstAddr, u16 dstPort)
 {
-    TCP_Conn* conn;
-    list_for_each(conn, tcp_active_conns, link)
+    TcpConn *conn;
+    ListForEach(conn, g_tcpActiveConns, link)
     {
-        if (src_port == conn->remote_port &&
-            dst_port == conn->local_port &&
-            ipv4_addr_eq(src_addr, &conn->remote_addr) &&
-            ipv4_addr_eq(dst_addr, &conn->local_addr))
+        if (srcPort == conn->remotePort &&
+            dstPort == conn->localPort &&
+            Ipv4AddrEq(srcAddr, &conn->remoteAddr) &&
+            Ipv4AddrEq(dstAddr, &conn->localAddr))
         {
             return conn;
         }
@@ -277,29 +277,29 @@ static TCP_Conn* tcp_find(const IPv4_Addr* src_addr, u16 src_port,
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_error(TCP_Conn* conn, uint error)
+static void TcpError(TcpConn *conn, uint error)
 {
-    if (conn->on_error)
+    if (conn->onError)
     {
-        conn->on_error(conn, error);
+        conn->onError(conn, error);
     }
 
-    tcp_free(conn);
+    TcpFree(conn);
 }
 
 // ------------------------------------------------------------------------------------------------
-void tcp_init()
+void TcpInit()
 {
     // Compute base ISN from system clock and ticks since boot.  ISN is incremented every 4 us.
     DateTime dt;
-    rtc_get_time(&dt);
-    abs_time t = join_time(&dt);
+    RtcGetTime(&dt);
+    abs_time t = JoinTime(&dt);
 
-    tcp_base_isn = (t * 1000 - pit_ticks) * 250;
+    s_baseIsn = (t * 1000 - g_pitTicks) * 250;
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_closed(Checksum_Header* phdr, TCP_Header* hdr)
+static void TcpRecvClosed(ChecksumHeader *phdr, TcpHeader *hdr)
 {
     // Drop packet if this is a RST
     if (hdr->flags & TCP_RST)
@@ -308,8 +308,8 @@ static void tcp_rx_closed(Checksum_Header* phdr, TCP_Header* hdr)
     }
 
     // Find an appropriate interface to route packet
-    const IPv4_Addr* dst_addr = &phdr->src;
-    const Net_Route* route = net_find_route(dst_addr);
+    const Ipv4Addr *dstAddr = &phdr->src;
+    const NetRoute *route = NetFindRoute(dstAddr);
 
     if (!route)
     {
@@ -317,44 +317,44 @@ static void tcp_rx_closed(Checksum_Header* phdr, TCP_Header* hdr)
     }
 
     // Create dummy connection for sending RST
-    TCP_Conn rst_conn;
-    memset(&rst_conn, 0, sizeof(TCP_Conn));
+    TcpConn rstConn;
+    memset(&rstConn, 0, sizeof(TcpConn));
 
-    rst_conn.intf = route->intf;
-    rst_conn.local_addr = phdr->dst;
-    rst_conn.local_port = hdr->dst_port;
-    rst_conn.remote_addr = phdr->src;
-    rst_conn.remote_port = hdr->src_port;
-    rst_conn.next_addr = *net_next_addr(route, dst_addr);
+    rstConn.intf = route->intf;
+    rstConn.localAddr = phdr->dst;
+    rstConn.localPort = hdr->dstPort;
+    rstConn.remoteAddr = phdr->src;
+    rstConn.remotePort = hdr->srcPort;
+    rstConn.nextAddr = *NetNextAddr(route, dstAddr);
 
     if (hdr->flags & TCP_ACK)
     {
-        tcp_tx(&rst_conn, hdr->ack, TCP_RST, 0, 0);
+        TcpSendPacket(&rstConn, hdr->ack, TCP_RST, 0, 0);
     }
     else
     {
-        uint hdr_len = hdr->off >> 2;
-        uint data_len = phdr->len - hdr_len;
+        uint hdrLen = hdr->off >> 2;
+        uint dataLen = phdr->len - hdrLen;
 
-        rst_conn.rcv_nxt = hdr->seq + data_len;
+        rstConn.rcvNxt = hdr->seq + dataLen;
 
-        tcp_tx(&rst_conn, 0, TCP_RST | TCP_ACK, 0, 0);
+        TcpSendPacket(&rstConn, 0, TCP_RST | TCP_ACK, 0, 0);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_syn_sent(TCP_Conn* conn, TCP_Header* hdr)
+static void TcpRecvSynSent(TcpConn *conn, TcpHeader *hdr)
 {
     uint flags = hdr->flags;
 
     // Check for bad ACK first.
     if (flags & TCP_ACK)
     {
-        if (SEQ_LE(hdr->ack, conn->iss) || SEQ_GT(hdr->ack, conn->snd_nxt))
+        if (SEQ_LE(hdr->ack, conn->iss) || SEQ_GT(hdr->ack, conn->sndNxt))
         {
             if (~flags & TCP_RST)
             {
-                tcp_tx(conn, hdr->ack, TCP_RST, 0, 0);
+                TcpSendPacket(conn, hdr->ack, TCP_RST, 0, 0);
             }
 
             return;
@@ -366,7 +366,7 @@ static void tcp_rx_syn_sent(TCP_Conn* conn, TCP_Header* hdr)
     {
         if (flags & TCP_ACK)
         {
-            tcp_error(conn, TCP_CONN_RESET);
+            TcpError(conn, TCP_CONN_RESET);
         }
 
         return;
@@ -378,19 +378,19 @@ static void tcp_rx_syn_sent(TCP_Conn* conn, TCP_Header* hdr)
         // SYN is set.  ACK is either ok or there was no ACK.  No RST.
 
         conn->irs = hdr->seq;
-        conn->rcv_nxt = hdr->seq + 1;
+        conn->rcvNxt = hdr->seq + 1;
 
         if (flags & TCP_ACK)
         {
-            conn->snd_una = hdr->ack;
-            conn->snd_wnd = hdr->window_size;
-            conn->snd_wl1 = hdr->seq;
-            conn->snd_wl2 = hdr->ack;
+            conn->sndUna = hdr->ack;
+            conn->sndWnd = hdr->windowSize;
+            conn->sndWl1 = hdr->seq;
+            conn->sndWl2 = hdr->ack;
 
             // TODO - Segments on the retransmission queue which are ack'd should be removed
 
-            tcp_set_state(conn, TCP_ESTABLISHED);
-            tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
+            TcpSetState(conn, TCP_ESTABLISHED);
+            TcpSendPacket(conn, conn->sndNxt, TCP_ACK, 0, 0);
 
 
             // TODO - Data queued for transmission may be included with the ACK.
@@ -399,17 +399,17 @@ static void tcp_rx_syn_sent(TCP_Conn* conn, TCP_Header* hdr)
         }
         else
         {
-            tcp_set_state(conn, TCP_SYN_RECEIVED);
+            TcpSetState(conn, TCP_SYN_RECEIVED);
 
             // Resend ISS
-            --conn->snd_nxt;
-            tcp_tx(conn, conn->snd_nxt, TCP_SYN | TCP_ACK, 0, 0);
+            --conn->sndNxt;
+            TcpSendPacket(conn, conn->sndNxt, TCP_SYN | TCP_ACK, 0, 0);
         }
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_rst(TCP_Conn* conn, TCP_Header* hdr)
+static void TcpRecvRst(TcpConn *conn, TcpHeader *hdr)
 {
     switch (conn->state)
     {
@@ -418,7 +418,7 @@ static void tcp_rx_rst(TCP_Conn* conn, TCP_Header* hdr)
 
         // TODO - If initiated with a passive open, go to LISTEN state
 
-        tcp_error(conn, TCP_CONN_REFUSED);
+        TcpError(conn, TCP_CONN_REFUSED);
         break;
 
     case TCP_ESTABLISHED:
@@ -427,43 +427,43 @@ static void tcp_rx_rst(TCP_Conn* conn, TCP_Header* hdr)
     case TCP_CLOSE_WAIT:
         // TODO - All outstanding sends should receive "reset" responses
 
-        tcp_error(conn, TCP_CONN_RESET);
+        TcpError(conn, TCP_CONN_RESET);
         break;
 
     case TCP_CLOSING:
     case TCP_LAST_ACK:
     case TCP_TIME_WAIT:
-        tcp_free(conn);
+        TcpFree(conn);
         break;
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_syn(TCP_Conn* conn, TCP_Header* hdr)
+static void TcpRecvSyn(TcpConn *conn, TcpHeader *hdr)
 {
     // TODO - All outstanding sends should receive "reset" responses
 
-    tcp_tx(conn, 0, TCP_RST | TCP_ACK, 0, 0);
+    TcpSendPacket(conn, 0, TCP_RST | TCP_ACK, 0, 0);
 
-    tcp_error(conn, TCP_CONN_RESET);
+    TcpError(conn, TCP_CONN_RESET);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
+static void TcpRecvAck(TcpConn *conn, TcpHeader *hdr)
 {
     switch (conn->state)
     {
     case TCP_SYN_RECEIVED:
-        if (conn->snd_una <= hdr->ack && hdr->ack <= conn->snd_nxt)
+        if (conn->sndUna <= hdr->ack && hdr->ack <= conn->sndNxt)
         {
-            conn->snd_wnd = hdr->window_size;
-            conn->snd_wl1 = hdr->seq;
-            conn->snd_wl2 = hdr->ack;
-            tcp_set_state(conn, TCP_ESTABLISHED);
+            conn->sndWnd = hdr->windowSize;
+            conn->sndWl1 = hdr->seq;
+            conn->sndWl2 = hdr->ack;
+            TcpSetState(conn, TCP_ESTABLISHED);
         }
         else
         {
-            tcp_tx(conn, hdr->ack, TCP_RST, 0, 0);
+            TcpSendPacket(conn, hdr->ack, TCP_RST, 0, 0);
         }
         break;
 
@@ -473,18 +473,18 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
     case TCP_CLOSE_WAIT:
     case TCP_CLOSING:
         // Handle expected acks
-        if (SEQ_LE(conn->snd_una, hdr->ack) && SEQ_LE(hdr->ack, conn->snd_nxt))
+        if (SEQ_LE(conn->sndUna, hdr->ack) && SEQ_LE(hdr->ack, conn->sndNxt))
         {
             // Update acknowledged pointer
-            conn->snd_una = hdr->ack;
+            conn->sndUna = hdr->ack;
 
             // Update send window
-            if (SEQ_LT(conn->snd_wl1, hdr->seq) ||
-                (conn->snd_wl1 == hdr->seq && SEQ_LE(conn->snd_wl2, hdr->ack)))
+            if (SEQ_LT(conn->sndWl1, hdr->seq) ||
+                (conn->sndWl1 == hdr->seq && SEQ_LE(conn->sndWl2, hdr->ack)))
             {
-                conn->snd_wnd = hdr->window_size;
-                conn->snd_wl1 = hdr->seq;
-                conn->snd_wl2 = hdr->ack;
+                conn->sndWnd = hdr->windowSize;
+                conn->sndWl1 = hdr->seq;
+                conn->sndWl2 = hdr->ack;
             }
 
             // TODO - remove segments on the retransmission queue which have been ack'd
@@ -492,30 +492,30 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
         }
 
         // Check for duplicate ack
-        if (SEQ_LE(hdr->ack, conn->snd_una))
+        if (SEQ_LE(hdr->ack, conn->sndUna))
         {
             // TODO - anything to do here?
         }
 
         // Check for ack of unsent data
-        if (SEQ_GT(hdr->ack, conn->snd_nxt))
+        if (SEQ_GT(hdr->ack, conn->sndNxt))
         {
-            tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
+            TcpSendPacket(conn, conn->sndNxt, TCP_ACK, 0, 0);
             return;
         }
 
         // Check for ack of FIN
-        if (SEQ_GE(hdr->ack, conn->snd_nxt))
+        if (SEQ_GE(hdr->ack, conn->sndNxt))
         {
             // TODO - is this the right way to detect that our FIN has been ACK'd?
             if (conn->state == TCP_FIN_WAIT_1)
             {
-                tcp_set_state(conn, TCP_FIN_WAIT_2);
+                TcpSetState(conn, TCP_FIN_WAIT_2);
             }
             else if (conn->state == TCP_CLOSING)
             {
-                tcp_set_state(conn, TCP_TIME_WAIT);
-                conn->msl_wait = pit_ticks + 2 * TCP_MSL;
+                TcpSetState(conn, TCP_TIME_WAIT);
+                conn->mslWait = g_pitTicks + 2 * TCP_MSL;
             }
         }
 
@@ -523,11 +523,11 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
 
     case TCP_LAST_ACK:
         // Check for ack of FIN
-        if (SEQ_GE(hdr->ack, conn->snd_nxt))
+        if (SEQ_GE(hdr->ack, conn->sndNxt))
         {
             // TODO - is this the right way to detect that our FIN has been ACK'd?
 
-            tcp_free(conn);
+            TcpFree(conn);
         }
         break;
 
@@ -538,17 +538,17 @@ static void tcp_rx_ack(TCP_Conn* conn, TCP_Header* hdr)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_insert(TCP_Conn* conn, Net_Buf* pkt)
+static void TcpRecvInsert(TcpConn *conn, NetBuf *pkt)
 {
-    Net_Buf* prev;
-    Net_Buf* cur;
-    Net_Buf* next;
+    NetBuf *prev;
+    NetBuf *cur;
+    NetBuf *next;
 
-    uint data_len = pkt->end - pkt->start;
-    uint pkt_end = pkt->seq + data_len;
+    uint dataLen = pkt->end - pkt->start;
+    uint pktEnd = pkt->seq + dataLen;
 
     // Find location to insert packet
-    list_for_each(cur, conn->resequence, link)
+    ListForEach(cur, conn->resequence, link)
     {
         if (SEQ_LE(pkt->seq, cur->seq))
         {
@@ -559,13 +559,13 @@ static void tcp_rx_insert(TCP_Conn* conn, Net_Buf* pkt)
     // Check if we already have some of this data in the previous packet.
     if (cur->link.prev != &conn->resequence)
     {
-        prev = link_data(cur->link.prev, Net_Buf, link);
+        prev = LinkData(cur->link.prev, NetBuf, link);
         uint prev_end = prev->seq + prev->end - prev->start;
 
-        if (SEQ_GE(prev_end, pkt_end))
+        if (SEQ_GE(prev_end, pktEnd))
         {
             // Complete overlap with queued packet - drop incoming packet
-            net_release_buf(pkt);
+            NetReleaseBuf(pkt);
             return;
         }
         else if (SEQ_GT(prev_end, pkt->seq))
@@ -580,9 +580,9 @@ static void tcp_rx_insert(TCP_Conn* conn, Net_Buf* pkt)
     {
         while (&cur->link != &conn->resequence)
         {
-            next = link_data(cur->link.next, Net_Buf, link);
-            link_remove(&cur->link);
-            net_release_buf(cur);
+            next = LinkData(cur->link.next, NetBuf, link);
+            LinkRemove(&cur->link);
+            NetReleaseBuf(cur);
             cur = next;
         }
     }
@@ -590,60 +590,60 @@ static void tcp_rx_insert(TCP_Conn* conn, Net_Buf* pkt)
     // Trim/remove later packets that overlap
     while (&cur->link != &conn->resequence)
     {
-        uint pkt_end = pkt->seq + data_len;
-        uint cur_end = cur->seq + cur->end - cur->start;
+        uint pktEnd = pkt->seq + dataLen;
+        uint curEnd = cur->seq + cur->end - cur->start;
 
-        if (SEQ_LT(pkt_end, cur->seq))
+        if (SEQ_LT(pktEnd, cur->seq))
         {
             // No overlap
             break;
         }
 
-        if (SEQ_LT(pkt_end, cur_end))
+        if (SEQ_LT(pktEnd, curEnd))
         {
             // Partial overlap - trim
-            pkt->end -= pkt_end - cur->seq;
+            pkt->end -= pktEnd - cur->seq;
             break;
         }
 
         // Complete overlap - remove
-        next = link_data(cur->link.next, Net_Buf, link);
-        link_remove(&cur->link);
-        net_release_buf(cur);
+        next = LinkData(cur->link.next, NetBuf, link);
+        LinkRemove(&cur->link);
+        NetReleaseBuf(cur);
         cur = next;
     }
 
     // Add packet to the queue
-    link_before(&cur->link, &pkt->link);
+    LinkBefore(&cur->link, &pkt->link);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_process(TCP_Conn* conn)
+static void TcpRecvProcess(TcpConn *conn)
 {
-    Net_Buf* pkt;
-    Net_Buf* next;
-    list_for_each_safe(pkt, next, conn->resequence, link)
+    NetBuf *pkt;
+    NetBuf *next;
+    ListForEachSafe(pkt, next, conn->resequence, link)
     {
-        if (conn->rcv_nxt != pkt->seq)
+        if (conn->rcvNxt != pkt->seq)
         {
             break;
         }
 
-        uint data_len = pkt->end - pkt->start;
-        conn->rcv_nxt += data_len;
+        uint dataLen = pkt->end - pkt->start;
+        conn->rcvNxt += dataLen;
 
-        if (conn->on_data)
+        if (conn->onData)
         {
-            conn->on_data(conn, pkt->start, data_len);
+            conn->onData(conn, pkt->start, dataLen);
         }
 
-        link_remove(&pkt->link);
-        net_release_buf(pkt);
+        LinkRemove(&pkt->link);
+        NetReleaseBuf(pkt);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_data(TCP_Conn* conn, Net_Buf* pkt)
+static void TcpRecvData(TcpConn *conn, NetBuf *pkt)
 {
     switch (conn->state)
     {
@@ -655,16 +655,16 @@ static void tcp_rx_data(TCP_Conn* conn, Net_Buf* pkt)
     case TCP_FIN_WAIT_1:
     case TCP_FIN_WAIT_2:
         // Increase ref count on packet
-        ++pkt->ref_count;
+        ++pkt->refCount;
 
         // Insert packet on to input queue sorted by sequence
-        tcp_rx_insert(conn, pkt);
+        TcpRecvInsert(conn, pkt);
 
         // Process packets that are now in order
-        tcp_rx_process(conn);
+        TcpRecvProcess(conn);
 
         // Acknowledge receipt of data
-        tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
+        TcpSendPacket(conn, conn->sndNxt, TCP_ACK, 0, 0);
         break;
 
     default:
@@ -674,39 +674,39 @@ static void tcp_rx_data(TCP_Conn* conn, Net_Buf* pkt)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_fin(TCP_Conn* conn, TCP_Header* hdr)
+static void TcpRecvFin(TcpConn *conn, TcpHeader *hdr)
 {
     // TODO - signal the user "connection closing" and return any pending receives
 
-    conn->rcv_nxt = hdr->seq + 1;
-    tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
+    conn->rcvNxt = hdr->seq + 1;
+    TcpSendPacket(conn, conn->sndNxt, TCP_ACK, 0, 0);
 
     switch (conn->state)
     {
     case TCP_SYN_RECEIVED:
     case TCP_ESTABLISHED:
-        tcp_set_state(conn, TCP_CLOSE_WAIT);
+        TcpSetState(conn, TCP_CLOSE_WAIT);
         break;
 
     case TCP_FIN_WAIT_1:
-        if (SEQ_GE(hdr->ack, conn->snd_nxt))
+        if (SEQ_GE(hdr->ack, conn->sndNxt))
         {
             // TODO - is this the right way to detect that our FIN has been ACK'd?
 
             // TODO - turn off the other timers
-            tcp_set_state(conn, TCP_TIME_WAIT);
-            conn->msl_wait = pit_ticks + 2 * TCP_MSL;
+            TcpSetState(conn, TCP_TIME_WAIT);
+            conn->mslWait = g_pitTicks + 2 * TCP_MSL;
         }
         else
         {
-            tcp_set_state(conn, TCP_CLOSING);
+            TcpSetState(conn, TCP_CLOSING);
         }
         break;
 
     case TCP_FIN_WAIT_2:
         // TODO - turn off the other timers
-        tcp_set_state(conn, TCP_TIME_WAIT);
-        conn->msl_wait = pit_ticks + 2 * TCP_MSL;
+        TcpSetState(conn, TCP_TIME_WAIT);
+        conn->mslWait = g_pitTicks + 2 * TCP_MSL;
         break;
 
     case TCP_CLOSE_WAIT:
@@ -715,26 +715,26 @@ static void tcp_rx_fin(TCP_Conn* conn, TCP_Header* hdr)
         break;
 
     case TCP_TIME_WAIT:
-        conn->msl_wait = pit_ticks + 2 * TCP_MSL;
+        conn->mslWait = g_pitTicks + 2 * TCP_MSL;
         break;
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr, Net_Buf* pkt)
+static void TcpRecvGeneral(TcpConn *conn, TcpHeader *hdr, NetBuf *pkt)
 {
     // Process segments not in the CLOSED, LISTEN, or SYN-SENT states.
 
     uint flags = hdr->flags;
-    uint data_len = pkt->end - pkt->start;
+    uint dataLen = pkt->end - pkt->start;
 
     // Check that sequence and segment data is acceptable
-    if (!(SEQ_LE(conn->rcv_nxt, hdr->seq) && SEQ_LE(hdr->seq + data_len, conn->rcv_nxt + conn->rcv_wnd)))
+    if (!(SEQ_LE(conn->rcvNxt, hdr->seq) && SEQ_LE(hdr->seq + dataLen, conn->rcvNxt + conn->rcvWnd)))
     {
         // Unacceptable segment
         if (~flags & TCP_RST)
         {
-            tcp_tx(conn, conn->snd_nxt, TCP_ACK, 0, 0);
+            TcpSendPacket(conn, conn->sndNxt, TCP_ACK, 0, 0);
         }
 
         return;
@@ -745,14 +745,14 @@ static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr, Net_Buf* pkt)
     // Check RST bit
     if (flags & TCP_RST)
     {
-        tcp_rx_rst(conn, hdr);
+        TcpRecvRst(conn, hdr);
         return;
     }
 
     // Check SYN bit
     if (flags & TCP_SYN)
     {
-        tcp_rx_syn(conn, hdr);
+        TcpRecvSyn(conn, hdr);
     }
 
     // Check ACK
@@ -761,62 +761,62 @@ static void tcp_rx_general(TCP_Conn* conn, TCP_Header* hdr, Net_Buf* pkt)
         return;
     }
 
-    tcp_rx_ack(conn, hdr);
+    TcpRecvAck(conn, hdr);
 
     // TODO - check URG
 
     // Process segment data
-    if (data_len)
+    if (dataLen)
     {
-        tcp_rx_data(conn, pkt);
+        TcpRecvData(conn, pkt);
     }
 
     // Check FIN - TODO, needs to handle out of sequence
     if (flags & TCP_FIN)
     {
-        tcp_rx_fin(conn, hdr);
+        TcpRecvFin(conn, hdr);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void tcp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt)
+void TcpRecv(NetIntf *intf, const Ipv4Header *ipHdr, NetBuf *pkt)
 {
     // Validate packet header
-    if (pkt->start + sizeof(TCP_Header) > pkt->end)
+    if (pkt->start + sizeof(TcpHeader) > pkt->end)
     {
         return;
     }
 
     // Assemble Pseudo Header
-    IPv4_Addr src_addr = ip_hdr->src;
-    IPv4_Addr dst_addr = ip_hdr->dst;
-    u8 protocol = ip_hdr->protocol;
+    Ipv4Addr srcAddr = ipHdr->src;
+    Ipv4Addr dstAddr = ipHdr->dst;
+    u8 protocol = ipHdr->protocol;
 
-    Checksum_Header* phdr = (Checksum_Header*)(pkt->start - sizeof(Checksum_Header));
-    phdr->src = src_addr;
-    phdr->dst = dst_addr;
+    ChecksumHeader *phdr = (ChecksumHeader *)(pkt->start - sizeof(ChecksumHeader));
+    phdr->src = srcAddr;
+    phdr->dst = dstAddr;
     phdr->reserved = 0;
     phdr->protocol = protocol;
-    phdr->len = net_swap16(pkt->end - pkt->start);
+    phdr->len = NetSwap16(pkt->end - pkt->start);
 
-    tcp_print(pkt);
+    TcpPrint(pkt);
 
     // Validate checksum
-    if (net_checksum(pkt->start - sizeof(Checksum_Header), pkt->end))
+    if (NetChecksum(pkt->start - sizeof(ChecksumHeader), pkt->end))
     {
         return;
     }
 
     // Process packet
-    TCP_Header* hdr = (TCP_Header*)pkt->start;
-    tcp_swap(hdr);
-    phdr->len = net_swap16(phdr->len);
+    TcpHeader *hdr = (TcpHeader *)pkt->start;
+    TcpSwap(hdr);
+    phdr->len = NetSwap16(phdr->len);
 
     // Find connection associated with packet
-    TCP_Conn* conn = tcp_find(&phdr->src, hdr->src_port, &phdr->dst, hdr->dst_port);
+    TcpConn *conn = TcpFind(&phdr->src, hdr->srcPort, &phdr->dst, hdr->dstPort);
     if (!conn || conn->state == TCP_CLOSED)
     {
-        tcp_rx_closed(phdr, hdr);
+        TcpRecvClosed(phdr, hdr);
         return;
     }
 
@@ -826,52 +826,52 @@ void tcp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt)
     }
     else if (conn->state == TCP_SYN_SENT)
     {
-        tcp_rx_syn_sent(conn, hdr);
+        TcpRecvSynSent(conn, hdr);
     }
     else
     {
         // Update packet to point to data, and store parts of
         // header needed for out of order handling.
-        uint hdr_len = hdr->off >> 2;
-        pkt->start += hdr_len;
+        uint hdrLen = hdr->off >> 2;
+        pkt->start += hdrLen;
         pkt->seq = hdr->seq;
         pkt->flags = hdr->flags;
 
-        tcp_rx_general(conn, hdr, pkt);
+        TcpRecvGeneral(conn, hdr, pkt);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void tcp_poll()
+void TcpPoll()
 {
-    TCP_Conn* conn;
-    TCP_Conn* next;
-    list_for_each_safe(conn, next, tcp_active_conns, link)
+    TcpConn *conn;
+    TcpConn *next;
+    ListForEachSafe(conn, next, g_tcpActiveConns, link)
     {
-        if (conn->state == TCP_TIME_WAIT && SEQ_GE(pit_ticks, conn->msl_wait))
+        if (conn->state == TCP_TIME_WAIT && SEQ_GE(g_pitTicks, conn->mslWait))
         {
-            tcp_free(conn);
+            TcpFree(conn);
         }
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void tcp_swap(TCP_Header* hdr)
+void TcpSwap(TcpHeader *hdr)
 {
-    hdr->src_port = net_swap16(hdr->src_port);
-    hdr->dst_port = net_swap16(hdr->dst_port);
-    hdr->seq = net_swap32(hdr->seq);
-    hdr->ack = net_swap32(hdr->ack);
-    hdr->window_size = net_swap16(hdr->window_size);
-    hdr->checksum = net_swap16(hdr->checksum);
-    hdr->urgent = net_swap16(hdr->urgent);
+    hdr->srcPort = NetSwap16(hdr->srcPort);
+    hdr->dstPort = NetSwap16(hdr->dstPort);
+    hdr->seq = NetSwap32(hdr->seq);
+    hdr->ack = NetSwap32(hdr->ack);
+    hdr->windowSize = NetSwap16(hdr->windowSize);
+    hdr->checksum = NetSwap16(hdr->checksum);
+    hdr->urgent = NetSwap16(hdr->urgent);
 }
 
 // ------------------------------------------------------------------------------------------------
-TCP_Conn* tcp_create()
+TcpConn *TcpCreate()
 {
-    TCP_Conn* conn = tcp_alloc();
-    memset(conn, 0, sizeof(TCP_Conn));
+    TcpConn *conn = TcpAlloc();
+    memset(conn, 0, sizeof(TcpConn));
     conn->resequence.next = &conn->resequence;
     conn->resequence.prev = &conn->resequence;
 
@@ -879,79 +879,79 @@ TCP_Conn* tcp_create()
 }
 
 // ------------------------------------------------------------------------------------------------
-bool tcp_connect(TCP_Conn* conn, const IPv4_Addr* addr, u16 port)
+bool TcpConnect(TcpConn *conn, const Ipv4Addr *addr, u16 port)
 {
     // Find network interface through the routing table.
-    const Net_Route* route = net_find_route(addr);
+    const NetRoute *route = NetFindRoute(addr);
     if (!route)
     {
         return false;
     }
 
-    Net_Intf* intf = route->intf;
+    NetIntf *intf = route->intf;
 
     // Initialize connection
     conn->intf = intf;
-    conn->local_addr = intf->ip_addr;
-    conn->next_addr = *net_next_addr(route, addr);
-    conn->remote_addr = *addr;
-    conn->local_port = net_ephemeral_port();
-    conn->remote_port = port;
+    conn->localAddr = intf->ipAddr;
+    conn->nextAddr = *NetNextAddr(route, addr);
+    conn->remoteAddr = *addr;
+    conn->localPort = NetEphemeralPort();
+    conn->remotePort = port;
 
-    u32 isn = tcp_base_isn + pit_ticks * 250;
+    u32 isn = s_baseIsn + g_pitTicks * 250;
 
-    conn->snd_una = isn;
-    conn->snd_nxt = isn;
-    conn->snd_wnd = TCP_WINDOW_SIZE;
-    conn->snd_up = 0;
-    conn->snd_wl1 = 0;
-    conn->snd_wl2 = 0;
+    conn->sndUna = isn;
+    conn->sndNxt = isn;
+    conn->sndWnd = TCP_WINDOW_SIZE;
+    conn->sndUP = 0;
+    conn->sndWl1 = 0;
+    conn->sndWl2 = 0;
     conn->iss = isn;
 
-    conn->rcv_nxt = 0;
-    conn->rcv_wnd = TCP_WINDOW_SIZE;
-    conn->rcv_up = 0;
+    conn->rcvNxt = 0;
+    conn->rcvWnd = TCP_WINDOW_SIZE;
+    conn->rcvUP = 0;
     conn->irs = 0;
 
     // Link to active connections
-    link_before(&tcp_active_conns, &conn->link);
+    LinkBefore(&g_tcpActiveConns, &conn->link);
 
     // Issue SYN segment
-    tcp_tx(conn, conn->snd_nxt, TCP_SYN, 0, 0);
-    tcp_set_state(conn, TCP_SYN_SENT);
+    TcpSendPacket(conn, conn->sndNxt, TCP_SYN, 0, 0);
+    TcpSetState(conn, TCP_SYN_SENT);
 
     return true;
 }
 
 // ------------------------------------------------------------------------------------------------
-void tcp_close(TCP_Conn* conn)
+void TcpClose(TcpConn *conn)
 {
     switch (conn->state)
     {
     case TCP_CLOSED:
-        tcp_free(conn);
+        TcpFree(conn);
         break;
 
     case TCP_LISTEN:
-        tcp_free(conn);
+        TcpFree(conn);
         break;
 
     case TCP_SYN_SENT:
         // TODO - cancel queued sends
-        tcp_free(conn);
+        TcpFree(conn);
         break;
 
     case TCP_SYN_RECEIVED:
         // TODO - if sends have been issued or queued, wait for ESTABLISHED
         // before entering FIN-WAIT-1
-        tcp_tx(conn, conn->snd_nxt, TCP_FIN | TCP_ACK, 0, 0);
-        tcp_set_state(conn, TCP_FIN_WAIT_1);
+        TcpSendPacket(conn, conn->sndNxt, TCP_FIN | TCP_ACK, 0, 0);
+        TcpSetState(conn, TCP_FIN_WAIT_1);
         break;
 
     case TCP_ESTABLISHED:
         // TODO - queue FIN after sends
-        tcp_tx(conn, conn->snd_nxt, TCP_FIN | TCP_ACK, 0, 0);
-        tcp_set_state(conn, TCP_FIN_WAIT_1);
+        TcpSendPacket(conn, conn->sndNxt, TCP_FIN | TCP_ACK, 0, 0);
+        TcpSetState(conn, TCP_FIN_WAIT_1);
         break;
 
     case TCP_FIN_WAIT_1:
@@ -959,22 +959,22 @@ void tcp_close(TCP_Conn* conn)
     case TCP_CLOSING:
     case TCP_LAST_ACK:
     case TCP_TIME_WAIT:
-        if (conn->on_error)
+        if (conn->onError)
         {
-            conn->on_error(conn, TCP_CONN_CLOSING);
+            conn->onError(conn, TCP_CONN_CLOSING);
         }
         break;
 
     case TCP_CLOSE_WAIT:
         // TODO - queue FIN and state transition after sends
-        tcp_tx(conn, conn->snd_nxt, TCP_FIN | TCP_ACK, 0, 0);
-        tcp_set_state(conn, TCP_LAST_ACK);
+        TcpSendPacket(conn, conn->sndNxt, TCP_FIN | TCP_ACK, 0, 0);
+        TcpSetState(conn, TCP_LAST_ACK);
         break;
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void tcp_send(TCP_Conn* conn, const void* data, uint count)
+void TcpSend(TcpConn *conn, const void *data, uint count)
 {
-    tcp_tx(conn, conn->snd_nxt, TCP_ACK, data, count);
+    TcpSendPacket(conn, conn->sndNxt, TCP_ACK, data, count);
 }

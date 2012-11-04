@@ -6,4 +6,4 @@
 
 #include "net/intf.h"
 
-void ipv6_rx(Net_Intf* intf, Net_Buf* pkt);
+void Ipv6Recv(NetIntf *intf, NetBuf *pkt);

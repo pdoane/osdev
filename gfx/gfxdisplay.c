@@ -8,19 +8,20 @@
 #include "time/pit.h"
 #include "net/rlog.h"
 
-
-void gfx_init_display(GfxDisplay *pDisplay)
+// ------------------------------------------------------------------------------------------------
+void GfxInitDisplay(GfxDisplay *display)
 {
     // MWDD FIX: To Do
-    pDisplay->dummy = 0;
+    display->dummy = 0;
 }
 
-void gfx_disable_vga(GfxPCI *pPci)
+// ------------------------------------------------------------------------------------------------
+void GfxDisableVga(GfxPCI *pci)
 {
-    out8(SR_INDEX, SEQ_CLOCKING);
-    out8(SR_DATA, in8(SR_DATA) | SCREEN_OFF);
-    pit_wait(100);
-    gfx_write32(pPci, VGA_CONTROL, VGA_DISABLE);
+    IoWrite8(SR_INDEX, SEQ_CLOCKING);
+    IoWrite8(SR_DATA, IoRead8(SR_DATA) | SCREEN_OFF);
+    PitWait(100);
+    GfxWrite32(pci, VGA_CONTROL, VGA_DISABLE);
 
-    rlog_print("VGA Plane disabled\n");
+    RlogPrint("VGA Plane disabled\n");
 }

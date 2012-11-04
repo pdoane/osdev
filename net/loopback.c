@@ -11,49 +11,49 @@
 #include "net/route.h"
 
 // ------------------------------------------------------------------------------------------------
-static void loop_poll(Net_Intf* intf)
+static void LoopPoll(NetIntf *intf)
 {
 }
 
 // ------------------------------------------------------------------------------------------------
-static void loop_tx(Net_Intf* intf, const void* dst_addr, u16 ether_type, Net_Buf* pkt)
+static void LoopSend(NetIntf *intf, const void *dstAddr, u16 etherType, NetBuf *pkt)
 {
     // Route packet by protocol
-    switch (ether_type)
+    switch (etherType)
     {
     case ET_ARP:
-        arp_rx(intf, pkt);
+        ArpRecv(intf, pkt);
         break;
 
     case ET_IPV4:
-        ipv4_rx(intf, pkt);
+        Ipv4Recv(intf, pkt);
         break;
 
     case ET_IPV6:
-        ipv6_rx(intf, pkt);
+        Ipv6Recv(intf, pkt);
         break;
     }
 
-    net_release_buf(pkt);
+    NetReleaseBuf(pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-void loopback_init()
+void LoopbackInit()
 {
-    IPv4_Addr ip_addr = { { { 127, 0, 0, 1 } } };
-    IPv4_Addr subnet_mask = { { { 255, 255, 255, 255 } } };
+    Ipv4Addr ipAddr = { { { 127, 0, 0, 1 } } };
+    Ipv4Addr subnetMask = { { { 255, 255, 255, 255 } } };
 
     // Create net interface
-    Net_Intf* intf = net_intf_create();
-    intf->eth_addr = null_eth_addr;
-    intf->ip_addr = ip_addr;
+    NetIntf *intf = NetIntfCreate();
+    intf->ethAddr = g_nullEthAddr;
+    intf->ipAddr = ipAddr;
     intf->name = "loop";
-    intf->poll = loop_poll;
-    intf->tx = loop_tx;
-    intf->dev_tx = 0;
+    intf->poll = LoopPoll;
+    intf->send = LoopSend;
+    intf->devSend = 0;
 
-    net_intf_add(intf);
+    NetIntfAdd(intf);
 
     // Add routing entries
-    net_add_route(&ip_addr, &subnet_mask, 0, intf);
+    NetAddRoute(&ipAddr, &subnetMask, 0, intf);
 }

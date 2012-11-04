@@ -6,7 +6,7 @@
 
 #include "net/ipv4.h"
 
-void icmp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt);
+void IcmpRecv(NetIntf *intf, const Ipv4Header *ipHdr, NetBuf *pkt);
 
-void icmp_echo_request(const IPv4_Addr* dst_addr, u16 id, u16 sequence,
-    const u8* data, const u8* end);
+void IcmpEchoRequest(const Ipv4Addr *dstAddr, u16 id, u16 sequence,
+    const u8 *data, const u8 *end);

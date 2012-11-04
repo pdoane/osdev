@@ -30,105 +30,105 @@
 // ------------------------------------------------------------------------------------------------
 // USB Device Descriptor
 
-typedef struct USB_DeviceDesc
+typedef struct UsbDeviceDesc
 {
     u8 len;
     u8 type;
-    u16 usb_ver;
-    u8 dev_class;
-    u8 dev_subclass;
-    u8 dev_protocol;
-    u8 max_packet_size;
-    u16 vendor_id;
-    u16 product_id;
-    u16 device_ver;
-    u8 vendor_str;
-    u8 product_str;
-    u8 serial_str;
-    u8 conf_count;
-} PACKED USB_DeviceDesc;
+    u16 usbVer;
+    u8 devClass;
+    u8 devSubClass;
+    u8 devProtocol;
+    u8 maxPacketSize;
+    u16 vendorId;
+    u16 productId;
+    u16 deviceVer;
+    u8 vendorStr;
+    u8 productStr;
+    u8 serialStr;
+    u8 confCount;
+} PACKED UsbDeviceDesc;
 
 // ------------------------------------------------------------------------------------------------
 // USB Configuration Descriptor
 
-typedef struct USB_ConfDesc
+typedef struct UsbConfDesc
 {
     u8 len;
     u8 type;
-    u16 total_len;
-    u8 intf_count;
-    u8 conf_value;
-    u8 conf_str;
+    u16 totalLen;
+    u8 intfCount;
+    u8 confValue;
+    u8 confStr;
     u8 attributes;
-    u8 max_power;
-} PACKED USB_ConfDesc;
+    u8 maxPower;
+} PACKED UsbConfDesc;
 
 // ------------------------------------------------------------------------------------------------
 // USB String Descriptor
 
-typedef struct USB_StringDesc
+typedef struct UsbStringDesc
 {
     u8 len;
     u8 type;
     u16 str[];
-} PACKED USB_StringDesc;
+} PACKED UsbStringDesc;
 
 // ------------------------------------------------------------------------------------------------
 // USB Interface Descriptor
 
-typedef struct USB_IntfDesc
+typedef struct UsbIntfDesc
 {
     u8 len;
     u8 type;
-    u8 intf_index;
-    u8 alt_setting;
-    u8 endp_count;
-    u8 intf_class;
-    u8 intf_subclass;
-    u8 intf_protocol;
-    u8 intf_str;
-} PACKED USB_IntfDesc;
+    u8 intfIndex;
+    u8 altSetting;
+    u8 endpCount;
+    u8 intfClass;
+    u8 intfSubClass;
+    u8 intfProtocol;
+    u8 intfStr;
+} PACKED UsbIntfDesc;
 
 // ------------------------------------------------------------------------------------------------
 // USB Endpoint Descriptor
 
-typedef struct USB_EndpDesc
+typedef struct UsbEndpDesc
 {
     u8 len;
     u8 type;
     u8 addr;
     u8 attributes;
-    u16 max_packet_size;
+    u16 maxPacketSize;
     u8 interval;
-} PACKED USB_EndpDesc;
+} PACKED UsbEndpDesc;
 
 // ------------------------------------------------------------------------------------------------
 // USB HID Desciptor
 
-typedef struct USB_HidDesc
+typedef struct UsbHidDesc
 {
     u8 len;
     u8 type;
-    u16 hid_ver;
-    u8 country_code;
-    u8 desc_count;
-    u8 desc_type;
-    u16 desc_len;
-} PACKED USB_HidDesc;
+    u16 hidVer;
+    u8 countryCode;
+    u8 descCount;
+    u8 descType;
+    u16 descLen;
+} PACKED UsbHidDesc;
 
 // ------------------------------------------------------------------------------------------------
 // USB Hub Descriptor
 
-typedef struct USB_HubDesc
+typedef struct UsbHubDesc
 {
     u8 len;
     u8 type;
-    u8 port_count;
+    u8 portCount;
     u16 chars;
-    u8 port_power_time;
+    u8 portPowerTime;
     u8 current;
     // removable/power control bits vary in size
-} PACKED USB_HubDesc;
+} PACKED UsbHubDesc;
 
 // Hub Characteristics
 #define HUB_POWER_MASK                  0x03        // Logical Power Switching Mode
@@ -142,10 +142,10 @@ typedef struct USB_HubDesc
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void usb_print_device_desc(USB_DeviceDesc* desc);
-void usb_print_conf_desc(USB_ConfDesc* desc);
-void usb_print_intf_desc(USB_IntfDesc* desc);
-void usb_print_endp_desc(USB_EndpDesc* desc);
+void UsbPrintDeviceDesc(UsbDeviceDesc *desc);
+void UsbPrintConfDesc(UsbConfDesc *desc);
+void UsbPrintIntfDesc(UsbIntfDesc *desc);
+void UsbPrintEndpDesc(UsbEndpDesc *desc);
 
-void usb_print_hid_desc(USB_HidDesc* desc);
-void usb_print_hub_desc(USB_HubDesc* desc);
+void UsbPrintHidDesc(UsbHidDesc *desc);
+void UsbPrintHubDesc(UsbHubDesc *desc);

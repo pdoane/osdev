@@ -6,7 +6,7 @@
 #include "stdlib/string.h"
 
 // ------------------------------------------------------------------------------------------------
-int main(int argc, const char** argv)
+int main(int argc, const char **argv)
 {
     char buf[128];
     for (int i = 0; i < 128; ++i)

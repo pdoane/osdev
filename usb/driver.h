@@ -7,10 +7,10 @@
 #include "usb/dev.h"
 
 // ------------------------------------------------------------------------------------------------
-typedef struct USB_Driver
+typedef struct UsbDriver
 {
-    bool (*init)(USB_Device* dev);
-} USB_Driver;
+    bool (*init)(UsbDevice *dev);
+} UsbDriver;
 
 // ------------------------------------------------------------------------------------------------
-extern const USB_Driver usb_driver_table[];
+extern const UsbDriver g_usbDriverTable[];

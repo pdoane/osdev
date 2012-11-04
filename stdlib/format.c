@@ -13,26 +13,26 @@ enum
 
 typedef struct Formatter
 {
-    char* p;
-    char* end;
+    char *p;
+    char *end;
     uint flags;
     int width;
 } Formatter;
 
 // ------------------------------------------------------------------------------------------------
-static bool is_space(char c)
+static bool IsSpace(char c)
 {
     return c == ' ' || c == '\t' || c == '\r' || c== '\n' || c == '\f' || c == '\v';
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool is_digit(char c)
+static bool IsDigit(char c)
 {
     return c >= '0' && c <= '9';
 }
 
 // ------------------------------------------------------------------------------------------------
-static void output_char(Formatter* f, char c)
+static void OutputChar(Formatter *f, char c)
 {
     if (f->p < f->end)
     {
@@ -41,7 +41,7 @@ static void output_char(Formatter* f, char c)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void output_string(Formatter* f, const char* s)
+static void OutputString(Formatter *f, const char *s)
 {
     int width = f->width;
     char padChar = f->flags & PAD_ZERO ? '0' : ' ';
@@ -50,27 +50,27 @@ static void output_string(Formatter* f, const char* s)
     {
         while (--width >= 0)
         {
-            output_char(f, padChar);
+            OutputChar(f, padChar);
         }
     }
 
     while (*s)
     {
-        output_char(f, *s++);
+        OutputChar(f, *s++);
     }
 
     while (--width >= 0)
     {
-        output_char(f, padChar);
+        OutputChar(f, padChar);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void output_dec(Formatter* f, unsigned long long n)
+static void OutputDec(Formatter *f, unsigned long long n)
 {
     char buf[32];
-    char* end = buf + sizeof(buf) - 1;
-    char* s = end;
+    char *end = buf + sizeof(buf) - 1;
+    char *s = end;
     *s = '\0';
 
     do
@@ -82,15 +82,15 @@ static void output_dec(Formatter* f, unsigned long long n)
     while (n > 0);
 
     f->width -= end - s;
-    output_string(f, s);
+    OutputString(f, s);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void output_hex(Formatter* f, char type, unsigned long long n)
+static void OutputHex(Formatter *f, char type, unsigned long long n)
 {
     char buf[32];
-    char* end = buf + sizeof(buf) - 1;
-    char* s = end;
+    char *end = buf + sizeof(buf) - 1;
+    char *s = end;
     *s = '\0';
 
     do
@@ -116,18 +116,18 @@ static void output_hex(Formatter* f, char type, unsigned long long n)
     while (n > 0);
 
     f->width -= end - s;
-    output_string(f, s);
+    OutputString(f, s);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void output_pointer(Formatter* f, void* p)
+static void OutputPointer(Formatter *f, void *p)
 {
     unsigned long long n = (uintptr_t)p;
-    output_hex(f, 'x', n);
+    OutputHex(f, 'x', n);
 }
 
 // ------------------------------------------------------------------------------------------------
-int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
+int vsnprintf(char *str, size_t size, const char *fmt, va_list args)
 {
     Formatter f;
     f.p = str;
@@ -145,7 +145,7 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
         // Output non-format character
         if (c != '%')
         {
-            output_char(&f, c);
+            OutputChar(&f, c);
             continue;
         }
 
@@ -167,7 +167,7 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
 
         // Parse width
         f.width = -1;
-        if (is_digit(c))
+        if (IsDigit(c))
         {
             int width = 0;
             do
@@ -175,13 +175,13 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
                 width = width * 10 + c - '0';
                 c = *fmt++;
             }
-            while (is_digit(c));
+            while (IsDigit(c));
 
             f.width = width;
         }
 
         // Parse length modifier
-        bool is_long_long = false;
+        bool isLongLong = false;
 
         if (c == 'l')
         {
@@ -189,7 +189,7 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
             if (c == 'l')
             {
                 c = *fmt++;
-                is_long_long = true;
+                isLongLong = true;
             }
         }
 
@@ -198,17 +198,17 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
         switch (type)
         {
         case '%':
-            output_char(&f, '%');
+            OutputChar(&f, '%');
             break;
 
         case 'c':
             c = va_arg(args, int);
-            output_char(&f, c);
+            OutputChar(&f, c);
             break;
 
         case 's':
             {
-                char* s = va_arg(args, char*);
+                char *s = va_arg(args, char *);
                 if (!s)
                 {
                     s = "(null)";
@@ -216,7 +216,7 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
 
                 if (f.width > 0)
                 {
-                    char* p = s;
+                    char *p = s;
                     while (*p)
                     {
                         ++p;
@@ -225,14 +225,14 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
                     f.width -= p - s;
                 }
 
-                output_string(&f, s);
+                OutputString(&f, s);
             }
             break;
 
         case 'd':
             {
                 long long n;
-                if (is_long_long)
+                if (isLongLong)
                 {
                     n = va_arg(args, long long);
                 }
@@ -243,18 +243,18 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
 
                 if (n < 0)
                 {
-                    output_char(&f, '-');
+                    OutputChar(&f, '-');
                     n = -n;
                 }
 
-                output_dec(&f, n);
+                OutputDec(&f, n);
             }
             break;
 
         case 'u':
             {
                 unsigned long long n;
-                if (is_long_long)
+                if (isLongLong)
                 {
                     n = va_arg(args, unsigned long long);
                 }
@@ -263,7 +263,7 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
                     n = va_arg(args, unsigned int);
                 }
 
-                output_dec(&f, n);
+                OutputDec(&f, n);
             }
             break;
 
@@ -271,7 +271,7 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
         case 'X':
             {
                 unsigned long long n;
-                if (is_long_long)
+                if (isLongLong)
                 {
                     n = va_arg(args, unsigned long long);
                 }
@@ -280,17 +280,17 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
                     n = va_arg(args, unsigned int);
                 }
 
-                output_hex(&f, type, n);
+                OutputHex(&f, type, n);
             }
             break;
 
         case 'p':
             {
-                void* p = va_arg(args, void*);
+                void *p = va_arg(args, void *);
 
-                output_char(&f, '0');
-                output_char(&f, 'x');
-                output_pointer(&f, p);
+                OutputChar(&f, '0');
+                OutputChar(&f, 'x');
+                OutputPointer(&f, p);
             }
             break;
         }
@@ -305,7 +305,7 @@ int vsnprintf(char* str, size_t size, const char* fmt, va_list args)
 }
 
 // ------------------------------------------------------------------------------------------------
-int snprintf(char* str, size_t size, const char* fmt, ...)
+int snprintf(char *str, size_t size, const char *fmt, ...)
 {
     va_list args;
 
@@ -317,7 +317,7 @@ int snprintf(char* str, size_t size, const char* fmt, ...)
 }
 
 // ------------------------------------------------------------------------------------------------
-int vsscanf(const char* str, const char* fmt, va_list args)
+int vsscanf(const char *str, const char *fmt, va_list args)
 {
     int count = 0;
 
@@ -329,10 +329,10 @@ int vsscanf(const char* str, const char* fmt, va_list args)
         {
             break;
         }
-        if (is_space(c))
+        if (IsSpace(c))
         {
             // Whitespace
-            while (is_space(*str))
+            while (IsSpace(*str))
             {
                 ++str;
             }
@@ -380,7 +380,7 @@ match_literal:
                     }
 
                     int n = 0;
-                    while (is_digit(c))
+                    while (IsDigit(c))
                     {
                         n = n * 10 + c - '0';
                         c = *str++;
@@ -389,7 +389,7 @@ match_literal:
                     n *= sign;
                     --str;
 
-                    int* result = va_arg(args, int*);
+                    int *result = va_arg(args, int *);
                     *result = n;
                     ++count;
                 }
@@ -406,7 +406,7 @@ end_of_input:
 }
 
 // ------------------------------------------------------------------------------------------------
-int sscanf(const char* str, const char* fmt, ...)
+int sscanf(const char *str, const char *fmt, ...)
 {
     va_list args;
 
@@ -423,7 +423,7 @@ unsigned long int strtoul(const char *nptr, char **endptr, int base)
     const char *pCurrentChar = nptr;
 
     // Skip whitespace
-    while (is_space(*pCurrentChar))
+    while (IsSpace(*pCurrentChar))
     {
         ++pCurrentChar;
     }

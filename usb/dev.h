@@ -22,64 +22,64 @@
 // ------------------------------------------------------------------------------------------------
 // USB Endpoint
 
-typedef struct USB_Endpoint
+typedef struct UsbEndpoint
 {
-    USB_EndpDesc desc;
+    UsbEndpDesc desc;
     uint toggle;
-} USB_Endpoint;
+} UsbEndpoint;
 
 // ------------------------------------------------------------------------------------------------
 // USB Transfer
 
-typedef struct USB_Transfer
+typedef struct UsbTransfer
 {
-    USB_Endpoint* endp;
-    USB_DevReq* req;
-    void* data;
+    UsbEndpoint *endp;
+    UsbDevReq *req;
+    void *data;
     uint len;
     bool complete;
     bool success;
-} USB_Transfer;
+} UsbTransfer;
 
 // ------------------------------------------------------------------------------------------------
 // USB Device
 
-typedef struct USB_Device
+typedef struct UsbDevice
 {
-    struct USB_Device* parent;
-    struct USB_Device* next;
-    void* hc;
-    void* drv;
+    struct UsbDevice *parent;
+    struct UsbDevice *next;
+    void *hc;
+    void *drv;
 
     uint port;
     uint speed;
     uint addr;
-    uint max_packet_size;
+    uint maxPacketSize;
 
-    USB_Endpoint endp;
+    UsbEndpoint endp;
 
-    USB_IntfDesc intf_desc;
+    UsbIntfDesc intfDesc;
 
-    void (*hc_control)(struct USB_Device* dev, USB_Transfer* t);
-    void (*hc_intr)(struct USB_Device* dev, USB_Transfer* t);
+    void (*hcControl)(struct UsbDevice *dev, UsbTransfer *t);
+    void (*hcIntr)(struct UsbDevice *dev, UsbTransfer *t);
 
-    void (*drv_poll)(struct USB_Device* dev);
-} USB_Device;
+    void (*drvPoll)(struct UsbDevice *dev);
+} UsbDevice;
 
 // ------------------------------------------------------------------------------------------------
 // Globals
 
-extern USB_Device* usb_dev_list;
+extern UsbDevice *g_usbDeviceList;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-USB_Device* usb_dev_create();
-bool usb_dev_init(USB_Device* dev);
-bool usb_dev_request(USB_Device* dev,
+UsbDevice *UsbDevCreate();
+bool UsbDevInit(UsbDevice *dev);
+bool UsbDevRequest(UsbDevice *dev,
     uint type, uint request,
     uint value, uint index,
-    uint len, void* data);
-bool usb_dev_get_langs(USB_Device* dev, u16* langs);
-bool usb_dev_get_string(USB_Device* dev, char* str, uint lang_id, uint str_index);
-bool usb_dev_clear_halt(USB_Device* dev);
+    uint len, void *data);
+bool UsbDevGetLangs(UsbDevice *dev, u16 *langs);
+bool UsbDevGetString(UsbDevice *dev, char *str, uint langId, uint strIndex);
+bool UsbDevClearHalt(UsbDevice *dev);

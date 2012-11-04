@@ -6,8 +6,8 @@
 
 #include "stdlib/types.h"
 
-const char* pci_device_name(uint vendor_id, uint device_id);
-const char* pci_class_name(uint class_code, uint subclass, uint prog_intf);
+const char *PciDeviceName(uint vendorId, uint deviceId);
+const char *PciClassName(uint classCode, uint subclass, uint progIntf);
 
 // PCI Vendors
 #define VENDOR_INTEL                    0x8086

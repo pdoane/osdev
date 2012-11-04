@@ -9,57 +9,57 @@
 #include "time/pit.h"
 
 // ------------------------------------------------------------------------------------------------
-USB_Device* usb_dev_list;
+UsbDevice *g_usbDeviceList;
 
-static int s_next_addr;
+static int s_nextUsbAddr;
 
 // ------------------------------------------------------------------------------------------------
-USB_Device* usb_dev_create()
+UsbDevice *UsbDevCreate()
 {
     // Initialize structure
-    USB_Device* dev = vm_alloc(sizeof(USB_Device));
+    UsbDevice *dev = VMAlloc(sizeof(UsbDevice));
     if (dev)
     {
         dev->parent = 0;
-        dev->next = usb_dev_list;
+        dev->next = g_usbDeviceList;
         dev->hc = 0;
         dev->drv = 0;
 
         dev->port = 0;
         dev->speed = 0;
         dev->addr = 0;
-        dev->max_packet_size = 0;
+        dev->maxPacketSize = 0;
         dev->endp.toggle = 0;
 
-        dev->hc_control = 0;
-        dev->hc_intr = 0;
-        dev->drv_poll = 0;
+        dev->hcControl = 0;
+        dev->hcIntr = 0;
+        dev->drvPoll = 0;
 
-        usb_dev_list = dev;
+        g_usbDeviceList = dev;
     }
 
     return dev;
 }
 
 // ------------------------------------------------------------------------------------------------
-bool usb_dev_init(USB_Device* dev)
+bool UsbDevInit(UsbDevice *dev)
 {
     // Get first 8 bytes of device descriptor
-    USB_DeviceDesc dev_desc;
-    if (!usb_dev_request(dev,
+    UsbDeviceDesc devDesc;
+    if (!UsbDevRequest(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
         REQ_GET_DESC, (USB_DESC_DEVICE << 8) | 0, 0,
-        8, &dev_desc))
+        8, &devDesc))
     {
         return false;
     }
 
-    dev->max_packet_size = dev_desc.max_packet_size;
+    dev->maxPacketSize = devDesc.maxPacketSize;
 
     // Set address
-    uint addr = ++s_next_addr;
+    uint addr = ++s_nextUsbAddr;
 
-    if (!usb_dev_request(dev,
+    if (!UsbDevRequest(dev,
         RT_HOST_TO_DEV | RT_STANDARD | RT_DEV,
         REQ_SET_ADDR, addr, 0,
         0, 0))
@@ -69,81 +69,81 @@ bool usb_dev_init(USB_Device* dev)
 
     dev->addr = addr;
 
-    pit_wait(2);    // Set address recovery time
+    PitWait(2);    // Set address recovery time
 
     // Read entire descriptor
-    if (!usb_dev_request(dev,
+    if (!UsbDevRequest(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
         REQ_GET_DESC, (USB_DESC_DEVICE << 8) | 0, 0,
-        sizeof(USB_DeviceDesc), &dev_desc))
+        sizeof(UsbDeviceDesc), &devDesc))
     {
         return false;
     }
 
     // Dump descriptor
-    usb_print_device_desc(&dev_desc);
+    UsbPrintDeviceDesc(&devDesc);
 
     // String Info
     u16 langs[USB_STRING_SIZE];
-    usb_dev_get_langs(dev, langs);
+    UsbDevGetLangs(dev, langs);
 
-    uint lang_id = langs[0];
-    if (lang_id)
+    uint langId = langs[0];
+    if (langId)
     {
-        char product_str[USB_STRING_SIZE];
-        char vendor_str[USB_STRING_SIZE];
-        char serial_str[USB_STRING_SIZE];
-        usb_dev_get_string(dev, product_str, lang_id, dev_desc.product_str);
-        usb_dev_get_string(dev, vendor_str, lang_id, dev_desc.vendor_str);
-        usb_dev_get_string(dev, serial_str, lang_id, dev_desc.serial_str);
-        console_print("  Product='%s' Vendor='%s' Serial=%s\n", product_str, vendor_str, serial_str);
+        char productStr[USB_STRING_SIZE];
+        char vendorStr[USB_STRING_SIZE];
+        char serialStr[USB_STRING_SIZE];
+        UsbDevGetString(dev, productStr, langId, devDesc.productStr);
+        UsbDevGetString(dev, vendorStr, langId, devDesc.vendorStr);
+        UsbDevGetString(dev, serialStr, langId, devDesc.serialStr);
+        ConsolePrint("  Product='%s' Vendor='%s' Serial=%s\n", productStr, vendorStr, serialStr);
     }
 
     // Pick configuration and interface - grab first for now
-    u8 config_buf[256];
-    uint picked_conf_value = 0;
-    USB_IntfDesc* picked_intf_desc = 0;
-    USB_EndpDesc* picked_endp_desc = 0;
+    u8 configBuf[256];
+    uint pickedConfValue = 0;
+    UsbIntfDesc *pickedIntfDesc = 0;
+    UsbEndpDesc *pickedEndpDesc = 0;
 
-    for (uint conf_index = 0; conf_index < dev_desc.conf_count; ++conf_index)
+    for (uint confIndex = 0; confIndex < devDesc.confCount; ++confIndex)
     {
         // Get configuration total length
-        if (!usb_dev_request(dev,
+        if (!UsbDevRequest(dev,
             RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
-            REQ_GET_DESC, (USB_DESC_CONF << 8) | conf_index, 0,
-            4, config_buf))
+            REQ_GET_DESC, (USB_DESC_CONF << 8) | confIndex, 0,
+            4, configBuf))
         {
             continue;
         }
 
         // Only static size supported for now
-        USB_ConfDesc* conf_desc = (USB_ConfDesc*)config_buf;
-        if (conf_desc->total_len > sizeof(config_buf))
+        UsbConfDesc *confDesc = (UsbConfDesc *)configBuf;
+        if (confDesc->totalLen > sizeof(configBuf))
         {
-            console_print("  Configuration length %d greater than %d bytes",
-                conf_desc->total_len, sizeof(config_buf));
+            ConsolePrint("  Configuration length %d greater than %d bytes",
+                confDesc->totalLen, sizeof(configBuf));
             continue;
         }
 
         // Read all configuration data
-        if (!usb_dev_request(dev,
+        if (!UsbDevRequest(dev,
             RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
-            REQ_GET_DESC, (USB_DESC_CONF << 8) | conf_index, 0,
-            conf_desc->total_len, config_buf))
+            REQ_GET_DESC, (USB_DESC_CONF << 8) | confIndex, 0,
+            confDesc->totalLen, configBuf))
         {
             continue;
         }
 
-        usb_print_conf_desc(conf_desc);
+        UsbPrintConfDesc(confDesc);
 
-        if (!picked_conf_value)
+        if (!pickedConfValue)
         {
-            picked_conf_value = conf_desc->conf_value;
+            pickedConfValue = confDesc->confValue;
         }
 
         // Parse configuration data
-        u8* data = config_buf + conf_desc->len;
-        u8* end = config_buf + conf_desc->total_len;
+        u8 *data = configBuf + confDesc->len;
+        u8 *end = configBuf + confDesc->totalLen;
 
         while (data < end)
         {
@@ -154,24 +154,24 @@ bool usb_dev_init(USB_Device* dev)
             {
             case USB_DESC_INTF:
                 {
-                    USB_IntfDesc* intf_desc = (USB_IntfDesc*)data;
-                    usb_print_intf_desc(intf_desc);
+                    UsbIntfDesc *intfDesc = (UsbIntfDesc *)data;
+                    UsbPrintIntfDesc(intfDesc);
 
-                    if (!picked_intf_desc)
+                    if (!pickedIntfDesc)
                     {
-                        picked_intf_desc = intf_desc;
+                        pickedIntfDesc = intfDesc;
                     }
                 }
                 break;
 
             case USB_DESC_ENDP:
                 {
-                    USB_EndpDesc* endp_desc = (USB_EndpDesc*)data;
-                    usb_print_endp_desc(endp_desc);
+                    UsbEndpDesc *endp_desc = (UsbEndpDesc *)data;
+                    UsbPrintEndpDesc(endp_desc);
 
-                    if (!picked_endp_desc)
+                    if (!pickedEndpDesc)
                     {
-                        picked_endp_desc = endp_desc;
+                        pickedEndpDesc = endp_desc;
                     }
                 }
                 break;
@@ -182,21 +182,21 @@ bool usb_dev_init(USB_Device* dev)
     }
 
     // Configure device
-    if (picked_conf_value && picked_intf_desc && picked_endp_desc)
+    if (pickedConfValue && pickedIntfDesc && pickedEndpDesc)
     {
-        if (!usb_dev_request(dev,
+        if (!UsbDevRequest(dev,
             RT_HOST_TO_DEV | RT_STANDARD | RT_DEV,
-            REQ_SET_CONF, picked_conf_value, 0,
+            REQ_SET_CONF, pickedConfValue, 0,
             0, 0))
         {
             return false;
         }
 
-        dev->intf_desc = *picked_intf_desc;
-        dev->endp.desc = *picked_endp_desc;
+        dev->intfDesc = *pickedIntfDesc;
+        dev->endp.desc = *pickedEndpDesc;
 
         // Initialize driver
-        const USB_Driver* driver = usb_driver_table;
+        const UsbDriver *driver = g_usbDriverTable;
         while (driver->init)
         {
             if (driver->init(dev))
@@ -212,19 +212,19 @@ bool usb_dev_init(USB_Device* dev)
 }
 
 // ------------------------------------------------------------------------------------------------
-bool usb_dev_request(struct USB_Device* dev,
+bool UsbDevRequest(UsbDevice *dev,
     uint type, uint request,
     uint value, uint index,
-    uint len, void* data)
+    uint len, void *data)
 {
-    USB_DevReq req;
+    UsbDevReq req;
     req.type = type;
     req.req = request;
     req.value = value;
     req.index = index;
     req.len = len;
 
-    USB_Transfer t;
+    UsbTransfer t;
     t.endp = 0;
     t.req = &req;
     t.data = data;
@@ -232,21 +232,21 @@ bool usb_dev_request(struct USB_Device* dev,
     t.complete = false;
     t.success = false;
 
-    dev->hc_control(dev, &t);
+    dev->hcControl(dev, &t);
 
     return t.success;
 }
 
 // ------------------------------------------------------------------------------------------------
-bool usb_dev_get_langs(USB_Device* dev, u16* langs)
+bool UsbDevGetLangs(UsbDevice *dev, u16 *langs)
 {
     langs[0] = 0;
 
     u8 buf[256];
-    USB_StringDesc* desc = (struct USB_StringDesc*)buf;
+    UsbStringDesc *desc = (UsbStringDesc *)buf;
 
     // Get length
-    if (!usb_dev_request(dev,
+    if (!UsbDevRequest(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
         REQ_GET_DESC, (USB_DESC_STRING << 8) | 0, 0,
         1, desc))
@@ -255,7 +255,7 @@ bool usb_dev_get_langs(USB_Device* dev, u16* langs)
     }
 
     // Get lang data
-    if (!usb_dev_request(dev,
+    if (!UsbDevRequest(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
         REQ_GET_DESC, (USB_DESC_STRING << 8) | 0, 0,
         desc->len, desc))
@@ -263,61 +263,61 @@ bool usb_dev_get_langs(USB_Device* dev, u16* langs)
         return false;
     }
 
-    uint lang_len = (desc->len - 2) / 2;
-    for (uint i = 0; i < lang_len; ++i)
+    uint langLen = (desc->len - 2) / 2;
+    for (uint i = 0; i < langLen; ++i)
     {
         langs[i] = desc->str[i];
     }
 
-    langs[lang_len] = 0;
+    langs[langLen] = 0;
     return true;
 }
 
 // ------------------------------------------------------------------------------------------------
-bool usb_dev_get_string(USB_Device* dev, char* str, uint lang_id, uint str_index)
+bool UsbDevGetString(UsbDevice *dev, char *str, uint langId, uint strIndex)
 {
     str[0] = '\0';
-    if (!str_index)
+    if (!strIndex)
     {
         return true;
     }
 
     u8 buf[256];
-    USB_StringDesc* desc = (struct USB_StringDesc*)buf;
+    UsbStringDesc *desc = (UsbStringDesc *)buf;
 
     // Get string length
-    if (!usb_dev_request(dev,
+    if (!UsbDevRequest(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
-        REQ_GET_DESC, (USB_DESC_STRING << 8) | str_index, lang_id,
+        REQ_GET_DESC, (USB_DESC_STRING << 8) | strIndex, langId,
         1, desc))
     {
         return false;
     }
 
     // Get string data
-    if (!usb_dev_request(dev,
+    if (!UsbDevRequest(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_DEV,
-        REQ_GET_DESC, (USB_DESC_STRING << 8) | str_index, lang_id,
+        REQ_GET_DESC, (USB_DESC_STRING << 8) | strIndex, langId,
         desc->len, desc))
     {
         return false;
     }
 
     // Dumb Unicode to ASCII conversion
-    uint str_len = (desc->len - 2) / 2;
-    for (uint i = 0; i < str_len; ++i)
+    uint strLen = (desc->len - 2) / 2;
+    for (uint i = 0; i < strLen; ++i)
     {
         str[i] = desc->str[i];
     }
 
-    str[str_len] = '\0';
+    str[strLen] = '\0';
     return true;
 }
 
 // ------------------------------------------------------------------------------------------------
-bool usb_dev_clear_halt(USB_Device* dev)
+bool UsbDevClearHalt(UsbDevice *dev)
 {
-    return usb_dev_request(dev,
+    return UsbDevRequest(dev,
         RT_DEV_TO_HOST | RT_STANDARD | RT_ENDP,
         REQ_CLEAR_FEATURE,
         F_ENDPOINT_HALT,

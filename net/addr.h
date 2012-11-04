@@ -9,24 +9,24 @@
 // ------------------------------------------------------------------------------------------------
 // Ethernet Address
 
-typedef struct Eth_Addr
+typedef struct EthAddr
 {
     u8 n[6];
-} PACKED Eth_Addr;
+} PACKED EthAddr;
 
 #define ETH_ADDR_STRING_SIZE            18
 
 // ------------------------------------------------------------------------------------------------
 // IPv4 Address
 
-typedef struct IPv4_Addr
+typedef struct Ipv4Addr
 {
     union
     {
         u8 n[4];
         u32 bits;
     } u;
-} PACKED IPv4_Addr;
+} PACKED Ipv4Addr;
 
 #define IPV4_ADDR_STRING_SIZE           16
 #define IPV4_ADDR_PORT_STRING_SIZE      22
@@ -34,21 +34,21 @@ typedef struct IPv4_Addr
 // ------------------------------------------------------------------------------------------------
 // Globals
 
-extern const Eth_Addr null_eth_addr;
-extern const Eth_Addr broadcast_eth_addr;
+extern const EthAddr g_nullEthAddr;
+extern const EthAddr g_broadcastEthAddr;
 
-extern const IPv4_Addr null_ipv4_addr;
-extern const IPv4_Addr broadcast_ipv4_addr;
+extern const Ipv4Addr g_nullIpv4Addr;
+extern const Ipv4Addr g_broadcastIpv4Addr;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-bool eth_addr_eq(const Eth_Addr* x, const Eth_Addr* y);
-bool ipv4_addr_eq(const IPv4_Addr* x, const IPv4_Addr* y);
+bool EthAddrEq(const EthAddr *x, const EthAddr *y);
+bool Ipv4AddrEq(const Ipv4Addr *x, const Ipv4Addr *y);
 
-void eth_addr_to_str(char* str, size_t size, const Eth_Addr* addr);
-void ipv4_addr_to_str(char* str, size_t size, const IPv4_Addr* addr);
-void ipv4_addr_port_to_str(char* str, size_t size, const IPv4_Addr* addr, u16 port);
+void EthAddrToStr(char *str, size_t size, const EthAddr *addr);
+void Ipv4AddrToStr(char *str, size_t size, const Ipv4Addr *addr);
+void Ipv4AddrPortToStr(char *str, size_t size, const Ipv4Addr *addr, u16 port);
 
-bool str_to_ipv4_addr(IPv4_Addr* addr, const char* str);
-bool str_to_ipv4_addr_port(IPv4_Addr* addr, const char* str, u16* port);
+bool StrToIpv4Addr(Ipv4Addr *addr, const char *str);
+bool StrToIpv4AddrPort(Ipv4Addr *addr, const char *str, u16 *port);

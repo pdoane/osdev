@@ -16,9 +16,9 @@
 // ------------------------------------------------------------------------------------------------
 // IPv4 Header
 
-typedef struct IPv4_Header
+typedef struct Ipv4Header
 {
-    u8 ver_ihl;
+    u8 verIhl;
     u8 tos;
     u16 len;
     u16 id;
@@ -26,16 +26,16 @@ typedef struct IPv4_Header
     u8 ttl;
     u8 protocol;
     u16 checksum;
-    IPv4_Addr src;
-    IPv4_Addr dst;
-} PACKED IPv4_Header;
+    Ipv4Addr src;
+    Ipv4Addr dst;
+} PACKED Ipv4Header;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void ipv4_rx(Net_Intf* intf, Net_Buf* pkt);
-void ipv4_tx(const IPv4_Addr* dst_addr, u8 protocol, Net_Buf* pkt);
-void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
-    const IPv4_Addr* dst_addr, u8 protocol, Net_Buf* pkt);
+void Ipv4Recv(NetIntf *intf, NetBuf *pkt);
+void Ipv4Send(const Ipv4Addr *dstAddr, u8 protocol, NetBuf *pkt);
+void Ipv4SendIntf(NetIntf *intf, const Ipv4Addr *nextAddr,
+    const Ipv4Addr *dstAddr, u8 protocol, NetBuf *pkt);
 
-void ipv4_print(const Net_Buf* pkt);
+void Ipv4Print(const NetBuf *pkt);

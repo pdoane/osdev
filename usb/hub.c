@@ -26,19 +26,19 @@
 #define PORT_OVER_CURRENT_CHANGE        (1 << 19)   // Over-current Change
 
 // ------------------------------------------------------------------------------------------------
-typedef struct USB_Hub
+typedef struct UsbHub
 {
-    USB_Device* dev;
-    USB_HubDesc desc;
-} USB_Hub;
+    UsbDevice *dev;
+    UsbHubDesc desc;
+} UsbHub;
 
 // ------------------------------------------------------------------------------------------------
-static uint usb_hub_reset_port(USB_Hub* hub, uint port)
+static uint UsbHubResetPort(UsbHub *hub, uint port)
 {
-    USB_Device* dev = hub->dev;
+    UsbDevice *dev = hub->dev;
 
     // Reset the port
-    if (!usb_dev_request(dev,
+    if (!UsbDevRequest(dev,
         RT_HOST_TO_DEV | RT_CLASS | RT_OTHER,
         REQ_SET_FEATURE, F_PORT_RESET, port + 1,
         0, 0))
@@ -51,10 +51,10 @@ static uint usb_hub_reset_port(USB_Hub* hub, uint port)
     for (uint i = 0; i < 10; ++i)
     {
         // Delay
-        pit_wait(10);
+        PitWait(10);
 
         // Get current status
-        if (!usb_dev_request(dev,
+        if (!UsbDevRequest(dev,
             RT_DEV_TO_HOST | RT_CLASS | RT_OTHER,
             REQ_GET_STATUS, 0, port + 1,
             sizeof(status), &status))
@@ -87,17 +87,17 @@ static uint usb_hub_reset_port(USB_Hub* hub, uint port)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void usb_hub_probe(USB_Hub* hub)
+static void UsbHubProbe(UsbHub *hub)
 {
-    USB_Device* dev = hub->dev;
-    uint port_count = hub->desc.port_count;
+    UsbDevice *dev = hub->dev;
+    uint portCount = hub->desc.portCount;
 
     // Enable power if needed
     if ((hub->desc.chars & HUB_POWER_MASK) == HUB_POWER_INDIVIDUAL)
     {
-        for (uint port = 0; port < port_count; ++port)
+        for (uint port = 0; port < portCount; ++port)
         {
-            if (!usb_dev_request(dev,
+            if (!UsbDevRequest(dev,
                 RT_HOST_TO_DEV | RT_CLASS | RT_OTHER,
                 REQ_SET_FEATURE, F_PORT_POWER, port + 1,
                 0, 0))
@@ -107,31 +107,31 @@ static void usb_hub_probe(USB_Hub* hub)
 
         }
 
-        pit_wait(hub->desc.port_power_time * 2);
+        PitWait(hub->desc.portPowerTime * 2);
     }
 
     // Reset ports
-    for (uint port = 0; port < port_count; ++port)
+    for (uint port = 0; port < portCount; ++port)
     {
-        uint status = usb_hub_reset_port(hub, port);
+        uint status = UsbHubResetPort(hub, port);
 
         if (status & PORT_ENABLE)
         {
             uint speed = (status & PORT_SPEED_MASK) >> PORT_SPEED_SHIFT;
 
-            USB_Device* dev = usb_dev_create();
+            UsbDevice *dev = UsbDevCreate();
             if (dev)
             {
                 dev->parent = hub->dev;
                 dev->hc = hub->dev->hc;
                 dev->port = port;
                 dev->speed = speed;
-                dev->max_packet_size = 8;
+                dev->maxPacketSize = 8;
 
-                dev->hc_control = hub->dev->hc_control;
-                dev->hc_intr = hub->dev->hc_intr;
+                dev->hcControl = hub->dev->hcControl;
+                dev->hcIntr = hub->dev->hcIntr;
 
-                if (!usb_dev_init(dev))
+                if (!UsbDevInit(dev))
                 {
                     // TODO - cleanup
                 }
@@ -141,38 +141,38 @@ static void usb_hub_probe(USB_Hub* hub)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void usb_hub_poll(USB_Device* dev)
+static void UsbHubPoll(UsbDevice *dev)
 {
 }
 
 // ------------------------------------------------------------------------------------------------
-bool usb_hub_init(USB_Device* dev)
+bool UsbHubInit(UsbDevice *dev)
 {
-    if (dev->intf_desc.intf_class == USB_CLASS_HUB)
+    if (dev->intfDesc.intfClass == USB_CLASS_HUB)
     {
-        console_print("Initializing Hub\n");
+        ConsolePrint("Initializing Hub\n");
 
         // Get Hub Descriptor
-        USB_HubDesc desc;
+        UsbHubDesc desc;
 
-        if (!usb_dev_request(dev,
+        if (!UsbDevRequest(dev,
             RT_DEV_TO_HOST | RT_CLASS | RT_DEV,
             REQ_GET_DESC, (USB_DESC_HUB << 8) | 0, 0,
-            sizeof(USB_HubDesc), &desc))
+            sizeof(UsbHubDesc), &desc))
         {
             return false;
         }
 
-        usb_print_hub_desc(&desc);
+        UsbPrintHubDesc(&desc);
 
-        USB_Hub* hub = vm_alloc(sizeof(USB_Hub));
+        UsbHub *hub = VMAlloc(sizeof(UsbHub));
         hub->dev = dev;
         hub->desc = desc;
 
         dev->drv = hub;
-        dev->drv_poll = usb_hub_poll;
+        dev->drvPoll = UsbHubPoll;
 
-        usb_hub_probe(hub);
+        UsbHubProbe(hub);
         return true;
     }
 

@@ -7,12 +7,12 @@
 #include <string.h>
 
 // ------------------------------------------------------------------------------------------------
-static void test_print()
+static void TestPrint()
 {
     char buf[32];
 
     // empty format
-    char* emptyFmt = "";    // workaround warning
+    char *emptyFmt = "";    // workaround warning
     ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), emptyFmt), 0);
     ASSERT_EQ_STR(buf, emptyFmt);
 
@@ -37,7 +37,7 @@ static void test_print()
     ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%s", "abc"), 3);
     ASSERT_EQ_STR(buf, "abc");
 
-    char* s = 0;
+    char *s = 0;
     ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%s", s), 6);
     ASSERT_EQ_STR(buf, "(null)");
 
@@ -74,10 +74,10 @@ static void test_print()
     ASSERT_EQ_STR(buf, "123456789abcdef");
 
     // 'p'
-    ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%p", (void*)0x12345678), 10);
+    ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%p", (void *)0x12345678), 10);
     ASSERT_EQ_STR(buf, "0x12345678");
 
-    ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%p", (void*)0x123456), 8);
+    ASSERT_EQ_UINT(snprintf(buf, sizeof(buf), "%p", (void *)0x123456), 8);
     ASSERT_EQ_STR(buf, "0x123456");
 
     // padding
@@ -105,11 +105,11 @@ static void test_print()
 }
 
 // ------------------------------------------------------------------------------------------------
-static void test_scan()
+static void TestScan()
 {
     int n[4];
 
-    char* emptyFmt = "";    // workaround warning
+    char *emptyFmt = "";    // workaround warning
     ASSERT_EQ_INT(sscanf("", emptyFmt), 0);
     //ASSERT_EQ_INT(sscanf("", "%d", &n[0]), -1);
 
@@ -142,10 +142,10 @@ static void test_scan()
 }
 
 // ------------------------------------------------------------------------------------------------
-int main(int argc, const char** argv)
+int main(int argc, const char **argv)
 {
-    test_print();
-    test_scan();
+    TestPrint();
+    TestScan();
 
     return EXIT_SUCCESS;
 }

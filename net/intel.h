@@ -6,4 +6,4 @@
 
 #include "pci/driver.h"
 
-void eth_intel_init(uint id, PCI_DeviceInfo* info);
+void EthIntelInit(uint id, PciDeviceInfo *info);

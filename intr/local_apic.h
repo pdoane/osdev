@@ -6,10 +6,10 @@
 
 #include "stdlib/types.h"
 
-extern u8* local_apic_address;
+extern u8 *g_localApicAddr;
 
-void lapic_init();
+void LocalApicInit();
 
-uint lapic_getid();
-void lapic_send_init(uint apic_id);
-void lapic_send_startup(uint apic_id, uint vector);
+uint LocalApicGetId();
+void LocalApicSendInit(uint apic_id);
+void LocalApicSendStartup(uint apic_id, uint vector);

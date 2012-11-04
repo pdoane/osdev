@@ -11,40 +11,40 @@
 #include "stdlib/string.h"
 
 // ------------------------------------------------------------------------------------------------
-typedef struct USB_Kbd
+typedef struct UsbKbd
 {
-    USB_Transfer data_transfer;
+    UsbTransfer dataTransfer;
     u8 data[8];
-    u8 last_data[8];
-} USB_Kbd;
+    u8 lastData[8];
+} UsbKbd;
 
 // ------------------------------------------------------------------------------------------------
-static void usb_kbd_process(USB_Kbd* kbd)
+static void UsbKbdProcess(UsbKbd *kbd)
 {
-    u8* data = kbd->data;
+    u8 *data = kbd->data;
     bool error = false;
 
     // Modifier keys
-    uint mod_delta = data[0] ^ kbd->last_data[0];
+    uint modDelta = data[0] ^ kbd->lastData[0];
     for (uint i = 0; i < 8; ++i)
     {
         uint mask = 1 << i;
-        if (mod_delta & mask)
+        if (modDelta & mask)
         {
-            input_event(mask << 8, data[0] & mask);
+            InputOnKey(mask << 8, data[0] & mask);
         }
     }
 
     // Release keys
     for (uint i = 2; i < 8; ++i)
     {
-        uint usage = kbd->last_data[i];
+        uint usage = kbd->lastData[i];
 
         if (usage)
         {
             if (!memchr(data + 2, usage, 6))
             {
-                input_event(usage, 0);
+                InputOnKey(usage, 0);
             }
         }
     }
@@ -56,9 +56,9 @@ static void usb_kbd_process(USB_Kbd* kbd)
 
         if (usage >= 4)
         {
-            if (!memchr(kbd->last_data + 2, usage, 6))
+            if (!memchr(kbd->lastData + 2, usage, 6))
             {
-                input_event(usage, 1);
+                InputOnKey(usage, 1);
             }
         }
         else if (usage > 0)
@@ -70,54 +70,54 @@ static void usb_kbd_process(USB_Kbd* kbd)
     // Update keystate
     if (!error)
     {
-        memcpy(kbd->last_data, data, 8);
+        memcpy(kbd->lastData, data, 8);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void usb_kbd_poll(USB_Device* dev)
+static void UsbKbdPoll(UsbDevice *dev)
 {
-    USB_Kbd* kbd = dev->drv;
+    UsbKbd *kbd = dev->drv;
 
-    USB_Transfer* t = &kbd->data_transfer;
+    UsbTransfer *t = &kbd->dataTransfer;
 
     if (t->complete)
     {
         if (t->success)
         {
-            usb_kbd_process(kbd);
+            UsbKbdProcess(kbd);
         }
 
         t->complete = false;
-        dev->hc_intr(dev, t);
+        dev->hcIntr(dev, t);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-bool usb_kbd_init(USB_Device* dev)
+bool UsbKbdInit(UsbDevice *dev)
 {
-    if (dev->intf_desc.intf_class == USB_CLASS_HID &&
-        dev->intf_desc.intf_subclass == USB_SUBCLASS_BOOT &&
-        dev->intf_desc.intf_protocol == USB_PROTOCOL_KBD)
+    if (dev->intfDesc.intfClass == USB_CLASS_HID &&
+        dev->intfDesc.intfSubClass == USB_SUBCLASS_BOOT &&
+        dev->intfDesc.intfProtocol == USB_PROTOCOL_KBD)
     {
-        console_print("Initializing Keyboard\n");
+        ConsolePrint("Initializing Keyboard\n");
 
-        USB_Kbd* kbd = vm_alloc(sizeof(USB_Kbd));
-        memset(kbd->last_data, 0, 8);
+        UsbKbd *kbd = VMAlloc(sizeof(UsbKbd));
+        memset(kbd->lastData, 0, 8);
 
         dev->drv = kbd;
-        dev->drv_poll = usb_kbd_poll;
+        dev->drvPoll = UsbKbdPoll;
 
-        uint intf_index = dev->intf_desc.intf_index;
+        uint intfIndex = dev->intfDesc.intfIndex;
 
         // Only send interrupt report when data changes
-        usb_dev_request(dev,
+        UsbDevRequest(dev,
             RT_HOST_TO_DEV | RT_CLASS | RT_INTF,
-            REQ_SET_IDLE, 0, intf_index,
+            REQ_SET_IDLE, 0, intfIndex,
             0, 0);
 
         // Prepare transfer
-        USB_Transfer* t = &kbd->data_transfer;
+        UsbTransfer *t = &kbd->dataTransfer;
         t->endp = &dev->endp;
         t->req = 0;
         t->data = kbd->data;
@@ -125,7 +125,7 @@ bool usb_kbd_init(USB_Device* dev)
         t->complete = false;
         t->success = false;
 
-        dev->hc_intr(dev, t);
+        dev->hcIntr(dev, t);
         return true;
     }
 

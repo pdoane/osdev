@@ -7,6 +7,7 @@
 #include "gfx/reg.h"
 #include "gfx/gfxpci.h"
 
+// ------------------------------------------------------------------------------------------------
 typedef struct GfxGTT
 {
     // Config from PCI config space
@@ -17,7 +18,8 @@ typedef struct GfxGTT
     u32 numTotalEntries;     // How many entries in the GTT
     u32 numMappableEntries;  // How many can be mapped at once
 
-    GttEntry *pGtt;
+    GttEntry *gtt;
 } GfxGTT;
 
-void gfx_init_gtt(GfxGTT *pGTT, const GfxPCI *pPci);
+// ------------------------------------------------------------------------------------------------
+void GfxInitGtt(GfxGTT *gtt, const GfxPCI *pci);

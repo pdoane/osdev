@@ -5,30 +5,31 @@
 #include "gfx/gfxmem.h"
 #include "net/rlog.h"
 
-
-void gfx_init_mem_manager(GfxMemManager *pMemMgr, const GfxGTT *pGTT, GfxPCI *pPCI)
+// ------------------------------------------------------------------------------------------------
+void GfxInitMemManager(GfxMemManager *memMgr, const GfxGTT *gtt, GfxPCI *pci)
 {
-    pMemMgr->vram.base       = 0;
-    pMemMgr->vram.current    = pMemMgr->vram.base;
-    pMemMgr->vram.top        = pGTT->stolenMemSize - 1;
+    memMgr->vram.base       = 0;
+    memMgr->vram.current    = memMgr->vram.base;
+    memMgr->vram.top        = gtt->stolenMemSize - 1;
 
-    pMemMgr->shared.base     = pGTT->stolenMemSize;
-    pMemMgr->shared.current  = pMemMgr->shared.base;
-    pMemMgr->shared.top      = (pGTT->numMappableEntries << GTT_PAGE_SHIFT) - 1;
+    memMgr->shared.base     = gtt->stolenMemSize;
+    memMgr->shared.current  = memMgr->shared.base;
+    memMgr->shared.top      = (gtt->numMappableEntries << GTT_PAGE_SHIFT) - 1;
 
 
-    pMemMgr->private.base    = pGTT->numMappableEntries << GTT_PAGE_SHIFT;
-    pMemMgr->private.current = pMemMgr->private.base;
-    pMemMgr->private.top     = (((u64)pGTT->numTotalEntries) << GTT_PAGE_SHIFT) - 1;
+    memMgr->private.base    = gtt->numMappableEntries << GTT_PAGE_SHIFT;
+    memMgr->private.current = memMgr->private.base;
+    memMgr->private.top     = (((u64)gtt->numTotalEntries) << GTT_PAGE_SHIFT) - 1;
 
     // Clear all fence registers (provide linear access to mem to cpu)
     for (u8 fenceNum = 0; fenceNum < FENCE_COUNT; ++fenceNum)
     {
-        gfx_write64(pPCI, FENCE_BASE + sizeof(RegFence) * fenceNum, 0);
+        GfxWrite64(pci, FENCE_BASE + sizeof(RegFence) * fenceNum, 0);
     }
 }
 
-void gfx_mem_enable_swizzle(GfxPCI *pPci)
+// ------------------------------------------------------------------------------------------------
+void GfxMemEnableSwizzle(GfxPCI *pci)
 {
     // Assume Dimms are same size, so bit 6 swizzling is on.
     // So enable DRAM swizzling.
@@ -36,22 +37,22 @@ void gfx_mem_enable_swizzle(GfxPCI *pPci)
     RegTileCtl tileCtrl;
     RegArbMode arbMode; 
 
-    arbCtrl.dword = gfx_read32(pPci, ARB_CTL);
+    arbCtrl.dword = GfxRead32(pci, ARB_CTL);
     arbCtrl.bits.tiledAddressSwizzling = 1;
-    gfx_write32(pPci, ARB_CTL, arbCtrl.dword);
+    GfxWrite32(pci, ARB_CTL, arbCtrl.dword);
 
-    tileCtrl.dword = gfx_read32(pPci, TILE_CTL);
+    tileCtrl.dword = GfxRead32(pci, TILE_CTL);
     tileCtrl.bits.swzctl = 1;
-    gfx_write32(pPci, TILE_CTL, tileCtrl.dword);
+    GfxWrite32(pci, TILE_CTL, tileCtrl.dword);
 
     arbMode.dword = 0;
     arbMode.bits.data.as4ts = 1;
     arbMode.bits.mask.as4ts = 1;
-    gfx_write32(pPci, ARB_MODE, arbMode.dword);
+    GfxWrite32(pci, ARB_MODE, arbMode.dword);
 
     // Tile Control may not be implemented.  It's not in the docs
     // and writes don't seem to work
-    rlog_print("ARB_CTL: 0x%08X\n", gfx_read32(pPci, ARB_CTL));
-    rlog_print("TILECTL: 0x%08X\n", gfx_read32(pPci, TILE_CTL));
-    rlog_print("ARB_MODE: 0x%08X\n", gfx_read32(pPci, ARB_MODE));
+    RlogPrint("ARB_CTL: 0x%08X\n", GfxRead32(pci, ARB_CTL));
+    RlogPrint("TILECTL: 0x%08X\n", GfxRead32(pci, TILE_CTL));
+    RlogPrint("ARB_MODE: 0x%08X\n", GfxRead32(pci, ARB_MODE));
 }

@@ -22,70 +22,70 @@
 // ARP Cache
 #define ARP_CACHE_SIZE      16
 
-typedef struct ARP_Entry
+typedef struct ArpEntry
 {
-    Eth_Addr ha;
-    IPv4_Addr pa;
+    EthAddr ha;
+    Ipv4Addr pa;
 
     // deferred packet to send
-    Net_Intf* intf;
-    u16 ether_type;
-    Net_Buf* pkt;
-} ARP_Entry;
+    NetIntf *intf;
+    u16 etherType;
+    NetBuf *pkt;
+} ArpEntry;
 
-static ARP_Entry arp_cache[ARP_CACHE_SIZE];
+static ArpEntry s_arpCache[ARP_CACHE_SIZE];
 
 // ------------------------------------------------------------------------------------------------
-static void arp_print(const Net_Buf* pkt)
+static void ArpPrint(const NetBuf *pkt)
 {
-    if (~net_trace & TRACE_LINK)
+    if (~g_netTrace & TRACE_LINK)
     {
         return;
     }
 
-    if (pkt->start + sizeof(ARP_Header) > pkt->end)
+    if (pkt->start + sizeof(ArpHeader) > pkt->end)
     {
         return;
     }
 
-    const u8* data = pkt->start;
-    const ARP_Header* hdr = (const ARP_Header*)data;
+    const u8 *data = pkt->start;
+    const ArpHeader *hdr = (const ArpHeader *)data;
 
-    u16 htype = net_swap16(hdr->htype);
-    u16 ptype = net_swap16(hdr->ptype);
+    u16 htype = NetSwap16(hdr->htype);
+    u16 ptype = NetSwap16(hdr->ptype);
     u8 hlen = hdr->hlen;
     u8 plen = hdr->plen;
-    u16 op = net_swap16(hdr->op);
-    console_print(" ARP: htype=0x%x ptype=0x%x hlen=%d plen=%d op=%d\n",
+    u16 op = NetSwap16(hdr->op);
+    ConsolePrint(" ARP: htype=0x%x ptype=0x%x hlen=%d plen=%d op=%d\n",
             htype, ptype, hlen, plen, op);
 
     if (htype == ARP_HTYPE_ETH && ptype == ET_IPV4 && pkt->start + 28 <= pkt->end)
     {
-        const Eth_Addr* sha = (const Eth_Addr*)(data + 8);
-        const IPv4_Addr* spa = (const IPv4_Addr*)(data + 14);
-        const Eth_Addr* tha = (const Eth_Addr*)(data + 18);
-        const IPv4_Addr* tpa = (const IPv4_Addr*)(data + 24);
+        const EthAddr *sha = (const EthAddr *)(data + 8);
+        const Ipv4Addr *spa = (const Ipv4Addr *)(data + 14);
+        const EthAddr *tha = (const EthAddr *)(data + 18);
+        const Ipv4Addr *tpa = (const Ipv4Addr *)(data + 24);
 
-        char sha_str[ETH_ADDR_STRING_SIZE];
-        char spa_str[IPV4_ADDR_STRING_SIZE];
-        char tha_str[ETH_ADDR_STRING_SIZE];
-        char tpa_str[IPV4_ADDR_STRING_SIZE];
+        char shaStr[ETH_ADDR_STRING_SIZE];
+        char spaStr[IPV4_ADDR_STRING_SIZE];
+        char thaStr[ETH_ADDR_STRING_SIZE];
+        char tpaStr[IPV4_ADDR_STRING_SIZE];
 
-        eth_addr_to_str(sha_str, sizeof(sha_str), sha);
-        ipv4_addr_to_str(spa_str, sizeof(spa_str), spa);
-        eth_addr_to_str(tha_str, sizeof(tha_str), tha);
-        ipv4_addr_to_str(tpa_str, sizeof(tpa_str), tpa);
+        EthAddrToStr(shaStr, sizeof(shaStr), sha);
+        Ipv4AddrToStr(spaStr, sizeof(spaStr), spa);
+        EthAddrToStr(thaStr, sizeof(thaStr), tha);
+        Ipv4AddrToStr(tpaStr, sizeof(tpaStr), tpa);
 
-        console_print(" ARP: %s spa=%s\n", sha_str, spa_str);
-        console_print(" ARP: %s tpa=%s\n", tha_str, tpa_str);
+        ConsolePrint(" ARP: %s spa=%s\n", shaStr, spaStr);
+        ConsolePrint(" ARP: %s tpa=%s\n", thaStr, tpaStr);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void arp_snd(Net_Intf* intf, uint op, const Eth_Addr* tha, const IPv4_Addr* tpa)
+static void ArpSend(NetIntf *intf, uint op, const EthAddr *tha, const Ipv4Addr *tpa)
 {
-    Net_Buf* pkt = net_alloc_buf();
-    u8* data = pkt->start;
+    NetBuf *pkt = NetAllocBuf();
+    u8 *data = pkt->start;
 
     // HTYPE
     data[0] = (ARP_HTYPE_ETH >> 8) & 0xff;
@@ -96,49 +96,49 @@ static void arp_snd(Net_Intf* intf, uint op, const Eth_Addr* tha, const IPv4_Add
     data[3] = (ET_IPV4) & 0xff;
 
     // HLEN
-    data[4] = sizeof(Eth_Addr);
+    data[4] = sizeof(EthAddr);
 
     // PLEN
-    data[5] = sizeof(IPv4_Addr);
+    data[5] = sizeof(Ipv4Addr);
 
     // Operation
     data[6] = (op >> 8) & 0xff;
     data[7] = (op) & 0xff;
 
     // SHA
-    *(Eth_Addr*)(data + 8) = intf->eth_addr;
+    *(EthAddr *)(data + 8) = intf->ethAddr;
 
     // SPA
-    *(IPv4_Addr*)(data + 14) = intf->ip_addr;
+    *(Ipv4Addr *)(data + 14) = intf->ipAddr;
 
     // THA
     if (op == ARP_OP_REQUEST)
     {
-        *(Eth_Addr*)(data + 18) = null_eth_addr;
+        *(EthAddr *)(data + 18) = g_nullEthAddr;
     }
     else
     {
-        *(Eth_Addr*)(data + 18) = *tha;
+        *(EthAddr *)(data + 18) = *tha;
     }
 
     // TPA
-    *(IPv4_Addr*)(data + 24) = *tpa;
+    *(Ipv4Addr *)(data + 24) = *tpa;
 
     pkt->end += 28;
 
     // Transmit packet
-    arp_print(pkt);
-    intf->tx(intf, tha, ET_ARP, pkt);
+    ArpPrint(pkt);
+    intf->send(intf, tha, ET_ARP, pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-static ARP_Entry* arp_lookup(const IPv4_Addr* pa)
+static ArpEntry *ArpLookup(const Ipv4Addr *pa)
 {
-    ARP_Entry* entry = arp_cache;
-    ARP_Entry* end = entry + ARP_CACHE_SIZE;
+    ArpEntry *entry = s_arpCache;
+    ArpEntry *end = entry + ARP_CACHE_SIZE;
     for (; entry != end; ++entry)
     {
-        if (ipv4_addr_eq(&entry->pa, pa))
+        if (Ipv4AddrEq(&entry->pa, pa))
         {
             return entry;
         }
@@ -148,11 +148,11 @@ static ARP_Entry* arp_lookup(const IPv4_Addr* pa)
 }
 
 // ------------------------------------------------------------------------------------------------
-static ARP_Entry* arp_add(const Eth_Addr* ha, const IPv4_Addr* pa)
+static ArpEntry *ArpAdd(const EthAddr *ha, const Ipv4Addr *pa)
 {
     // TODO - handle overflow
-    ARP_Entry* entry = arp_cache;
-    ARP_Entry* end = entry + ARP_CACHE_SIZE;
+    ArpEntry *entry = s_arpCache;
+    ArpEntry *end = entry + ARP_CACHE_SIZE;
     for (; entry != end; ++entry)
     {
         if (!entry->pa.u.bits)
@@ -168,17 +168,17 @@ static ARP_Entry* arp_add(const Eth_Addr* ha, const IPv4_Addr* pa)
         return entry;
     }
 
-    console_print("Ran out of ARP entries\n");
+    ConsolePrint("Ran out of ARP entries\n");
     return 0;
 }
 
 // ------------------------------------------------------------------------------------------------
-void arp_request(Net_Intf* intf, const IPv4_Addr* tpa, u16 ether_type, Net_Buf* pkt)
+void ArpRequest(NetIntf *intf, const Ipv4Addr *tpa, u16 etherType, NetBuf *pkt)
 {
-    ARP_Entry* entry = arp_lookup(tpa);
+    ArpEntry *entry = ArpLookup(tpa);
     if (!entry)
     {
-        entry = arp_add(&null_eth_addr, tpa);
+        entry = ArpAdd(&g_nullEthAddr, tpa);
     }
 
     if (entry)
@@ -186,39 +186,39 @@ void arp_request(Net_Intf* intf, const IPv4_Addr* tpa, u16 ether_type, Net_Buf* 
         // Drop any packet already queued
         if (entry->pkt)
         {
-            net_release_buf(entry->pkt);
+            NetReleaseBuf(entry->pkt);
         }
 
         entry->intf = intf;
-        entry->ether_type = ether_type;
+        entry->etherType = etherType;
         entry->pkt = pkt;
-        arp_snd(intf, ARP_OP_REQUEST, &broadcast_eth_addr, tpa);
+        ArpSend(intf, ARP_OP_REQUEST, &g_broadcastEthAddr, tpa);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void arp_reply(Net_Intf* intf, const Eth_Addr* tha, const IPv4_Addr* tpa)
+void ArpReply(NetIntf *intf, const EthAddr *tha, const Ipv4Addr *tpa)
 {
-    arp_snd(intf, ARP_OP_REPLY, tha, tpa);
+    ArpSend(intf, ARP_OP_REPLY, tha, tpa);
 }
 
 // ------------------------------------------------------------------------------------------------
-void arp_init()
+void ArpInit()
 {
     // Clear cache of all entries
-    ARP_Entry* entry = arp_cache;
-    ARP_Entry* end = entry + ARP_CACHE_SIZE;
+    ArpEntry *entry = s_arpCache;
+    ArpEntry *end = entry + ARP_CACHE_SIZE;
     for (; entry != end; ++entry)
     {
-        memset(&entry->ha, 0, sizeof(Eth_Addr));
-        memset(&entry->pa, 0, sizeof(IPv4_Addr));
+        memset(&entry->ha, 0, sizeof(EthAddr));
+        memset(&entry->pa, 0, sizeof(Ipv4Addr));
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-const Eth_Addr* arp_lookup_mac(const IPv4_Addr* pa)
+const EthAddr *ArpLookupEthAddr(const Ipv4Addr *pa)
 {
-    ARP_Entry* entry = arp_lookup(pa);
+    ArpEntry *entry = ArpLookup(pa);
     if (entry)
     {
         return &entry->ha;
@@ -228,22 +228,22 @@ const Eth_Addr* arp_lookup_mac(const IPv4_Addr* pa)
 }
 
 // ------------------------------------------------------------------------------------------------
-void arp_rx(Net_Intf* intf, Net_Buf* pkt)
+void ArpRecv(NetIntf *intf, NetBuf *pkt)
 {
-    arp_print(pkt);
+    ArpPrint(pkt);
 
     // Decode Header
-    if (pkt->start + sizeof(ARP_Header) > pkt->end)
+    if (pkt->start + sizeof(ArpHeader) > pkt->end)
     {
         return;
     }
 
-    const u8* data = pkt->start;
-    const ARP_Header* hdr = (const ARP_Header*)data;
+    const u8 *data = pkt->start;
+    const ArpHeader *hdr = (const ArpHeader *)data;
 
-    u16 htype = net_swap16(hdr->htype);
-    u16 ptype = net_swap16(hdr->ptype);
-    u16 op = net_swap16(hdr->op);
+    u16 htype = NetSwap16(hdr->htype);
+    u16 ptype = NetSwap16(hdr->ptype);
+    u16 op = NetSwap16(hdr->op);
 
     // Skip packets that are not Ethernet, IPv4, or well-formed
     if (htype != ARP_HTYPE_ETH || ptype != ET_IPV4 || pkt->start + 28 > pkt->end)
@@ -252,14 +252,14 @@ void arp_rx(Net_Intf* intf, Net_Buf* pkt)
     }
 
     // Decode addresses
-    const Eth_Addr* sha = (const Eth_Addr*)(data + 8);
-    const IPv4_Addr* spa = (const IPv4_Addr*)(data + 14);
-    //const Eth_Addr* tha = (const Eth_Addr*)(data + 18);
-    const IPv4_Addr* tpa = (const IPv4_Addr*)(data + 24);
+    const EthAddr *sha = (const EthAddr *)(data + 8);
+    const Ipv4Addr *spa = (const Ipv4Addr *)(data + 14);
+    //const EthAddr *tha = (const EthAddr *)(data + 18);
+    const Ipv4Addr *tpa = (const Ipv4Addr *)(data + 24);
 
     // Update existing entry if we know about this source IP address
     bool merge = false;
-    ARP_Entry* entry = arp_lookup(spa);
+    ArpEntry *entry = ArpLookup(spa);
     if (entry)
     {
         entry->ha = *sha;
@@ -268,27 +268,27 @@ void arp_rx(Net_Intf* intf, Net_Buf* pkt)
         // Send deferred packet
         if (entry->pkt)
         {
-            eth_tx_intf(entry->intf, spa, entry->ether_type, entry->pkt);
+            EthSendIntf(entry->intf, spa, entry->etherType, entry->pkt);
 
             entry->intf = 0;
-            entry->ether_type = 0;
+            entry->etherType = 0;
             entry->pkt = 0;
         }
     }
 
     // Check if this ARP packet is targeting our IP
-    if (ipv4_addr_eq(tpa, &intf->ip_addr))
+    if (Ipv4AddrEq(tpa, &intf->ipAddr))
     {
         // Add a new entry if we didn't update earlier.
         if (!merge)
         {
-            arp_add(sha, spa);
+            ArpAdd(sha, spa);
         }
 
         // Respond to requests.
         if (op == ARP_OP_REQUEST)
         {
-            arp_reply(intf, sha, spa);
+            ArpReply(intf, sha, spa);
         }
     }
 }

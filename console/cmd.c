@@ -23,81 +23,81 @@
 #include "time/rtc.h"
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_datetime(uint argc, const char** argv)
+static void CmdDateTime(uint argc, const char **argv)
 {
     char buf[TIME_STRING_SIZE];
 
     DateTime dt;
-    rtc_get_time(&dt);
-    format_time(buf, sizeof(buf), &dt);
+    RtcGetTime(&dt);
+    FormatTime(buf, sizeof(buf), &dt);
 
-    console_print("%s\n", buf);
+    ConsolePrint("%s\n", buf);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_detect(uint argc, const char** argv)
+static void CmdDetect(uint argc, const char **argv)
 {
-    cpu_detect();
+    CpuDetect();
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_echo(uint argc, const char** argv)
+static void CmdEcho(uint argc, const char **argv)
 {
     for (uint i = 0; i < argc; ++i)
     {
-        console_print("%s\n", argv[i]);
+        ConsolePrint("%s\n", argv[i]);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_gfx(uint argc, const char** argv)
+static void CmdGfx(uint argc, const char **argv)
 {
-    console_print("Starting 3D graphics...\n");
-    gfx_start();
+    ConsolePrint("Starting 3D graphics...\n");
+    GfxStart();
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_hello(uint argc, const char** argv)
+static void CmdHello(uint argc, const char **argv)
 {
-    console_print("Hello World.\n");
+    ConsolePrint("Hello World.\n");
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_help(uint argc, const char** argv)
+static void CmdHelp(uint argc, const char **argv)
 {
-    const ConsoleCmd* cmd = console_cmd_table;
+    const ConsoleCmd *cmd = g_consoleCmdTable;
     while (cmd->name)
     {
-        console_print("%s\n", cmd->name);
+        ConsolePrint("%s\n", cmd->name);
 
         ++cmd;
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_state(TCP_Conn* conn, uint old_state, uint new_state)
+static void HttpOnTcpState(TcpConn *conn, uint oldState, uint newState)
 {
-    const char* msg = (const char*)conn->ctx;
+    const char *msg = (const char *)conn->ctx;
 
-    if (new_state == TCP_ESTABLISHED)
+    if (newState == TCP_ESTABLISHED)
     {
-        tcp_send(conn, msg, strlen(msg));
+        TcpSend(conn, msg, strlen(msg));
     }
 
-    if (new_state == TCP_CLOSE_WAIT)
+    if (newState == TCP_CLOSE_WAIT)
     {
-        tcp_close(conn);
+        TcpClose(conn);
     }
 }
 
-static void tcp_data(TCP_Conn* conn, const u8* data, uint len)
+static void HttpOnTcpData(TcpConn *conn, const u8 *data, uint len)
 {
     uint col = 0;
 
     for (uint i = 0; i < len; ++i)
     {
         char c = data[i];
-        console_putchar(c);
+        ConsolePutChar(c);
         ++col;
         if (c == '\n')
         {
@@ -105,24 +105,24 @@ static void tcp_data(TCP_Conn* conn, const u8* data, uint len)
         }
         else if (col == 80)
         {
-            console_putchar('\n');
+            ConsolePutChar('\n');
             col = 0;
         }
     }
 }
 
-static void cmd_http(uint argc, const char** argv)
+static void CmdHttp(uint argc, const char **argv)
 {
     if (argc != 3)
     {
-        console_print("Usage: http <dest ipv4 address> <path>\n");
+        ConsolePrint("Usage: http <dest ipv4 address> <path>\n");
         return;
     }
 
-    IPv4_Addr dst_addr;
-    if (!str_to_ipv4_addr(&dst_addr, argv[1]))
+    Ipv4Addr dstAddr;
+    if (!StrToIpv4Addr(&dstAddr, argv[1]))
     {
-        console_print("Failed to parse destination address\n");
+        ConsolePrint("Failed to parse destination address\n");
         return;
     }
 
@@ -131,192 +131,192 @@ static void cmd_http(uint argc, const char** argv)
 
     snprintf(buf, sizeof(buf), "GET %s HTTP/1.0\r\n\r\n", argv[2]);
 
-    TCP_Conn* conn = tcp_create();
+    TcpConn *conn = TcpCreate();
     conn->ctx = buf;
-    conn->on_state = tcp_state;
-    conn->on_data = tcp_data;
+    conn->onState = HttpOnTcpState;
+    conn->onData = HttpOnTcpData;
 
-    tcp_connect(conn, &dst_addr, port);
+    TcpConnect(conn, &dstAddr, port);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_host(uint argc, const char** argv)
+static void CmdHost(uint argc, const char **argv)
 {
     if (argc != 2)
     {
-        console_print("Usage: host <host name>\n");
+        ConsolePrint("Usage: host <host name>\n");
         return;
     }
 
-    const char* host_name = argv[1];
+    const char *hostName = argv[1];
 
-    dns_query_host(host_name, 0);
+    DnsQueryHost(hostName, 0);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_lsconn(uint argc, const char** argv)
+static void CmdLsConn(uint argc, const char **argv)
 {
-    console_print("%-21s  %-21s  %s\n", "Local Address", "Remote Address", "State");
+    ConsolePrint("%-21s  %-21s  %s\n", "Local Address", "Remote Address", "State");
 
-    TCP_Conn* conn;
-    list_for_each(conn, tcp_active_conns, link)
+    TcpConn *conn;
+    ListForEach(conn, g_tcpActiveConns, link)
     {
-        char local_str[IPV4_ADDR_PORT_STRING_SIZE];
-        char remote_str[IPV4_ADDR_PORT_STRING_SIZE];
-        const char* state_str = "Unknown";
+        char localStr[IPV4_ADDR_PORT_STRING_SIZE];
+        char remoteStr[IPV4_ADDR_PORT_STRING_SIZE];
+        const char *stateStr = "Unknown";
 
-        ipv4_addr_port_to_str(local_str, sizeof(local_str), &conn->local_addr, conn->local_port);
-        ipv4_addr_port_to_str(remote_str, sizeof(remote_str), &conn->remote_addr, conn->remote_port);
+        Ipv4AddrPortToStr(localStr, sizeof(localStr), &conn->localAddr, conn->localPort);
+        Ipv4AddrPortToStr(remoteStr, sizeof(remoteStr), &conn->remoteAddr, conn->remotePort);
 
         if (conn->state <= TCP_TIME_WAIT)
         {
-            state_str = tcp_state_strs[conn->state];
+            stateStr = g_tcpStateStrs[conn->state];
         }
 
-        console_print("%-21s  %-21s  %s\n", local_str, remote_str, state_str);
+        ConsolePrint("%-21s  %-21s  %s\n", localStr, remoteStr, stateStr);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_lsroute(uint argc, const char** argv)
+static void CmdLsRoute(uint argc, const char **argv)
 {
-    net_print_route_table();
+    NetPrintRouteTable();
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_mem(uint argc, const char** argv)
+static void CmdMem(uint argc, const char **argv)
 {
-    console_print("net buf: %d\n", net_buf_alloc_count);
+    ConsolePrint("net buf: %d\n", g_netBufAllocCount);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_net_trace(uint argc, const char** argv)
+static void CmdNetTrace(uint argc, const char **argv)
 {
     if (argc != 2)
     {
-        console_print("Usage: net_trace <level>\n");
+        ConsolePrint("Usage: net_trace <level>\n");
         return;
     }
 
     uint level;
     if (sscanf(argv[1], "%d", &level) == 1)
     {
-        net_trace = level;
+        g_netTrace = level;
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_ping(uint argc, const char** argv)
+static void CmdPing(uint argc, const char **argv)
 {
     if (argc != 2)
     {
-        console_print("Usage: ping <dest ipv4 address>\n");
+        ConsolePrint("Usage: ping <dest ipv4 address>\n");
         return;
     }
 
-    IPv4_Addr dst_addr;
-    if (!str_to_ipv4_addr(&dst_addr, argv[1]))
+    Ipv4Addr dstAddr;
+    if (!StrToIpv4Addr(&dstAddr, argv[1]))
     {
-        console_print("Failed to parse destination address\n");
+        ConsolePrint("Failed to parse destination address\n");
         return;
     }
 
-    icmp_echo_request(&dst_addr, 1, 2, 0, 0);
+    IcmpEchoRequest(&dstAddr, 1, 2, 0, 0);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_synctime(uint argc, const char** argv)
+static void CmdSyncTime(uint argc, const char **argv)
 {
     if (argc != 2)
     {
-        console_print("Usage: synctime <dest ipv4 address>\n");
+        ConsolePrint("Usage: synctime <dest ipv4 address>\n");
         return;
     }
 
-    IPv4_Addr dst_addr;
-    if (!str_to_ipv4_addr(&dst_addr, argv[1]))
+    Ipv4Addr dstAddr;
+    if (!StrToIpv4Addr(&dstAddr, argv[1]))
     {
-        console_print("Failed to parse destination address\n");
+        ConsolePrint("Failed to parse destination address\n");
         return;
     }
 
-    ntp_tx(&dst_addr);
+    NtpSend(&dstAddr);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_reboot(uint argc, const char** argv)
+static void CmdReboot(uint argc, const char **argv)
 {
-    out8(0x64, 0xfe);   // Send reboot command to keyboard controller
+    IoWrite8(0x64, 0xfe);   // Send reboot command to keyboard controller
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_rlog(uint argc, const char** argv)
+static void CmdRlog(uint argc, const char **argv)
 {
     if (argc != 2)
     {
-        console_print("Usage: rlog <message>\n");
+        ConsolePrint("Usage: rlog <message>\n");
         return;
     }
 
-    const char* msg = argv[1];
-    rlog_print("%s", msg);
+    const char *msg = argv[1];
+    RlogPrint("%s", msg);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_ticks(uint argc, const char** argv)
+static void CmdTicks(uint argc, const char **argv)
 {
-    console_print("%d\n", pit_ticks);
+    ConsolePrint("%d\n", g_pitTicks);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_peek(uint argc, const char** argv)
+static void CmdPeek(uint argc, const char **argv)
 {
     if (argc != 2)
     {
-        console_print("Usage: peek <address>\n");
+        ConsolePrint("Usage: peek <address>\n");
         return;
     }
 
-    volatile u32 *pAddress = (u32 *)(strtoul(argv[1], 0, 0));
-    rlog_print("Value of %p is 0x%X", pAddress, *pAddress);
+    volatile u32 *addr = (u32 *)(strtoul(argv[1], 0, 0));
+    RlogPrint("Value of %p is 0x%X", addr, *addr);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void cmd_poke(uint argc, const char** argv)
+static void CmdPoke(uint argc, const char **argv)
 {
     if (argc != 3)
     {
-        console_print("Usage: poke <address> <value>\n");
+        ConsolePrint("Usage: poke <address> <value>\n");
         return;
     }
 
-    volatile u32 *pAddress = (u32 *)(strtoul(argv[1], 0, 0));
+    volatile u32 *addr = (u32 *)(strtoul(argv[1], 0, 0));
     u32 value    = (u32)(strtoul(argv[2], 0, 0));
-    rlog_print("Writing to %p: 0x%X", pAddress, value);
-    *pAddress = value;
+    RlogPrint("Writing to %p: 0x%X", addr, value);
+    *addr = value;
 }
 
 // ------------------------------------------------------------------------------------------------
-const ConsoleCmd console_cmd_table[] =
+const ConsoleCmd g_consoleCmdTable[] =
 {
-    { "datetime", cmd_datetime },
-    { "detect", cmd_detect },
-    { "echo", cmd_echo },
-    { "gfx", cmd_gfx },
-    { "hello", cmd_hello },
-    { "help", cmd_help },
-    { "host", cmd_host },
-    { "http", cmd_http },
-    { "lsconn", cmd_lsconn },
-    { "lsroute", cmd_lsroute },
-    { "mem", cmd_mem },
-    { "net_trace", cmd_net_trace },
-    { "ping", cmd_ping },
-    { "reboot", cmd_reboot },
-    { "rlog", cmd_rlog },
-    { "synctime", cmd_synctime },
-    { "ticks", cmd_ticks },
-    { "peek", cmd_peek },
-    { "poke", cmd_poke },
+    { "datetime", CmdDateTime },
+    { "detect", CmdDetect },
+    { "echo", CmdEcho },
+    { "gfx", CmdGfx },
+    { "hello", CmdHello },
+    { "help", CmdHelp },
+    { "host", CmdHost },
+    { "http", CmdHttp },
+    { "lsconn", CmdLsConn },
+    { "lsroute", CmdLsRoute },
+    { "mem", CmdMem },
+    { "net_trace", CmdNetTrace },
+    { "ping", CmdPing },
+    { "reboot", CmdReboot },
+    { "rlog", CmdRlog },
+    { "synctime", CmdSyncTime },
+    { "ticks", CmdTicks },
+    { "peek", CmdPeek },
+    { "poke", CmdPoke },
     { 0, 0 },
 };

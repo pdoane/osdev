@@ -10,9 +10,9 @@
 typedef struct Registers
 {
     u64 rdi, rsi, rbp, rbx, rdx, rcx, rax;
-    u64 int_num, err_code;
+    u64 intNum, errCode;
     u64 rip, cs, eflags, rsp, ss;
 } Registers;
 
 // ------------------------------------------------------------------------------------------------
-void exception_dump(Registers regs);
+void ExceptionDump(Registers regs);

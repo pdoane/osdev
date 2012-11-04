@@ -7,12 +7,12 @@
 #include <string.h>
 
 // ------------------------------------------------------------------------------------------------
-static ExpectedQueue* s_params;
-static const char* s_file;
+static ExpectedQueue *s_params;
+static const char *s_file;
 static unsigned s_line;
 
 // ------------------------------------------------------------------------------------------------
-void assert_true(const char* expr, bool result, const char* file, unsigned line)
+void AssertTrue(const char *expr, bool result, const char *file, unsigned line)
 {
     if (!result)
     {
@@ -22,7 +22,7 @@ void assert_true(const char* expr, bool result, const char* file, unsigned line)
 }
 
 // ------------------------------------------------------------------------------------------------
-void assert_eq_char(const char* expr, char result, char expected, const char* file, unsigned line)
+void AssertEqChar(const char *expr, char result, char expected, const char *file, unsigned line)
 {
     if (result != expected)
     {
@@ -32,7 +32,7 @@ void assert_eq_char(const char* expr, char result, char expected, const char* fi
 }
 
 // ------------------------------------------------------------------------------------------------
-void assert_eq_hex(const char* expr, unsigned short result, unsigned short expected, unsigned width, const char* file, unsigned line)
+void AssertEqHex(const char *expr, unsigned short result, unsigned short expected, unsigned width, const char *file, unsigned line)
 {
     if (result != expected)
     {
@@ -42,14 +42,14 @@ void assert_eq_hex(const char* expr, unsigned short result, unsigned short expec
 }
 
 // ------------------------------------------------------------------------------------------------
-void assert_eq_mem(const char* expr, void* result, void* expected, size_t len, const char* file, unsigned line)
+void AssertEqMem(const char *expr, void *result, void *expected, size_t len, const char *file, unsigned line)
 {
     if (memcmp(result, expected, len))
     {
         fprintf(stderr, "%s(%d): %s => memory compare failed\n", file, line, expr);
 
-        unsigned char* p = (unsigned char*)result;
-        unsigned char* q = (unsigned char*)expected;
+        unsigned char *p = (unsigned char *)result;
+        unsigned char *q = (unsigned char *)expected;
         for (size_t i = 0; i < len; ++i)
         {
             fprintf(stderr, " 0x%02x '%c' %s 0x%02x '%c'\n", p[i], p[i], p[i] == q[i] ? "==" : "!=", q[i], q[i]);
@@ -60,7 +60,7 @@ void assert_eq_mem(const char* expr, void* result, void* expected, size_t len, c
 }
 
 // ------------------------------------------------------------------------------------------------
-void assert_eq_ptr(const char* expr, void* result, void* expected, const char* file, unsigned line)
+void AssertEqPtr(const char *expr, void *result, void *expected, const char *file, unsigned line)
 {
     if (result != expected)
     {
@@ -71,7 +71,7 @@ void assert_eq_ptr(const char* expr, void* result, void* expected, const char* f
 }
 
 // ------------------------------------------------------------------------------------------------
-void assert_eq_str(const char* expr, const char* result, const char* expected, const char* file, unsigned line)
+void AssertEqStr(const char *expr, const char *result, const char *expected, const char *file, unsigned line)
 {
     if (strcmp(result, expected))
     {
@@ -81,7 +81,7 @@ void assert_eq_str(const char* expr, const char* result, const char* expected, c
 }
 
 // ------------------------------------------------------------------------------------------------
-void assert_eq_int(const char* expr, long long result, long long expected, const char* file, unsigned line)
+void AssertEqInt(const char *expr, long long result, long long expected, const char *file, unsigned line)
 {
     if (result != expected)
     {
@@ -91,7 +91,7 @@ void assert_eq_int(const char* expr, long long result, long long expected, const
 }
 
 // ------------------------------------------------------------------------------------------------
-void assert_eq_uint(const char* expr, unsigned long long result, unsigned long long expected, const char* file, unsigned line)
+void AssertEqUint(const char *expr, unsigned long long result, unsigned long long expected, const char *file, unsigned line)
 {
     if (result != expected)
     {
@@ -102,7 +102,7 @@ void assert_eq_uint(const char* expr, unsigned long long result, unsigned long l
 
 
 // ------------------------------------------------------------------------------------------------
-void init_queue(ExpectedQueue* q, const char* function, const char* param)
+void InitQueue(ExpectedQueue *q, const char *function, const char *param)
 {
     q->next = s_params;
     q->function = function;
@@ -114,50 +114,50 @@ void init_queue(ExpectedQueue* q, const char* function, const char* param)
 }
 
 // ------------------------------------------------------------------------------------------------
-void mock_failure()
+void MockFailure()
 {
     fprintf(stderr, "%s(%d): Mock failed\n", s_file, s_line);
     exit(EXIT_FAILURE);
 }
 
 // ------------------------------------------------------------------------------------------------
-void match_int(ExpectedQueue* q, int n)
+void MatchInt(ExpectedQueue *q, int n)
 {
     if (q->head == 0)
     {
         fprintf(stderr, "%s: Unexpected call\n", q->function);
-        mock_failure();
+        MockFailure();
     }
     else
     {
-        ExpectedValue* v = q->head;
+        ExpectedValue *v = q->head;
         q->head = v->next;
 
         if (v->u.n != n)
         {
             fprintf(stderr, "%s: %s=%d, expected %d\n", q->function, q->param, n, v->u.n);
-            mock_failure();
+            MockFailure();
         }
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void match_char(ExpectedQueue* q, char ch)
+void MatchChar(ExpectedQueue *q, char ch)
 {
     if (q->head == 0)
     {
         fprintf(stderr, "%s: Unexpected call\n", q->function);
-        mock_failure();
+        MockFailure();
     }
     else
     {
-        ExpectedValue* v = q->head;
+        ExpectedValue *v = q->head;
         q->head = v->next;
 
         if (v->u.ch != ch)
         {
             fprintf(stderr, "%s: %s=%c, expected %c\n", q->function, q->param, ch, v->u.ch);
-            mock_failure();
+            MockFailure();
         }
 
         free(v);
@@ -165,9 +165,9 @@ void match_char(ExpectedQueue* q, char ch)
 }
 
 // ------------------------------------------------------------------------------------------------
-void expect_char(ExpectedQueue* q, char ch)
+void ExpectChar(ExpectedQueue *q, char ch)
 {
-    ExpectedValue* v = (ExpectedValue*)malloc(sizeof(ExpectedValue));
+    ExpectedValue *v = (ExpectedValue *)malloc(sizeof(ExpectedValue));
     v->next = 0;
     v->u.ch = ch;
     *q->tail = v;
@@ -175,9 +175,9 @@ void expect_char(ExpectedQueue* q, char ch)
 }
 
 // ------------------------------------------------------------------------------------------------
-void expect_int(ExpectedQueue* q, int n)
+void ExpectInt(ExpectedQueue *q, int n)
 {
-    ExpectedValue* v = (ExpectedValue*)malloc(sizeof(ExpectedValue));
+    ExpectedValue *v = (ExpectedValue *)malloc(sizeof(ExpectedValue));
     v->next = 0;
     v->u.n = n;
     *q->tail = v;
@@ -185,29 +185,29 @@ void expect_int(ExpectedQueue* q, int n)
 }
 
 // ------------------------------------------------------------------------------------------------
-void end_queue(ExpectedQueue* q)
+void EndQueue(ExpectedQueue *q)
 {
     if (q->head)
     {
         fprintf(stderr, "%s: Expected more calls\n", q->function);
-        mock_failure();
+        MockFailure();
     }
 
     q->tail = &q->head;
 }
 
 // ------------------------------------------------------------------------------------------------
-void pre_mock(const char* file, unsigned line)
+void PreMock(const char *file, unsigned line)
 {
     s_file = file;
     s_line = line;
 }
 
 // ------------------------------------------------------------------------------------------------
-void post_mock()
+void PostMock()
 {
-    for (ExpectedQueue* q = s_params; q; q = q->next)
+    for (ExpectedQueue *q = s_params; q; q = q->next)
     {
-        end_queue(q);
+        EndQueue(q);
     }
 }

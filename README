@@ -79,7 +79,7 @@ Setup and Installation for Windows:
 -------------------------------------------------------------------------------
 Configuration:
 
-- tz_local in time.c
+- g_localTimeZone in time.c
 
 -------------------------------------------------------------------------------
 What to expect:

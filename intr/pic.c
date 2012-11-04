@@ -25,25 +25,25 @@
 #define ICW4_SFNM                       0x10        // Special fully nested is programmed
 
 // ------------------------------------------------------------------------------------------------
-void pic_init()
+void PicInit()
 {
     // ICW1: start initialization, ICW4 needed
-    out8(PIC1_CMD, ICW1_INIT | ICW1_ICW4);
-    out8(PIC2_CMD, ICW1_INIT | ICW1_ICW4);
+    IoWrite8(PIC1_CMD, ICW1_INIT | ICW1_ICW4);
+    IoWrite8(PIC2_CMD, ICW1_INIT | ICW1_ICW4);
 
     // ICW2: interrupt vector address
-    out8(PIC1_DATA, IRQ_BASE);
-    out8(PIC2_DATA, IRQ_BASE + 8);
+    IoWrite8(PIC1_DATA, IRQ_BASE);
+    IoWrite8(PIC2_DATA, IRQ_BASE + 8);
 
     // ICW3: master/slave wiring
-    out8(PIC1_DATA, 4);
-    out8(PIC2_DATA, 2);
+    IoWrite8(PIC1_DATA, 4);
+    IoWrite8(PIC2_DATA, 2);
 
     // ICW4: 8086 mode, not special fully nested, not buffered, normal EOI
-    out8(PIC1_DATA, ICW4_8086);
-    out8(PIC2_DATA, ICW4_8086);
+    IoWrite8(PIC1_DATA, ICW4_8086);
+    IoWrite8(PIC2_DATA, ICW4_8086);
 
     // OCW1: Disable all IRQs
-    out8(PIC1_DATA, 0xff);
-    out8(PIC2_DATA, 0xff);
+    IoWrite8(PIC1_DATA, 0xff);
+    IoWrite8(PIC2_DATA, 0xff);
 }

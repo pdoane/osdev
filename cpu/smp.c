@@ -9,43 +9,43 @@
 #include "time/pit.h"
 
 // ------------------------------------------------------------------------------------------------
-void smp_init()
+void SmpInit()
 {
-    console_print("Waking up all CPUs\n");
+    ConsolePrint("Waking up all CPUs\n");
 
-    active_cpu_count = 1;
-    uint local_id = lapic_getid();
+    g_activeCpuCount = 1;
+    uint localId = LocalApicGetId();
 
     // Send Init to all cpus except self
-    for (uint i = 0; i < acpi_cpu_count; ++i)
+    for (uint i = 0; i < g_acpiCpuCount; ++i)
     {
-        uint apic_id = acpi_cpu_ids[i];
-        if (apic_id != local_id)
+        uint apicId = g_acpiCpuIds[i];
+        if (apicId != localId)
         {
-            lapic_send_init(apic_id);
+            LocalApicSendInit(apicId);
         }
     }
 
     // wait
-    pit_wait(10);
+    PitWait(10);
 
     // Send Startup to all cpus except self
-    for (uint i = 0; i < acpi_cpu_count; ++i)
+    for (uint i = 0; i < g_acpiCpuCount; ++i)
     {
-        uint apic_id = acpi_cpu_ids[i];
-        if (apic_id != local_id)
+        uint apicId = g_acpiCpuIds[i];
+        if (apicId != localId)
         {
-            lapic_send_startup(apic_id, 0x8);
+            LocalApicSendStartup(apicId, 0x8);
         }
     }
 
     // Wait for all cpus to be active
-    pit_wait(1);
-    while (active_cpu_count != acpi_cpu_count)
+    PitWait(1);
+    while (g_activeCpuCount != g_acpiCpuCount)
     {
-        console_print("Waiting... %d\n", active_cpu_count);
-        pit_wait(1);
+        ConsolePrint("Waiting... %d\n", g_activeCpuCount);
+        PitWait(1);
     }
 
-    console_print("All CPUs activated\n");
+    ConsolePrint("All CPUs activated\n");
 }

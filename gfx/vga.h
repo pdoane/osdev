@@ -37,6 +37,6 @@
 #define DEFAULT_TEXT_ATTR               TEXT_ATTR(TEXT_LIGHT_GRAY, TEXT_BLUE)
 
 // ------------------------------------------------------------------------------------------------
-void vga_text_init();
-void vga_text_clear();
-void vga_text_setcursor(uint offset);
+void VgaTextInit();
+void VgaTextClear();
+void VgaTextSetCursor(uint offset);

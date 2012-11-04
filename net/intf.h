@@ -11,26 +11,26 @@
 // ------------------------------------------------------------------------------------------------
 // Net Interface
 
-typedef struct Net_Intf
+typedef struct NetIntf
 {
     Link link;
-    Eth_Addr eth_addr;
-    IPv4_Addr ip_addr;
-    IPv4_Addr broadcast_addr;
-    const char* name;
+    EthAddr ethAddr;
+    Ipv4Addr ipAddr;
+    Ipv4Addr broadcastAddr;
+    const char *name;
 
-    void (*poll)(struct Net_Intf* intf);
-    void (*tx)(struct Net_Intf* intf, const void* dst_addr, u16 ether_type, Net_Buf* buf);
-    void (*dev_tx)(Net_Buf* buf);
-} Net_Intf;
+    void (*poll)(struct NetIntf *intf);
+    void (*send)(struct NetIntf *intf, const void *dstAddr, u16 etherType, NetBuf *buf);
+    void (*devSend)(NetBuf *buf);
+} NetIntf;
 
 // ------------------------------------------------------------------------------------------------
 // Globals
 
-extern Link net_intf_list;
+extern Link g_netIntfList;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-Net_Intf* net_intf_create();
-void net_intf_add(Net_Intf* intf);
+NetIntf *NetIntfCreate();
+void NetIntfAdd(NetIntf *intf);

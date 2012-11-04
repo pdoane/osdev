@@ -6,4 +6,4 @@
 
 #include "stdlib/types.h"
 
-void mem_dump(const void* start, const void* end);
+void MemDump(const void *start, const void *end);

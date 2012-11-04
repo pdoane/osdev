@@ -5,10 +5,10 @@
 #include "stdlib/string.h"
 
 // ------------------------------------------------------------------------------------------------
-void* memset(void* s, int c, size_t n)
+void *memset(void *s, int c, size_t n)
 {
-    u8* p = (u8*)s;
-    u8* end = p + n;
+    u8 *p = (u8 *)s;
+    u8 *end = p + n;
 
     while (p != end)
     {
@@ -19,11 +19,11 @@ void* memset(void* s, int c, size_t n)
 }
 
 // ------------------------------------------------------------------------------------------------
-void* memcpy(void* dst, const void* src, size_t n)
+void *memcpy(void *dst, const void *src, size_t n)
 {
-    u8* p = (u8*)src;
-    u8* q = (u8*)dst;
-    u8* end = p + n;
+    u8 *p = (u8 *)src;
+    u8 *q = (u8 *)dst;
+    u8 *end = p + n;
 
     while (p != end)
     {
@@ -34,11 +34,11 @@ void* memcpy(void* dst, const void* src, size_t n)
 }
 
 // ------------------------------------------------------------------------------------------------
-void* memmove(void* dst, const void* src, size_t n)
+void *memmove(void *dst, const void *src, size_t n)
 {
-    u8* p = (u8*)src;
-    u8* q = (u8*)dst;
-    u8* end = p + n;
+    u8 *p = (u8 *)src;
+    u8 *q = (u8 *)dst;
+    u8 *end = p + n;
 
     if (q > p && q < end)
     {
@@ -62,10 +62,10 @@ void* memmove(void* dst, const void* src, size_t n)
 }
 
 // ------------------------------------------------------------------------------------------------
-void* memchr(const void* buf, int c, size_t n)
+void *memchr(const void *buf, int c, size_t n)
 {
-    u8* p = (u8*)buf;
-    u8* end = p + n;
+    u8 *p = (u8 *)buf;
+    u8 *end = p + n;
 
     while (p != end)
     {
@@ -100,9 +100,9 @@ int memcmp(const void *s1, const void *s2, size_t n)
 }
 
 // ------------------------------------------------------------------------------------------------
-size_t strlen(const char* str)
+size_t strlen(const char *str)
 {
-    const char* s = str;
+    const char *s = str;
     while (*s++)
         ;
 
@@ -110,10 +110,10 @@ size_t strlen(const char* str)
 }
 
 // ------------------------------------------------------------------------------------------------
-char* strcpy(char* dst, const char* src)
+char *strcpy(char *dst, const char *src)
 {
     char c;
-    char* p = dst;
+    char *p = dst;
 
     while ((c = *src++))
     {
@@ -125,7 +125,7 @@ char* strcpy(char* dst, const char* src)
 }
 
 // ------------------------------------------------------------------------------------------------
-char* strncpy(char* dst, const char* src, size_t n)
+char *strncpy(char *dst, const char *src, size_t n)
 {
     size_t i;
 
@@ -143,7 +143,7 @@ char* strncpy(char* dst, const char* src, size_t n)
 }
 
 // ------------------------------------------------------------------------------------------------
-int strcmp(const char* s1, const char* s2)
+int strcmp(const char *s1, const char *s2)
 {
     while (*s1 == *s2)
     {
@@ -160,10 +160,10 @@ int strcmp(const char* s1, const char* s2)
 }
 
 // ------------------------------------------------------------------------------------------------
-char* strcpy_safe(char* dst, const char* src, size_t dstSize)
+char *strcpy_safe(char *dst, const char *src, size_t dstSize)
 {
-    char* p = dst;
-    char* end = dst + dstSize - 1;
+    char *p = dst;
+    char *end = dst + dstSize - 1;
     char c;
 
     while ((c = *src++) && dst < end)

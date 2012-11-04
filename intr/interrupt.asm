@@ -8,9 +8,9 @@
 [GLOBAL pit_interrupt]
 [GLOBAL spurious_interrupt]
 
-[EXTERN pit_ticks]
-[EXTERN local_apic_address]
-[EXTERN exception_dump]
+[EXTERN g_pitTicks]
+[EXTERN g_localApicAddr]
+[EXTERN ExceptionDump]
 
 ; -------------------------------------------------------------------------------------------------
 ; Default handlers
@@ -91,7 +91,7 @@ exception_body:
         push rsi
         push rdi
 
-        call exception_dump
+        call ExceptionDump
 
         jmp $
 
@@ -116,12 +116,12 @@ pit_interrupt:
         push rax
         push rdi
 
-        mov eax, dword [pit_ticks]
+        mov eax, dword [g_pitTicks]
         inc eax
-        mov dword [pit_ticks], eax
+        mov dword [g_pitTicks], eax
 
         ; Acknowledge interrupt
-        mov rdi, [local_apic_address]
+        mov rdi, [g_localApicAddr]
         add rdi, 0xb0
         xor eax, eax
         stosd

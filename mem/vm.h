@@ -13,9 +13,9 @@
 #define PAGE_CACHE_DISABLE              0x10    // Page-level cache-disable
 
 // ------------------------------------------------------------------------------------------------
-void vm_init();
+void VMInit();
 
-void* vm_alloc(uint size);
-void* vm_alloc_align(uint size, uint align);
+void *VMAlloc(uint size);
+void *VMAllocAlign(uint size, uint align);
 
-void vm_map_pages(void* addr, uint size, uint flags);
+void VMMapPages(void *addr, uint size, uint flags);

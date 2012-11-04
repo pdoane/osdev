@@ -11,20 +11,20 @@
 #include "console/console.h"
 
 // ------------------------------------------------------------------------------------------------
-static bool eth_decode(Eth_Packet* ep, Net_Buf* pkt)
+static bool EthDecode(EthPacket *ep, NetBuf *pkt)
 {
     // Decode header
-    if (pkt->start + sizeof(Eth_Header) > pkt->end)
+    if (pkt->start + sizeof(EthHeader) > pkt->end)
     {
         return false;
     }
 
-    u8* data = pkt->start;
-    Eth_Header* hdr = (Eth_Header*)data;
+    u8 *data = pkt->start;
+    EthHeader *hdr = (EthHeader *)data;
     ep->hdr = hdr;
 
     // Determine which frame type is being used.
-    u16 n = net_swap16(hdr->ether_type);
+    u16 n = NetSwap16(hdr->etherType);
     if (n <= 1500 && pkt->start + 22 <= pkt->end)
     {
         // 802.2/802.3 encapsulation (RFC 1042)
@@ -37,79 +37,79 @@ static bool eth_decode(Eth_Packet* ep, Net_Buf* pkt)
             return false;
         }
 
-        ep->ether_type = (data[20] << 8) | data[21];
-        ep->hdr_len = 22;
+        ep->etherType = (data[20] << 8) | data[21];
+        ep->hdrLen = 22;
     }
     else
     {
         // Ethernet encapsulation (RFC 894)
-        ep->ether_type = n;
-        ep->hdr_len = sizeof(Eth_Header);
+        ep->etherType = n;
+        ep->hdrLen = sizeof(EthHeader);
     }
 
     return true;
 }
 
 // ------------------------------------------------------------------------------------------------
-void eth_rx(Net_Intf* intf, Net_Buf* pkt)
+void EthRecv(NetIntf *intf, NetBuf *pkt)
 {
-    eth_print(pkt);
+    EthPrint(pkt);
 
-    Eth_Packet ep;
-    if (!eth_decode(&ep, pkt))
+    EthPacket ep;
+    if (!EthDecode(&ep, pkt))
     {
         // Bad packet or one we don't care about (e.g. STP packets)
         return;
     }
 
-    pkt->start += ep.hdr_len;
+    pkt->start += ep.hdrLen;
 
     // Dispatch packet based on protocol
-    switch (ep.ether_type)
+    switch (ep.etherType)
     {
     case ET_ARP:
-        arp_rx(intf, pkt);
+        ArpRecv(intf, pkt);
         break;
 
     case ET_IPV4:
-        ipv4_rx(intf, pkt);
+        Ipv4Recv(intf, pkt);
         break;
 
     case ET_IPV6:
-        ipv6_rx(intf, pkt);
+        Ipv6Recv(intf, pkt);
         break;
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void eth_tx_intf(Net_Intf* intf, const void* dst_addr, u16 ether_type, Net_Buf* pkt)
+void EthSendIntf(NetIntf *intf, const void *dstAddr, u16 etherType, NetBuf *pkt)
 {
     // Determine ethernet address by protocol of packet
-    const Eth_Addr* dst_eth_addr = 0;
+    const EthAddr *dstEthAddr = 0;
 
-    switch (ether_type)
+    switch (etherType)
     {
     case ET_ARP:
-        dst_eth_addr = (const Eth_Addr*)dst_addr;
+        dstEthAddr = (const EthAddr *)dstAddr;
         break;
 
     case ET_IPV4:
         {
-            const IPv4_Addr* dst_ipv4_addr = (const IPv4_Addr*)dst_addr;
+            const Ipv4Addr *dstIpv4Addr = (const Ipv4Addr *)dstAddr;
 
-            if (ipv4_addr_eq(dst_ipv4_addr, &broadcast_ipv4_addr) ||
-                ipv4_addr_eq(dst_ipv4_addr, &intf->broadcast_addr))
+            if (Ipv4AddrEq(dstIpv4Addr, &g_broadcastIpv4Addr) ||
+                Ipv4AddrEq(dstIpv4Addr, &intf->broadcastAddr))
             {
                 // IP Broadcast -> Ethernet Broacast
-                dst_eth_addr = &broadcast_eth_addr;
+                dstEthAddr = &g_broadcastEthAddr;
             }
             else
             {
                 // Lookup Ethernet address in ARP cache
-                dst_eth_addr = arp_lookup_mac(dst_ipv4_addr);
-                if (!dst_eth_addr)
+                dstEthAddr = ArpLookupEthAddr(dstIpv4Addr);
+                if (!dstEthAddr)
                 {
-                    arp_request(intf, dst_ipv4_addr, ether_type, pkt);
+                    ArpRequest(intf, dstIpv4Addr, etherType, pkt);
                     return;
                 }
             }
@@ -121,43 +121,43 @@ void eth_tx_intf(Net_Intf* intf, const void* dst_addr, u16 ether_type, Net_Buf* 
     }
 
     // Skip packets without a destination
-    if (!dst_eth_addr)
+    if (!dstEthAddr)
     {
-        console_print("Dropped packet\n");
+        ConsolePrint("Dropped packet\n");
         return;
     }
 
     // Fill in ethernet header
-    pkt->start -= sizeof(Eth_Header);
+    pkt->start -= sizeof(EthHeader);
 
-    Eth_Header* hdr = (Eth_Header*)pkt->start;
-    hdr->dst = *dst_eth_addr;
-    hdr->src = intf->eth_addr;
-    hdr->ether_type = net_swap16(ether_type);
+    EthHeader *hdr = (EthHeader *)pkt->start;
+    hdr->dst = *dstEthAddr;
+    hdr->src = intf->ethAddr;
+    hdr->etherType = NetSwap16(etherType);
 
     // Transmit
-    eth_print(pkt);
-    intf->dev_tx(pkt);
+    EthPrint(pkt);
+    intf->devSend(pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-void eth_print(Net_Buf* pkt)
+void EthPrint(NetBuf *pkt)
 {
-    if (~net_trace & TRACE_LINK)
+    if (~g_netTrace & TRACE_LINK)
     {
         return;
     }
 
-    Eth_Packet ep;
-    if (eth_decode(&ep, pkt))
+    EthPacket ep;
+    if (EthDecode(&ep, pkt))
     {
-        char dst_str[ETH_ADDR_STRING_SIZE];
-        char src_str[ETH_ADDR_STRING_SIZE];
+        char dstStr[ETH_ADDR_STRING_SIZE];
+        char srcStr[ETH_ADDR_STRING_SIZE];
 
-        eth_addr_to_str(dst_str, sizeof(dst_str), &ep.hdr->dst);
-        eth_addr_to_str(src_str, sizeof(src_str), &ep.hdr->src);
+        EthAddrToStr(dstStr, sizeof(dstStr), &ep.hdr->dst);
+        EthAddrToStr(srcStr, sizeof(srcStr), &ep.hdr->src);
 
-        uint len = pkt->end - pkt->start - ep.hdr_len;
-        console_print("ETH: dst=%s src=%s et=%04x len=%d\n", dst_str, src_str, ep.ether_type, len);
+        uint len = pkt->end - pkt->start - ep.hdrLen;
+        ConsolePrint("ETH: dst=%s src=%s et=%04x len=%d\n", dstStr, srcStr, ep.etherType, len);
     }
 }

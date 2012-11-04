@@ -2,8 +2,8 @@ OUTPUT_FORMAT("binary")
 ENTRY(kmain)
 SECTIONS
 {
-    local_apic_address = 0x00006000;
-    active_cpu_count = 0x00006008;
+    g_localApicAddr = 0x00006000;
+    g_activeCpuCount = 0x00006008;
 
     .text 0x0000000000100000:
     {

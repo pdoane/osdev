@@ -4,11 +4,11 @@
 
 #include "net/port.h"
 
-static u16 net_next_port = 49152;
+static u16 s_nextPort = 49152;
 
 // ------------------------------------------------------------------------------------------------
-u16 net_ephemeral_port()
+u16 NetEphemeralPort()
 {
     // TODO - check for collisions with active connections.
-    return net_next_port++;
+    return s_nextPort++;
 }

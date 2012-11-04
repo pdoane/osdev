@@ -5,4 +5,4 @@
 #include "usb/controller.h"
 
 // ------------------------------------------------------------------------------------------------
-USB_Controller* usb_controller_list;
+UsbController *g_usbControllerList;

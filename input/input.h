@@ -7,8 +7,8 @@
 #include "stdlib/types.h"
 
 // ------------------------------------------------------------------------------------------------
-extern int g_mouse_x;
-extern int g_mouse_y;
+extern int g_mouseX;
+extern int g_mouseY;
 
-void input_event(uint code, uint val);
-void mouse_event(int dx, int dy);
+void InputOnKey(uint code, uint val);
+void InputOnMouse(int dx, int dy);

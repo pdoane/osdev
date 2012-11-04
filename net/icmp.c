@@ -29,9 +29,9 @@
 #define ICMP_TYPE_TRACEROUTE            30
 
 // ------------------------------------------------------------------------------------------------
-void icmp_print(const Net_Buf* pkt)
+void IcmpPrint(const NetBuf *pkt)
 {
-    if (~net_trace & TRACE_NET)
+    if (~g_netTrace & TRACE_NET)
     {
         return;
     }
@@ -41,29 +41,29 @@ void icmp_print(const Net_Buf* pkt)
         return;
     }
 
-    u8* data = pkt->start;
+    u8 *data = pkt->start;
     u8 type = data[0];
     u8 code = data[1];
     u16 checksum = (data[2] << 8) | data[3];
     u16 id = (data[4] << 8) | data[5];
     u16 sequence = (data[6] << 8) | data[7];
 
-    uint checksum2 = net_checksum(pkt->start, pkt->end);
+    uint checksum2 = NetChecksum(pkt->start, pkt->end);
 
-    console_print("  ICMP: type=%d code=%d id=%d sequence=%d len=%d checksum=%d%c\n",
+    ConsolePrint("  ICMP: type=%d code=%d id=%d sequence=%d len=%d checksum=%d%c\n",
             type, code, id, sequence, pkt->end - pkt->start, checksum,
             checksum2 ? '!' : ' ');
 }
 
 // ------------------------------------------------------------------------------------------------
-static void icmp_echo_reply(const IPv4_Addr* dst_addr, u16 id, u16 sequence,
-    const u8* echo_data, const u8* echo_end)
+static void IcmpEchoReply(const Ipv4Addr *dstAddr, u16 id, u16 sequence,
+    const u8 *echoData, const u8 *echoEnd)
 {
-    uint echo_len = echo_end - echo_data;
+    uint echoLen = echoEnd - echoData;
 
-    Net_Buf* pkt = net_alloc_buf();
+    NetBuf *pkt = NetAllocBuf();
 
-    u8* data = pkt->start;
+    u8 *data = pkt->start;
     data[0] = ICMP_TYPE_ECHO_REPLY;
     data[1] = 0;
     data[2] = 0;
@@ -72,26 +72,26 @@ static void icmp_echo_reply(const IPv4_Addr* dst_addr, u16 id, u16 sequence,
     data[5] = (id) & 0xff;
     data[6] = (sequence >> 8) & 0xff;
     data[7] = (sequence) & 0xff;
-    memcpy(data + 8, data, echo_len);
-    pkt->end += 8 + echo_len;
+    memcpy(data + 8, data, echoLen);
+    pkt->end += 8 + echoLen;
 
-    uint checksum = net_checksum(pkt->start, pkt->end);
+    uint checksum = NetChecksum(pkt->start, pkt->end);
     data[2] = (checksum >> 8) & 0xff;
     data[3] = (checksum) & 0xff;
 
-    icmp_print(pkt);
-    ipv4_tx(dst_addr, IP_PROTOCOL_ICMP, pkt);
+    IcmpPrint(pkt);
+    Ipv4Send(dstAddr, IP_PROTOCOL_ICMP, pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-void icmp_echo_request(const IPv4_Addr* dst_addr, u16 id, u16 sequence,
-    const u8* echo_data, const u8* echo_end)
+void IcmpEchoRequest(const Ipv4Addr *dstAddr, u16 id, u16 sequence,
+    const u8 *echoData, const u8 *echoEnd)
 {
-    uint echo_len = echo_end - echo_data;
+    uint echoLen = echoEnd - echoData;
 
-    Net_Buf* pkt = net_alloc_buf();
+    NetBuf *pkt = NetAllocBuf();
 
-    u8* data = pkt->start;
+    u8 *data = pkt->start;
     data[0] = ICMP_TYPE_ECHO_REQUEST;
     data[1] = 0;
     data[2] = 0;
@@ -100,21 +100,21 @@ void icmp_echo_request(const IPv4_Addr* dst_addr, u16 id, u16 sequence,
     data[5] = (id) & 0xff;
     data[6] = (sequence >> 8) & 0xff;
     data[7] = (sequence) & 0xff;
-    memcpy(data + 8, echo_data, echo_len);
-    pkt->end += 8 + echo_len;
+    memcpy(data + 8, echoData, echoLen);
+    pkt->end += 8 + echoLen;
 
-    uint checksum = net_checksum(pkt->start, pkt->end);
+    uint checksum = NetChecksum(pkt->start, pkt->end);
     data[2] = (checksum >> 8) & 0xff;
     data[3] = (checksum) & 0xff;
 
-    icmp_print(pkt);
-    ipv4_tx(dst_addr, IP_PROTOCOL_ICMP, pkt);
+    IcmpPrint(pkt);
+    Ipv4Send(dstAddr, IP_PROTOCOL_ICMP, pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-void icmp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt)
+void IcmpRecv(NetIntf *intf, const Ipv4Header *ipHdr, NetBuf *pkt)
 {
-    icmp_print(pkt);
+    IcmpPrint(pkt);
 
     if (pkt->start + 8 > pkt->end)
     {
@@ -122,7 +122,7 @@ void icmp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt)
     }
 
     // Decode ICMP data
-    const u8* data = pkt->start;
+    const u8 *data = pkt->start;
     u8 type = data[0];
     //u8 code = data[1];
     //u16 checksum = (data[2] << 8) | data[3];
@@ -131,17 +131,17 @@ void icmp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt)
 
     if (type == ICMP_TYPE_ECHO_REQUEST)
     {
-        char src_addr_str[IPV4_ADDR_STRING_SIZE];
-        ipv4_addr_to_str(src_addr_str, sizeof(src_addr_str), &ip_hdr->src);
+        char srcAddrStr[IPV4_ADDR_STRING_SIZE];
+        Ipv4AddrToStr(srcAddrStr, sizeof(srcAddrStr), &ipHdr->src);
 
-        console_print("Echo request from %s\n", src_addr_str);
-        icmp_echo_reply(&ip_hdr->src, id, sequence, data + 8, pkt->end);
+        ConsolePrint("Echo request from %s\n", srcAddrStr);
+        IcmpEchoReply(&ipHdr->src, id, sequence, data + 8, pkt->end);
     }
     else if (type == ICMP_TYPE_ECHO_REPLY)
     {
-        char src_addr_str[IPV4_ADDR_STRING_SIZE];
-        ipv4_addr_to_str(src_addr_str, sizeof(src_addr_str), &ip_hdr->src);
+        char srcAddrStr[IPV4_ADDR_STRING_SIZE];
+        Ipv4AddrToStr(srcAddrStr, sizeof(srcAddrStr), &ipHdr->src);
 
-        console_print("Echo reply from %s\n", src_addr_str);
+        ConsolePrint("Echo reply from %s\n", srcAddrStr);
     }
 }

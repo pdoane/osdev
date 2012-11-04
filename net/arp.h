@@ -10,22 +10,22 @@
 // ------------------------------------------------------------------------------------------------
 // ARP Header
 
-typedef struct ARP_Header
+typedef struct ArpHeader
 {
     u16 htype;
     u16 ptype;
     u8 hlen;
     u8 plen;
     u16 op;
-} PACKED ARP_Header;
+} PACKED ArpHeader;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void arp_init();
+void ArpInit();
 
-const Eth_Addr* arp_lookup_mac(const IPv4_Addr* pa);
-void arp_request(Net_Intf* intf, const IPv4_Addr* tpa, u16 ether_type, Net_Buf* pkt);
-void arp_reply(Net_Intf* intf, const Eth_Addr* tha, const IPv4_Addr* tpa);
+const EthAddr *ArpLookupEthAddr(const Ipv4Addr *pa);
+void ArpRequest(NetIntf *intf, const Ipv4Addr *tpa, u16 etherType, NetBuf *pkt);
+void ArpReply(NetIntf *intf, const EthAddr *tha, const Ipv4Addr *tpa);
 
-void arp_rx(Net_Intf* intf, Net_Buf* pkt);
+void ArpRecv(NetIntf *intf, NetBuf *pkt);

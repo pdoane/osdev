@@ -10,11 +10,11 @@
 
 // ------------------------------------------------------------------------------------------------
 // Globals
-uint acpi_cpu_count;
-u8 acpi_cpu_ids[MAX_CPU_COUNT];
+uint g_acpiCpuCount;
+u8 g_acpiCpuIds[MAX_CPU_COUNT];
 
 // ------------------------------------------------------------------------------------------------
-typedef struct ACPI_Header
+typedef struct AcpiHeader
 {
     u32 signature;
     u32 length;
@@ -25,12 +25,12 @@ typedef struct ACPI_Header
     u32 oemRevision;
     u32 creatorId;
     u32 creatorRevision;
-} PACKED ACPI_Header;
+} PACKED AcpiHeader;
 
 // ------------------------------------------------------------------------------------------------
-typedef struct ACPI_FADT
+typedef struct AcpiFadt
 {
-    ACPI_Header header;
+    AcpiHeader header;
     u32 firmwareControl;
     u32 dsdt;
     u8 reserved;
@@ -40,22 +40,22 @@ typedef struct ACPI_FADT
     u8 acpiEnable;
     u8 acpiDisable;
     // TODO - fill in rest of data
-} PACKED ACPI_FADT;
+} PACKED AcpiFadt;
 
 // ------------------------------------------------------------------------------------------------
-typedef struct ACPI_MADT
+typedef struct AcpiMadt
 {
-    ACPI_Header header;
+    AcpiHeader header;
     u32 localApicAddr;
     u32 flags;
-} PACKED ACPI_MADT;
+} PACKED AcpiMadt;
 
 // ------------------------------------------------------------------------------------------------
-typedef struct APIC_Header
+typedef struct ApicHeader
 {
     u8 type;
     u8 length;
-} PACKED APIC_Header;
+} PACKED ApicHeader;
 
 // APIC structure types
 #define APIC_TYPE_LOCAL_APIC            0
@@ -63,97 +63,97 @@ typedef struct APIC_Header
 #define APIC_TYPE_INTERRUPT_OVERRIDE    2
 
 // ------------------------------------------------------------------------------------------------
-typedef struct APIC_LocalAPIC
+typedef struct ApicLocalApic
 {
-    APIC_Header header;
+    ApicHeader header;
     u8 acpiProcessorId;
     u8 apicId;
     u32 flags;
-} PACKED APIC_LocalAPIC;
+} PACKED ApicLocalApic;
 
 // ------------------------------------------------------------------------------------------------
-typedef struct APIC_IO_APIC
+typedef struct ApicIoApic
 {
-    APIC_Header header;
+    ApicHeader header;
     u8 ioApicId;
     u8 reserved;
     u32 ioApicAddress;
     u32 globalSystemInterruptBase;
-} PACKED APIC_IO_APIC;
+} PACKED ApicIoApic;
 
 // ------------------------------------------------------------------------------------------------
-typedef struct APIC_InterruptOverride
+typedef struct ApicInterruptOverride
 {
-    APIC_Header header;
+    ApicHeader header;
     u8 bus;
     u8 source;
     u32 interrupt;
     u16 flags;
-} PACKED APIC_InterruptOverride;
+} PACKED ApicInterruptOverride;
 
 // ------------------------------------------------------------------------------------------------
-static ACPI_MADT* s_madt;
+static AcpiMadt *s_madt;
 
 // ------------------------------------------------------------------------------------------------
-static void acpi_parse_facp(ACPI_FADT* facp)
+static void AcpiParseFacp(AcpiFadt *facp)
 {
     if (facp->smiCommandPort)
     {
-        //console_print("Enabling ACPI\n");
-        //out8(facp->smiCommandPort, facp->acpiEnable);
+        //ConsolePrint("Enabling ACPI\n");
+        //IoWrite8(facp->smiCommandPort, facp->acpiEnable);
 
         // TODO - wait for SCI_EN bit
     }
     else
     {
-        console_print("ACPI already enabled\n");
+        ConsolePrint("ACPI already enabled\n");
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void acpi_parse_apic(ACPI_MADT* madt)
+static void AcpiParseApic(AcpiMadt *madt)
 {
     s_madt = madt;
 
-    console_print("Local APIC Address = 0x%08x\n", madt->localApicAddr);
-    local_apic_address = (u8*)(uintptr_t)madt->localApicAddr;
+    ConsolePrint("Local APIC Address = 0x%08x\n", madt->localApicAddr);
+    g_localApicAddr = (u8 *)(uintptr_t)madt->localApicAddr;
 
-    u8* p = (u8*)(madt + 1);
-    u8* end = (u8*)madt + madt->header.length;
+    u8 *p = (u8 *)(madt + 1);
+    u8 *end = (u8 *)madt + madt->header.length;
 
     while (p < end)
     {
-        APIC_Header* header = (APIC_Header*)p;
+        ApicHeader *header = (ApicHeader *)p;
         u8 type = header->type;
         u8 length = header->length;
 
         if (type == APIC_TYPE_LOCAL_APIC)
         {
-            APIC_LocalAPIC* s = (APIC_LocalAPIC*)p;
+            ApicLocalApic *s = (ApicLocalApic *)p;
 
-            console_print("Found CPU: %d %d %x\n", s->acpiProcessorId, s->apicId, s->flags);
-            if (acpi_cpu_count < MAX_CPU_COUNT)
+            ConsolePrint("Found CPU: %d %d %x\n", s->acpiProcessorId, s->apicId, s->flags);
+            if (g_acpiCpuCount < MAX_CPU_COUNT)
             {
-                acpi_cpu_ids[acpi_cpu_count] = s->apicId;
-                ++acpi_cpu_count;
+                g_acpiCpuIds[g_acpiCpuCount] = s->apicId;
+                ++g_acpiCpuCount;
             }
         }
         else if (type == APIC_TYPE_IO_APIC)
         {
-            APIC_IO_APIC* s = (APIC_IO_APIC*)p;
+            ApicIoApic *s = (ApicIoApic *)p;
 
-            console_print("Found I/O APIC: %d 0x%08x %d\n", s->ioApicId, s->ioApicAddress, s->globalSystemInterruptBase);
-            ioapic_address = (u8*)(uintptr_t)s->ioApicAddress;
+            ConsolePrint("Found I/O APIC: %d 0x%08x %d\n", s->ioApicId, s->ioApicAddress, s->globalSystemInterruptBase);
+            g_ioApicAddr = (u8 *)(uintptr_t)s->ioApicAddress;
         }
         else if (type == APIC_TYPE_INTERRUPT_OVERRIDE)
         {
-            APIC_InterruptOverride* s = (APIC_InterruptOverride*)p;
+            ApicInterruptOverride *s = (ApicInterruptOverride *)p;
 
-            console_print("Found Interrupt Override: %d %d %d 0x%04x\n", s->bus, s->source, s->interrupt, s->flags);
+            ConsolePrint("Found Interrupt Override: %d %d %d 0x%04x\n", s->bus, s->source, s->interrupt, s->flags);
         }
         else
         {
-            console_print("Unknown APIC structure %d\n", type);
+            ConsolePrint("Unknown APIC structure %d\n", type);
         }
 
         p += length;
@@ -161,56 +161,56 @@ static void acpi_parse_apic(ACPI_MADT* madt)
 }
 
 // ------------------------------------------------------------------------------------------------
-static void acpi_parse_dt(ACPI_Header* header)
+static void AcpiParseDT(AcpiHeader *header)
 {
     u32 signature = header->signature;
 
     char sigStr[5];
     memcpy(sigStr, &signature, 4);
     sigStr[4] = 0;
-    console_print("%s 0x%x\n", sigStr, signature);
+    ConsolePrint("%s 0x%x\n", sigStr, signature);
 
     if (signature == 0x50434146)
     {
-        acpi_parse_facp((ACPI_FADT*)header);
+        AcpiParseFacp((AcpiFadt *)header);
     }
     else if (signature == 0x43495041)
     {
-        acpi_parse_apic((ACPI_MADT*)header);
+        AcpiParseApic((AcpiMadt *)header);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void acpi_parse_rsdt(ACPI_Header* rsdt)
+static void AcpiParseRsdt(AcpiHeader *rsdt)
 {
-    u32* p = (u32*)(rsdt + 1);
-    u32* end = (u32*)((u8*)rsdt + rsdt->length);
+    u32 *p = (u32 *)(rsdt + 1);
+    u32 *end = (u32 *)((u8*)rsdt + rsdt->length);
 
     while (p < end)
     {
         u32 address = *p++;
-        acpi_parse_dt((ACPI_Header*)(uintptr_t)address);
+        AcpiParseDT((AcpiHeader *)(uintptr_t)address);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static void acpi_parse_xsdt(ACPI_Header* xsdt)
+static void AcpiParseXsdt(AcpiHeader *xsdt)
 {
-    u64* p = (u64*)(xsdt + 1);
-    u64* end = (u64*)((u8*)xsdt + xsdt->length);
+    u64 *p = (u64 *)(xsdt + 1);
+    u64 *end = (u64 *)((u8*)xsdt + xsdt->length);
 
     while (p < end)
     {
         u64 address = *p++;
-        acpi_parse_dt((ACPI_Header*)(uintptr_t)address);
+        AcpiParseDT((AcpiHeader *)(uintptr_t)address);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool acpi_parse_rsdp(u8* p)
+static bool AcpiParseRsdp(u8 *p)
 {
     // Parse Root System Description Pointer
-    console_print("RSDP found\n");
+    ConsolePrint("RSDP found\n");
 
     // Verify checksum
     u8 sum = 0;
@@ -221,7 +221,7 @@ static bool acpi_parse_rsdp(u8* p)
 
     if (sum)
     {
-        console_print("Checksum failed\n");
+        ConsolePrint("Checksum failed\n");
         return false;
     }
 
@@ -229,57 +229,57 @@ static bool acpi_parse_rsdp(u8* p)
     char oem[7];
     memcpy(oem, p + 9, 6);
     oem[6] = '\0';
-    console_print("OEM = %s\n", oem);
+    ConsolePrint("OEM = %s\n", oem);
 
     // Check version
     u8 revision = p[15];
     if (revision == 0)
     {
-        console_print("Version 1\n");
+        ConsolePrint("Version 1\n");
 
-        u32 rsdtAddr = *(u32*)(p + 16);
-        acpi_parse_rsdt((ACPI_Header*)(uintptr_t)rsdtAddr);
+        u32 rsdtAddr = *(u32 *)(p + 16);
+        AcpiParseRsdt((AcpiHeader *)(uintptr_t)rsdtAddr);
     }
     else if (revision == 2)
     {
-        console_print("Version 2\n");
+        ConsolePrint("Version 2\n");
 
-        u32 rsdtAddr = *(u32*)(p + 16);
-        u64 xsdtAddr = *(u64*)(p + 24);
+        u32 rsdtAddr = *(u32 *)(p + 16);
+        u64 xsdtAddr = *(u64 *)(p + 24);
 
         if (xsdtAddr)
         {
-            acpi_parse_xsdt((ACPI_Header*)(uintptr_t)xsdtAddr);
+            AcpiParseXsdt((AcpiHeader *)(uintptr_t)xsdtAddr);
         }
         else
         {
-            acpi_parse_rsdt((ACPI_Header*)(uintptr_t)rsdtAddr);
+            AcpiParseRsdt((AcpiHeader *)(uintptr_t)rsdtAddr);
         }
     }
     else
     {
-        console_print("Unsupported ACPI version %d\n", revision);
+        ConsolePrint("Unsupported ACPI version %d\n", revision);
     }
 
     return true;
 }
 
 // ------------------------------------------------------------------------------------------------
-void acpi_init()
+void AcpiInit()
 {
     // TODO - Search Extended BIOS Area
 
     // Search main BIOS area below 1MB
-    u8* p = (u8*)0x000e0000;
-    u8* end = (u8*)0x000fffff;
+    u8 *p = (u8 *)0x000e0000;
+    u8 *end = (u8 *)0x000fffff;
 
     while (p < end)
     {
-        u64 signature = *(u64*)p;
+        u64 signature = *(u64 *)p;
 
         if (signature == 0x2052545020445352) // 'RSD PTR '
         {
-            if (acpi_parse_rsdp(p))
+            if (AcpiParseRsdp(p))
             {
                 break;
             }
@@ -290,22 +290,22 @@ void acpi_init()
 }
 
 // ------------------------------------------------------------------------------------------------
-uint acpi_remap_irq(uint irq)
+uint AcpiRemapIrq(uint irq)
 {
-    ACPI_MADT* madt = s_madt;
+    AcpiMadt *madt = s_madt;
 
-    u8* p = (u8*)(madt + 1);
-    u8* end = (u8*)madt + madt->header.length;
+    u8 *p = (u8 *)(madt + 1);
+    u8 *end = (u8 *)madt + madt->header.length;
 
     while (p < end)
     {
-        APIC_Header* header = (APIC_Header*)p;
+        ApicHeader *header = (ApicHeader *)p;
         u8 type = header->type;
         u8 length = header->length;
 
         if (type == APIC_TYPE_INTERRUPT_OVERRIDE)
         {
-            APIC_InterruptOverride* s = (APIC_InterruptOverride*)p;
+            ApicInterruptOverride *s = (ApicInterruptOverride *)p;
 
             if (s->source == irq)
             {

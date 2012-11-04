@@ -15,9 +15,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-static Net_Intf* intf;
-static IPv4_Addr ip_addr = { { { 127, 0, 0, 1 } } };
-static IPv4_Addr subnet_mask = { { { 255, 255, 255, 255 } } };
+static NetIntf *s_intf;
+static Ipv4Addr s_ipAddr = { { { 127, 0, 0, 1 } } };
+static Ipv4Addr s_subnetMask = { { { 255, 255, 255, 255 } } };
 
 // ------------------------------------------------------------------------------------------------
 // Packets
@@ -25,24 +25,24 @@ static IPv4_Addr subnet_mask = { { { 255, 255, 255, 255 } } };
 typedef struct Packet
 {
     Link link;
-    Checksum_Header phdr;
+    ChecksumHeader phdr;
     u8 data[1500];
-    u8* end;
+    u8 *end;
 } Packet;
 
 // ------------------------------------------------------------------------------------------------
 // Mocked dependencies
 
-u8 net_trace;
-u32 pit_ticks;
-Link out_packets = { &out_packets, &out_packets };
+u8 g_netTrace;
+u32 g_pitTicks;
+static Link s_outPackets = { &s_outPackets, &s_outPackets };
 
-void rtc_get_time(DateTime* dt)
+void RtcGetTime(DateTime *dt)
 {
-    split_time(dt, 0, 0);
+    SplitTime(dt, 0, 0);
 }
 
-void console_print(const char* fmt, ...)
+void ConsolePrint(const char *fmt, ...)
 {
     va_list args;
 
@@ -51,133 +51,133 @@ void console_print(const char* fmt, ...)
     va_end(args);
 }
 
-void ipv4_tx_intf(Net_Intf* intf, const IPv4_Addr* next_addr,
-    const IPv4_Addr* dst_addr, u8 protocol, Net_Buf* pkt)
+void Ipv4SendIntf(NetIntf *intf, const Ipv4Addr *nextAddr,
+    const Ipv4Addr *dstAddr, u8 protocol, NetBuf *pkt)
 {
     uint len = pkt->end - pkt->start;
 
-    Packet* packet = malloc(sizeof(Packet));
-    packet->phdr.src = intf->ip_addr;
-    packet->phdr.dst = *dst_addr;
+    Packet *packet = malloc(sizeof(Packet));
+    packet->phdr.src = intf->ipAddr;
+    packet->phdr.dst = *dstAddr;
     packet->phdr.reserved = 0;
     packet->phdr.protocol = protocol;
-    packet->phdr.len = net_swap16(len);
+    packet->phdr.len = NetSwap16(len);
 
     memcpy(packet->data, pkt->start, len);
     packet->end = packet->data + len;
 
-    link_before(&out_packets, &packet->link);
+    LinkBefore(&s_outPackets, &packet->link);
 
-    net_release_buf(pkt);
+    NetReleaseBuf(pkt);
 }
 
-void* vm_alloc(uint size)
+void *VMAlloc(uint size)
 {
     return malloc(size);
 }
 
 // ------------------------------------------------------------------------------------------------
-static uint out_error;
+static uint outError;
 
-static void on_error(TCP_Conn* conn, uint error)
+static void OnError(TcpConn *conn, uint error)
 {
-    ASSERT_EQ_UINT(out_error, 0);
-    out_error = error;
+    ASSERT_EQ_UINT(outError, 0);
+    outError = error;
 }
 
 // ------------------------------------------------------------------------------------------------
-static TCP_Conn* create_conn()
+static TcpConn *CreateConn()
 {
-    TCP_Conn* conn = tcp_create();
-    conn->on_error = on_error;
-    out_error = 0;
+    TcpConn *conn = TcpCreate();
+    conn->onError = OnError;
+    outError = 0;
     return conn;
 }
 
 // ------------------------------------------------------------------------------------------------
-static void tcp_input(Net_Buf* pkt)
+static void TcpInput(NetBuf *pkt)
 {
-    TCP_Header* tcp_hdr = (TCP_Header*)pkt->start;
-    tcp_swap(tcp_hdr);
+    TcpHeader *tcpHdr = (TcpHeader *)pkt->start;
+    TcpSwap(tcpHdr);
 
     // Data
-    pkt->end = pkt->start + sizeof(TCP_Header);
+    pkt->end = pkt->start + sizeof(TcpHeader);
 
     // Pseudo Header
-    Checksum_Header* phdr = (Checksum_Header*)(pkt->start - sizeof(Checksum_Header));
-    phdr->src = ip_addr;
-    phdr->dst = ip_addr;
+    ChecksumHeader *phdr = (ChecksumHeader *)(pkt->start - sizeof(ChecksumHeader));
+    phdr->src = s_ipAddr;
+    phdr->dst = s_ipAddr;
     phdr->reserved = 0;
     phdr->protocol = IP_PROTOCOL_TCP;
-    phdr->len = net_swap16(pkt->end - pkt->start);
+    phdr->len = NetSwap16(pkt->end - pkt->start);
 
     // Checksum
-    u16 checksum = net_checksum(pkt->start - sizeof(Checksum_Header), pkt->end);
-    tcp_hdr->checksum = net_swap16(checksum);
+    u16 checksum = NetChecksum(pkt->start - sizeof(ChecksumHeader), pkt->end);
+    tcpHdr->checksum = NetSwap16(checksum);
 
     // IP Header
-    IPv4_Header* ip_hdr = (IPv4_Header*)(pkt->start - sizeof(IPv4_Header));
-    ip_hdr->ver_ihl = (4 << 4) | 5;
-    ip_hdr->tos = 0;
-    ip_hdr->len = net_swap16(pkt->end - pkt->start);
-    ip_hdr->id = net_swap16(0);
-    ip_hdr->offset = net_swap16(0);
-    ip_hdr->ttl = 64;
-    ip_hdr->protocol = IP_PROTOCOL_TCP;
-    ip_hdr->checksum = 0;
-    ip_hdr->src = ip_addr;
-    ip_hdr->dst = ip_addr;
+    Ipv4Header *ipHdr = (Ipv4Header *)(pkt->start - sizeof(Ipv4Header));
+    ipHdr->verIhl = (4 << 4) | 5;
+    ipHdr->tos = 0;
+    ipHdr->len = NetSwap16(pkt->end - pkt->start);
+    ipHdr->id = NetSwap16(0);
+    ipHdr->offset = NetSwap16(0);
+    ipHdr->ttl = 64;
+    ipHdr->protocol = IP_PROTOCOL_TCP;
+    ipHdr->checksum = 0;
+    ipHdr->src = s_ipAddr;
+    ipHdr->dst = s_ipAddr;
 
     // Receive
-    tcp_rx(intf, ip_hdr, pkt);
+    TcpRecv(s_intf, ipHdr, pkt);
 
-    net_release_buf(pkt);
+    NetReleaseBuf(pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void validate_checksum(Packet* pkt)
+static void ValidateChecksum(Packet *pkt)
 {
-    u8* phdr_data = (u8*)&pkt->phdr;
-    u8* phdr_end = phdr_data + sizeof(Checksum_Header);
+    u8 *phdrData = (u8 *)&pkt->phdr;
+    u8 *phdrEnd = phdrData + sizeof(ChecksumHeader);
 
     uint sum = 0;
-    sum = net_checksum_acc(phdr_data, phdr_end, sum);
-    sum = net_checksum_acc(pkt->data, pkt->end, sum);
-    u16 checksum = net_checksum_final(sum);
+    sum = NetChecksumAcc(phdrData, phdrEnd, sum);
+    sum = NetChecksumAcc(pkt->data, pkt->end, sum);
+    u16 checksum = NetChecksumFinal(sum);
 
     ASSERT_EQ_UINT(checksum, 0);
 }
 
 // ------------------------------------------------------------------------------------------------
-static Packet* pop_packet()
+static Packet *PopPacket()
 {
-    ASSERT_TRUE(!list_empty(&out_packets));
+    ASSERT_TRUE(!ListIsEmpty(&s_outPackets));
 
-    Packet* packet = link_data(out_packets.next, Packet, link);
-    link_remove(&packet->link);
+    Packet *packet = LinkData(s_outPackets.next, Packet, link);
+    LinkRemove(&packet->link);
 
-    validate_checksum(packet);
+    ValidateChecksum(packet);
     return packet;
 }
 
 // ------------------------------------------------------------------------------------------------
-static void expect_error(uint error)
+static void ExpectError(uint error)
 {
-    ASSERT_EQ_UINT(out_error, error);
-    out_error = 0;
+    ASSERT_EQ_UINT(outError, error);
+    outError = 0;
 }
 
 // ------------------------------------------------------------------------------------------------
-static TCP_Header* prepare_in_pkt(TCP_Conn* conn, Net_Buf* in_pkt, uint seq, uint ack, uint flags)
+static TcpHeader *PrepareInPkt(TcpConn *conn, NetBuf *inPkt, uint seq, uint ack, uint flags)
 {
-    TCP_Header* hdr = (TCP_Header*)in_pkt->start;
-    hdr->src_port = conn->remote_port;
-    hdr->dst_port = conn->local_port;
+    TcpHeader *hdr = (TcpHeader *)inPkt->start;
+    hdr->srcPort = conn->remotePort;
+    hdr->dstPort = conn->localPort;
     hdr->seq = seq;
     hdr->ack = ack;
     hdr->off = 5 << 4;
     hdr->flags = flags;
-    hdr->window_size = TCP_WINDOW_SIZE;
+    hdr->windowSize = TCP_WINDOW_SIZE;
     hdr->checksum = 0;
     hdr->urgent = 0;
 
@@ -185,134 +185,134 @@ static TCP_Header* prepare_in_pkt(TCP_Conn* conn, Net_Buf* in_pkt, uint seq, uin
 }
 
 // ------------------------------------------------------------------------------------------------
-static void test_case_begin(uint state, const char* cond, const char* action)
+static void TestCaseBegin(uint state, const char *cond, const char *action)
 {
-    printf("-- %12s: %-20s - %s\n", tcp_state_strs[state], cond, action);
+    printf("-- %12s: %-20s - %s\n", g_tcpStateStrs[state], cond, action);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void test_case_end()
+static void TestCaseEnd()
 {
-    ASSERT_TRUE(list_empty(&out_packets));
-    ASSERT_TRUE(list_empty(&tcp_active_conns));
-    ASSERT_EQ_INT(net_buf_alloc_count, 0);
-    ASSERT_EQ_UINT(out_error, 0);
+    ASSERT_TRUE(ListIsEmpty(&s_outPackets));
+    ASSERT_TRUE(ListIsEmpty(&g_tcpActiveConns));
+    ASSERT_EQ_INT(g_netBufAllocCount, 0);
+    ASSERT_EQ_UINT(outError, 0);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void test_setup()
+static void TestSetup()
 {
     // Create net interface
-    intf = net_intf_create();
-    intf->eth_addr = null_eth_addr;
-    intf->ip_addr = ip_addr;
-    intf->name = "test";
-    intf->poll = 0;
-    intf->tx = 0;
-    intf->dev_tx = 0;
+    s_intf = NetIntfCreate();
+    s_intf->ethAddr = g_nullEthAddr;
+    s_intf->ipAddr = s_ipAddr;
+    s_intf->name = "test";
+    s_intf->poll = 0;
+    s_intf->send = 0;
+    s_intf->devSend = 0;
 
-    //net_intf_add(intf);
+    //NetIntfAdd(s_intf);
 
     // Add routing entry
-    net_add_route(&ip_addr, &subnet_mask, 0, intf);
+    NetAddRoute(&s_ipAddr, &s_subnetMask, 0, s_intf);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void enter_state(TCP_Conn* conn, uint state)
+static void EnterState(TcpConn *conn, uint state)
 {
-    Net_Buf* in_pkt;
-    TCP_Header* in_hdr;
-    Packet* out_pkt;
-    //TCP_Header* out_hdr;
+    NetBuf *inPkt;
+    TcpHeader *inHdr;
+    Packet *outPkt;
+    //TcpHeader *outHdr;
 
     switch (state)
     {
     case TCP_SYN_SENT:
-        ASSERT_TRUE(tcp_connect(conn, &ip_addr, 80));
+        ASSERT_TRUE(TcpConnect(conn, &s_ipAddr, 80));
 
-        out_pkt = pop_packet();
-        free(out_pkt);
+        outPkt = PopPacket();
+        free(outPkt);
         break;
 
     case TCP_SYN_RECEIVED:
-        enter_state(conn, TCP_SYN_SENT);
+        EnterState(conn, TCP_SYN_SENT);
 
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, 1000, 0, TCP_SYN);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, 1000, 0, TCP_SYN);
+        TcpInput(inPkt);
 
-        out_pkt = pop_packet();
-        free(out_pkt);
+        outPkt = PopPacket();
+        free(outPkt);
         break;
 
     case TCP_ESTABLISHED:
-        enter_state(conn, TCP_SYN_SENT);
+        EnterState(conn, TCP_SYN_SENT);
 
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_SYN | TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_SYN | TCP_ACK);
+        TcpInput(inPkt);
 
-        out_pkt = pop_packet();
-        free(out_pkt);
+        outPkt = PopPacket();
+        free(outPkt);
         break;
 
     case TCP_FIN_WAIT_1:
-        enter_state(conn, TCP_ESTABLISHED);
+        EnterState(conn, TCP_ESTABLISHED);
 
-        tcp_close(conn);
+        TcpClose(conn);
 
-        out_pkt = pop_packet();
-        free(out_pkt);
+        outPkt = PopPacket();
+        free(outPkt);
         break;
 
     case TCP_FIN_WAIT_2:
-        enter_state(conn, TCP_FIN_WAIT_1);
+        EnterState(conn, TCP_FIN_WAIT_1);
 
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_ACK);
+        TcpInput(inPkt);
         break;
 
     case TCP_CLOSE_WAIT:
-        enter_state(conn, TCP_ESTABLISHED);
+        EnterState(conn, TCP_ESTABLISHED);
 
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_FIN | TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_FIN | TCP_ACK);
+        TcpInput(inPkt);
 
-        out_pkt = pop_packet();
-        free(out_pkt);
+        outPkt = PopPacket();
+        free(outPkt);
         break;
 
     case TCP_CLOSING:
-        enter_state(conn, TCP_FIN_WAIT_1);
+        EnterState(conn, TCP_FIN_WAIT_1);
 
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt - 1, TCP_FIN | TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt - 1, TCP_FIN | TCP_ACK);
+        TcpInput(inPkt);
 
-        out_pkt = pop_packet();
-        free(out_pkt);
+        outPkt = PopPacket();
+        free(outPkt);
         break;
 
     case TCP_LAST_ACK:
-        enter_state(conn, TCP_CLOSE_WAIT);
+        EnterState(conn, TCP_CLOSE_WAIT);
 
-        tcp_close(conn);
+        TcpClose(conn);
 
-        out_pkt = pop_packet();
-        free(out_pkt);
+        outPkt = PopPacket();
+        free(outPkt);
         break;
 
     case TCP_TIME_WAIT:
-        enter_state(conn, TCP_FIN_WAIT_1);
+        EnterState(conn, TCP_FIN_WAIT_1);
 
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_FIN | TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_FIN | TCP_ACK);
+        TcpInput(inPkt);
 
-        out_pkt = pop_packet();
-        free(out_pkt);
+        outPkt = PopPacket();
+        free(outPkt);
         break;
 
     default:
@@ -321,125 +321,125 @@ static void enter_state(TCP_Conn* conn, uint state)
     }
 
     ASSERT_EQ_UINT(conn->state, state);
-    ASSERT_TRUE(list_empty(&out_packets));
+    ASSERT_TRUE(ListIsEmpty(&s_outPackets));
 }
 
 // ------------------------------------------------------------------------------------------------
-static void exit_state(TCP_Conn* conn, uint state)
+static void ExitState(TcpConn *conn, uint state)
 {
-    Net_Buf* in_pkt;
-    TCP_Header* in_hdr;
-    Packet* out_pkt;
-    TCP_Header* out_hdr;
+    NetBuf *inPkt;
+    TcpHeader *inHdr;
+    Packet *outPkt;
+    TcpHeader *outHdr;
 
     ASSERT_EQ_UINT(conn->state, state);
-    ASSERT_TRUE(list_empty(&out_packets));
+    ASSERT_TRUE(ListIsEmpty(&s_outPackets));
 
     switch (state)
     {
     case TCP_CLOSED:
-        tcp_close(conn);
+        TcpClose(conn);
         break;
 
     case TCP_SYN_SENT:
-        tcp_close(conn);
+        TcpClose(conn);
         break;
 
     case TCP_SYN_RECEIVED:
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_ACK);
+        TcpInput(inPkt);
 
-        exit_state(conn, TCP_ESTABLISHED);
+        ExitState(conn, TCP_ESTABLISHED);
         break;
 
     case TCP_ESTABLISHED:
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_FIN | TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_FIN | TCP_ACK);
+        TcpInput(inPkt);
 
-        out_pkt = pop_packet();
-        out_hdr = (TCP_Header*)out_pkt->data;
-        tcp_swap(out_hdr);
-        ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
-        ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
-        ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt);
-        ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
-        ASSERT_EQ_HEX8(out_hdr->flags, TCP_ACK);
-        free(out_pkt);
+        outPkt = PopPacket();
+        outHdr = (TcpHeader *)outPkt->data;
+        TcpSwap(outHdr);
+        ASSERT_EQ_UINT(outHdr->srcPort, conn->localPort);
+        ASSERT_EQ_UINT(outHdr->dstPort, conn->remotePort);
+        ASSERT_EQ_UINT(outHdr->seq, conn->sndNxt);
+        ASSERT_EQ_UINT(outHdr->ack, conn->rcvNxt);
+        ASSERT_EQ_HEX8(outHdr->flags, TCP_ACK);
+        free(outPkt);
 
-        exit_state(conn, TCP_CLOSE_WAIT);
+        ExitState(conn, TCP_CLOSE_WAIT);
         break;
 
     case TCP_FIN_WAIT_1:
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_FIN | TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_FIN | TCP_ACK);
+        TcpInput(inPkt);
 
-        out_pkt = pop_packet();
-        out_hdr = (TCP_Header*)out_pkt->data;
-        tcp_swap(out_hdr);
-        ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
-        ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
-        ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt);
-        ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
-        ASSERT_EQ_HEX8(out_hdr->flags, TCP_ACK);
-        free(out_pkt);
+        outPkt = PopPacket();
+        outHdr = (TcpHeader *)outPkt->data;
+        TcpSwap(outHdr);
+        ASSERT_EQ_UINT(outHdr->srcPort, conn->localPort);
+        ASSERT_EQ_UINT(outHdr->dstPort, conn->remotePort);
+        ASSERT_EQ_UINT(outHdr->seq, conn->sndNxt);
+        ASSERT_EQ_UINT(outHdr->ack, conn->rcvNxt);
+        ASSERT_EQ_HEX8(outHdr->flags, TCP_ACK);
+        free(outPkt);
 
-        exit_state(conn, TCP_TIME_WAIT);
+        ExitState(conn, TCP_TIME_WAIT);
         break;
 
     case TCP_FIN_WAIT_2:
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_FIN | TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_FIN | TCP_ACK);
+        TcpInput(inPkt);
 
-        out_pkt = pop_packet();
-        out_hdr = (TCP_Header*)out_pkt->data;
-        tcp_swap(out_hdr);
-        ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
-        ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
-        ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt);
-        ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
-        ASSERT_EQ_HEX8(out_hdr->flags, TCP_ACK);
-        free(out_pkt);
+        outPkt = PopPacket();
+        outHdr = (TcpHeader *)outPkt->data;
+        TcpSwap(outHdr);
+        ASSERT_EQ_UINT(outHdr->srcPort, conn->localPort);
+        ASSERT_EQ_UINT(outHdr->dstPort, conn->remotePort);
+        ASSERT_EQ_UINT(outHdr->seq, conn->sndNxt);
+        ASSERT_EQ_UINT(outHdr->ack, conn->rcvNxt);
+        ASSERT_EQ_HEX8(outHdr->flags, TCP_ACK);
+        free(outPkt);
 
-        exit_state(conn, TCP_TIME_WAIT);
+        ExitState(conn, TCP_TIME_WAIT);
         break;
 
     case TCP_CLOSE_WAIT:
-        tcp_close(conn);
+        TcpClose(conn);
 
-        out_pkt = pop_packet();
-        out_hdr = (TCP_Header*)out_pkt->data;
-        tcp_swap(out_hdr);
-        ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
-        ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
-        ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt - 1);
-        ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
-        ASSERT_EQ_HEX8(out_hdr->flags, TCP_FIN | TCP_ACK);
-        free(out_pkt);
+        outPkt = PopPacket();
+        outHdr = (TcpHeader *)outPkt->data;
+        TcpSwap(outHdr);
+        ASSERT_EQ_UINT(outHdr->srcPort, conn->localPort);
+        ASSERT_EQ_UINT(outHdr->dstPort, conn->remotePort);
+        ASSERT_EQ_UINT(outHdr->seq, conn->sndNxt - 1);
+        ASSERT_EQ_UINT(outHdr->ack, conn->rcvNxt);
+        ASSERT_EQ_HEX8(outHdr->flags, TCP_FIN | TCP_ACK);
+        free(outPkt);
 
-        exit_state(conn, TCP_LAST_ACK);
+        ExitState(conn, TCP_LAST_ACK);
         break;
 
     case TCP_CLOSING:
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_ACK);
+        TcpInput(inPkt);
 
-        exit_state(conn, TCP_TIME_WAIT);
+        ExitState(conn, TCP_TIME_WAIT);
         break;
 
     case TCP_LAST_ACK:
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_ACK);
+        TcpInput(inPkt);
         break;
 
     case TCP_TIME_WAIT:
-        pit_ticks += 2 * TCP_MSL;
-        tcp_poll();
+        g_pitTicks += 2 * TCP_MSL;
+        TcpPoll();
         break;
 
     default:
@@ -451,237 +451,237 @@ static void exit_state(TCP_Conn* conn, uint state)
 }
 
 // ------------------------------------------------------------------------------------------------
-int main(int argc, const char** argv)
+int main(int argc, const char **argv)
 {
     // Common variables
-    Net_Buf* in_pkt;
-    TCP_Header* in_hdr;
-    Packet* out_pkt;
-    TCP_Header* out_hdr;
-    TCP_Conn* conn;
+    NetBuf *inPkt;
+    TcpHeader *inHdr;
+    Packet *outPkt;
+    TcpHeader *outHdr;
+    TcpConn *conn;
 
-    test_setup();
-
-    // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_CLOSED, "RST", "segment dropped");
-
-    in_pkt = net_alloc_buf();
-    in_hdr = (TCP_Header*)in_pkt->start;
-    in_hdr->src_port = 100;
-    in_hdr->dst_port = 101;
-    in_hdr->seq = 1;
-    in_hdr->ack = 2;
-    in_hdr->off = 5 << 4;
-    in_hdr->flags = TCP_RST;
-    in_hdr->window_size = TCP_WINDOW_SIZE;
-    in_hdr->checksum = 0;
-    in_hdr->urgent = 0;
-    tcp_input(in_pkt);
-
-    test_case_end();
+    TestSetup();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_CLOSED, "ACK", "RST sent");
+    TestCaseBegin(TCP_CLOSED, "RST", "segment dropped");
 
-    in_pkt = net_alloc_buf();
-    in_hdr = (TCP_Header*)in_pkt->start;
-    in_hdr->src_port = 100;
-    in_hdr->dst_port = 101;
-    in_hdr->seq = 1;
-    in_hdr->ack = 2;
-    in_hdr->off = 5 << 4;
-    in_hdr->flags = TCP_ACK;
-    in_hdr->window_size = TCP_WINDOW_SIZE;
-    in_hdr->checksum = 0;
-    in_hdr->urgent = 0;
-    tcp_input(in_pkt);
+    inPkt = NetAllocBuf();
+    inHdr = (TcpHeader *)inPkt->start;
+    inHdr->srcPort = 100;
+    inHdr->dstPort = 101;
+    inHdr->seq = 1;
+    inHdr->ack = 2;
+    inHdr->off = 5 << 4;
+    inHdr->flags = TCP_RST;
+    inHdr->windowSize = TCP_WINDOW_SIZE;
+    inHdr->checksum = 0;
+    inHdr->urgent = 0;
+    TcpInput(inPkt);
 
-    out_pkt = pop_packet();
-    out_hdr = (TCP_Header*)out_pkt->data;
-    tcp_swap(out_hdr);
-    ASSERT_EQ_UINT(out_hdr->src_port, 101);
-    ASSERT_EQ_UINT(out_hdr->dst_port, 100);
-    ASSERT_EQ_UINT(out_hdr->seq, 2);
-    ASSERT_EQ_UINT(out_hdr->ack, 0);
-    ASSERT_EQ_HEX8(out_hdr->flags, TCP_RST);
-    free(out_pkt);
-
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_CLOSED, "no ACK", "RST/ACK sent");
+    TestCaseBegin(TCP_CLOSED, "ACK", "RST sent");
 
-    in_pkt = net_alloc_buf();
-    in_hdr = (TCP_Header*)in_pkt->start;
-    in_hdr->src_port = 100;
-    in_hdr->dst_port = 101;
-    in_hdr->seq = 1;
-    in_hdr->ack = 2;
-    in_hdr->off = 5 << 4;
-    in_hdr->flags = 0;
-    in_hdr->window_size = TCP_WINDOW_SIZE;
-    in_hdr->checksum = 0;
-    in_hdr->urgent = 0;
-    tcp_input(in_pkt);
+    inPkt = NetAllocBuf();
+    inHdr = (TcpHeader *)inPkt->start;
+    inHdr->srcPort = 100;
+    inHdr->dstPort = 101;
+    inHdr->seq = 1;
+    inHdr->ack = 2;
+    inHdr->off = 5 << 4;
+    inHdr->flags = TCP_ACK;
+    inHdr->windowSize = TCP_WINDOW_SIZE;
+    inHdr->checksum = 0;
+    inHdr->urgent = 0;
+    TcpInput(inPkt);
 
-    out_pkt = pop_packet();
-    out_hdr = (TCP_Header*)out_pkt->data;
-    tcp_swap(out_hdr);
-    ASSERT_EQ_UINT(out_hdr->src_port, 101);
-    ASSERT_EQ_UINT(out_hdr->dst_port, 100);
-    ASSERT_EQ_UINT(out_hdr->seq, 0);
-    ASSERT_EQ_UINT(out_hdr->ack, 1);
-    ASSERT_EQ_HEX8(out_hdr->flags, TCP_RST | TCP_ACK);
-    free(out_pkt);
+    outPkt = PopPacket();
+    outHdr = (TcpHeader *)outPkt->data;
+    TcpSwap(outHdr);
+    ASSERT_EQ_UINT(outHdr->srcPort, 101);
+    ASSERT_EQ_UINT(outHdr->dstPort, 100);
+    ASSERT_EQ_UINT(outHdr->seq, 2);
+    ASSERT_EQ_UINT(outHdr->ack, 0);
+    ASSERT_EQ_HEX8(outHdr->flags, TCP_RST);
+    free(outPkt);
 
-    test_case_end();
-
-    // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_CLOSED, "connect", "goto SYN_SENT");
-
-    conn = create_conn();
-
-    ASSERT_TRUE(tcp_connect(conn, &ip_addr, 80));
-
-    out_pkt = pop_packet();
-    out_hdr = (TCP_Header*)out_pkt->data;
-    tcp_swap(out_hdr);
-    ASSERT_TRUE(out_hdr->src_port >= 49152);
-    ASSERT_EQ_UINT(out_hdr->dst_port, 80);
-    ASSERT_EQ_UINT(out_hdr->seq, conn->iss);
-    ASSERT_EQ_UINT(out_hdr->ack, 0);
-    ASSERT_EQ_HEX8(out_hdr->flags, TCP_SYN);
-    ASSERT_EQ_UINT(out_hdr->window_size, TCP_WINDOW_SIZE);
-    ASSERT_EQ_UINT(out_hdr->urgent, 0);
-    free(out_pkt);
-
-    exit_state(conn, TCP_SYN_SENT);
-
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_SYN_SENT, "Bad ACK, no RST", "RST sent");
+    TestCaseBegin(TCP_CLOSED, "no ACK", "RST/ACK sent");
 
-    conn = create_conn();
-    enter_state(conn, TCP_SYN_SENT);
+    inPkt = NetAllocBuf();
+    inHdr = (TcpHeader *)inPkt->start;
+    inHdr->srcPort = 100;
+    inHdr->dstPort = 101;
+    inHdr->seq = 1;
+    inHdr->ack = 2;
+    inHdr->off = 5 << 4;
+    inHdr->flags = 0;
+    inHdr->windowSize = TCP_WINDOW_SIZE;
+    inHdr->checksum = 0;
+    inHdr->urgent = 0;
+    TcpInput(inPkt);
 
-    in_pkt = net_alloc_buf();
-    in_hdr = prepare_in_pkt(conn, in_pkt, 1000, conn->iss, TCP_ACK);
-    tcp_input(in_pkt);
+    outPkt = PopPacket();
+    outHdr = (TcpHeader *)outPkt->data;
+    TcpSwap(outHdr);
+    ASSERT_EQ_UINT(outHdr->srcPort, 101);
+    ASSERT_EQ_UINT(outHdr->dstPort, 100);
+    ASSERT_EQ_UINT(outHdr->seq, 0);
+    ASSERT_EQ_UINT(outHdr->ack, 1);
+    ASSERT_EQ_HEX8(outHdr->flags, TCP_RST | TCP_ACK);
+    free(outPkt);
 
-    out_pkt = pop_packet();
-    out_hdr = (TCP_Header*)out_pkt->data;
-    tcp_swap(out_hdr);
-    ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
-    ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
-    ASSERT_EQ_UINT(out_hdr->seq, in_hdr->ack);
-    ASSERT_EQ_UINT(out_hdr->ack, 0);
-    ASSERT_EQ_HEX8(out_hdr->flags, TCP_RST);
-    free(out_pkt);
-
-    exit_state(conn, TCP_SYN_SENT);
-
-    test_case_end();
-
-    // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_SYN_SENT, "Bad ACK, RST", "segment dropped");
-
-    conn = create_conn();
-    enter_state(conn, TCP_SYN_SENT);
-
-    in_pkt = net_alloc_buf();
-    in_hdr = prepare_in_pkt(conn, in_pkt, 1000, conn->iss, TCP_RST | TCP_ACK);
-    tcp_input(in_pkt);
-
-    exit_state(conn, TCP_SYN_SENT);
-
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_SYN_SENT, "ACK, RST", "conn locally reset");
+    TestCaseBegin(TCP_CLOSED, "connect", "goto SYN_SENT");
 
-    conn = create_conn();
-    enter_state(conn, TCP_SYN_SENT);
+    conn = CreateConn();
 
-    in_pkt = net_alloc_buf();
-    in_hdr = prepare_in_pkt(conn, in_pkt, 1000, conn->iss + 1, TCP_RST | TCP_ACK);
-    tcp_input(in_pkt);
+    ASSERT_TRUE(TcpConnect(conn, &s_ipAddr, 80));
 
-    expect_error(TCP_CONN_RESET);
-    exit_state(conn, TCP_CLOSED);
+    outPkt = PopPacket();
+    outHdr = (TcpHeader *)outPkt->data;
+    TcpSwap(outHdr);
+    ASSERT_TRUE(outHdr->srcPort >= 49152);
+    ASSERT_EQ_UINT(outHdr->dstPort, 80);
+    ASSERT_EQ_UINT(outHdr->seq, conn->iss);
+    ASSERT_EQ_UINT(outHdr->ack, 0);
+    ASSERT_EQ_HEX8(outHdr->flags, TCP_SYN);
+    ASSERT_EQ_UINT(outHdr->windowSize, TCP_WINDOW_SIZE);
+    ASSERT_EQ_UINT(outHdr->urgent, 0);
+    free(outPkt);
 
-    test_case_end();
+    ExitState(conn, TCP_SYN_SENT);
 
-    // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_SYN_SENT, "no ACK, RST", "segment dropped");
-
-    conn = create_conn();
-    enter_state(conn, TCP_SYN_SENT);
-
-    in_pkt = net_alloc_buf();
-    in_hdr = prepare_in_pkt(conn, in_pkt, 1000, conn->iss + 1, TCP_RST);
-    tcp_input(in_pkt);
-
-    exit_state(conn, TCP_SYN_SENT);
-
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_SYN_SENT, "SYN, ACK", "goto ESTABLISHED");
+    TestCaseBegin(TCP_SYN_SENT, "Bad ACK, no RST", "RST sent");
 
-    conn = create_conn();
-    enter_state(conn, TCP_SYN_SENT);
+    conn = CreateConn();
+    EnterState(conn, TCP_SYN_SENT);
 
-    in_pkt = net_alloc_buf();
-    in_hdr = prepare_in_pkt(conn, in_pkt, 1000, conn->iss + 1, TCP_SYN | TCP_ACK);
-    tcp_input(in_pkt);
+    inPkt = NetAllocBuf();
+    inHdr = PrepareInPkt(conn, inPkt, 1000, conn->iss, TCP_ACK);
+    TcpInput(inPkt);
+
+    outPkt = PopPacket();
+    outHdr = (TcpHeader *)outPkt->data;
+    TcpSwap(outHdr);
+    ASSERT_EQ_UINT(outHdr->srcPort, conn->localPort);
+    ASSERT_EQ_UINT(outHdr->dstPort, conn->remotePort);
+    ASSERT_EQ_UINT(outHdr->seq, inHdr->ack);
+    ASSERT_EQ_UINT(outHdr->ack, 0);
+    ASSERT_EQ_HEX8(outHdr->flags, TCP_RST);
+    free(outPkt);
+
+    ExitState(conn, TCP_SYN_SENT);
+
+    TestCaseEnd();
+
+    // --------------------------------------------------------------------------------------------
+    TestCaseBegin(TCP_SYN_SENT, "Bad ACK, RST", "segment dropped");
+
+    conn = CreateConn();
+    EnterState(conn, TCP_SYN_SENT);
+
+    inPkt = NetAllocBuf();
+    inHdr = PrepareInPkt(conn, inPkt, 1000, conn->iss, TCP_RST | TCP_ACK);
+    TcpInput(inPkt);
+
+    ExitState(conn, TCP_SYN_SENT);
+
+    TestCaseEnd();
+
+    // --------------------------------------------------------------------------------------------
+    TestCaseBegin(TCP_SYN_SENT, "ACK, RST", "conn locally reset");
+
+    conn = CreateConn();
+    EnterState(conn, TCP_SYN_SENT);
+
+    inPkt = NetAllocBuf();
+    inHdr = PrepareInPkt(conn, inPkt, 1000, conn->iss + 1, TCP_RST | TCP_ACK);
+    TcpInput(inPkt);
+
+    ExpectError(TCP_CONN_RESET);
+    ExitState(conn, TCP_CLOSED);
+
+    TestCaseEnd();
+
+    // --------------------------------------------------------------------------------------------
+    TestCaseBegin(TCP_SYN_SENT, "no ACK, RST", "segment dropped");
+
+    conn = CreateConn();
+    EnterState(conn, TCP_SYN_SENT);
+
+    inPkt = NetAllocBuf();
+    inHdr = PrepareInPkt(conn, inPkt, 1000, conn->iss + 1, TCP_RST);
+    TcpInput(inPkt);
+
+    ExitState(conn, TCP_SYN_SENT);
+
+    TestCaseEnd();
+
+    // --------------------------------------------------------------------------------------------
+    TestCaseBegin(TCP_SYN_SENT, "SYN, ACK", "goto ESTABLISHED");
+
+    conn = CreateConn();
+    EnterState(conn, TCP_SYN_SENT);
+
+    inPkt = NetAllocBuf();
+    inHdr = PrepareInPkt(conn, inPkt, 1000, conn->iss + 1, TCP_SYN | TCP_ACK);
+    TcpInput(inPkt);
 
     ASSERT_EQ_UINT(conn->irs, 1000);
-    ASSERT_EQ_UINT(conn->rcv_nxt, 1001);
+    ASSERT_EQ_UINT(conn->rcvNxt, 1001);
 
-    out_pkt = pop_packet();
-    out_hdr = (TCP_Header*)out_pkt->data;
-    tcp_swap(out_hdr);
-    ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
-    ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
-    ASSERT_EQ_UINT(out_hdr->seq, conn->iss + 1);
-    ASSERT_EQ_UINT(out_hdr->ack, 1001);
-    ASSERT_EQ_HEX8(out_hdr->flags, TCP_ACK);
-    free(out_pkt);
+    outPkt = PopPacket();
+    outHdr = (TcpHeader *)outPkt->data;
+    TcpSwap(outHdr);
+    ASSERT_EQ_UINT(outHdr->srcPort, conn->localPort);
+    ASSERT_EQ_UINT(outHdr->dstPort, conn->remotePort);
+    ASSERT_EQ_UINT(outHdr->seq, conn->iss + 1);
+    ASSERT_EQ_UINT(outHdr->ack, 1001);
+    ASSERT_EQ_HEX8(outHdr->flags, TCP_ACK);
+    free(outPkt);
 
-    exit_state(conn, TCP_ESTABLISHED);
+    ExitState(conn, TCP_ESTABLISHED);
 
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_SYN_SENT, "SYN, no ACK", "goto SYN_RECEIVED, resend SYN,ACK");
+    TestCaseBegin(TCP_SYN_SENT, "SYN, no ACK", "goto SYN_RECEIVED, resend SYN,ACK");
 
-    conn = create_conn();
-    enter_state(conn, TCP_SYN_SENT);
+    conn = CreateConn();
+    EnterState(conn, TCP_SYN_SENT);
 
-    in_pkt = net_alloc_buf();
-    in_hdr = prepare_in_pkt(conn, in_pkt, 1000, 0, TCP_SYN);
-    tcp_input(in_pkt);
+    inPkt = NetAllocBuf();
+    inHdr = PrepareInPkt(conn, inPkt, 1000, 0, TCP_SYN);
+    TcpInput(inPkt);
 
     ASSERT_EQ_UINT(conn->irs, 1000);
-    ASSERT_EQ_UINT(conn->rcv_nxt, 1001);
+    ASSERT_EQ_UINT(conn->rcvNxt, 1001);
 
-    out_pkt = pop_packet();
-    out_hdr = (TCP_Header*)out_pkt->data;
-    tcp_swap(out_hdr);
-    ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
-    ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
-    ASSERT_EQ_UINT(out_hdr->seq, conn->iss);
-    ASSERT_EQ_UINT(out_hdr->ack, 1001);
-    ASSERT_EQ_HEX8(out_hdr->flags, TCP_SYN | TCP_ACK);
-    free(out_pkt);
+    outPkt = PopPacket();
+    outHdr = (TcpHeader *)outPkt->data;
+    TcpSwap(outHdr);
+    ASSERT_EQ_UINT(outHdr->srcPort, conn->localPort);
+    ASSERT_EQ_UINT(outHdr->dstPort, conn->remotePort);
+    ASSERT_EQ_UINT(outHdr->seq, conn->iss);
+    ASSERT_EQ_UINT(outHdr->ack, 1001);
+    ASSERT_EQ_HEX8(outHdr->flags, TCP_SYN | TCP_ACK);
+    free(outPkt);
 
-    exit_state(conn, TCP_SYN_RECEIVED);
+    ExitState(conn, TCP_SYN_RECEIVED);
 
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    uint general_states[] =
+    uint generalStates[] =
     {
         TCP_SYN_RECEIVED,
         TCP_ESTABLISHED,
@@ -694,69 +694,69 @@ int main(int argc, const char** argv)
         0,
     };
 
-    for (uint* statep = general_states; *statep; ++statep)
+    for (uint *pState = generalStates; *pState; ++pState)
     {
-        uint state = *statep;
+        uint state = *pState;
 
-        test_case_begin(state, "Bad seq, no RST", "resend ACK");
+        TestCaseBegin(state, "Bad seq, no RST", "resend ACK");
 
-        conn = create_conn();
-        enter_state(conn, state);
+        conn = CreateConn();
+        EnterState(conn, state);
 
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt - 1, conn->snd_nxt, TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt - 1, conn->sndNxt, TCP_ACK);
+        TcpInput(inPkt);
 
-        out_pkt = pop_packet();
-        out_hdr = (TCP_Header*)out_pkt->data;
-        tcp_swap(out_hdr);
-        ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
-        ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
-        ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt);
-        ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
-        ASSERT_EQ_HEX8(out_hdr->flags, TCP_ACK);
-        free(out_pkt);
+        outPkt = PopPacket();
+        outHdr = (TcpHeader *)outPkt->data;
+        TcpSwap(outHdr);
+        ASSERT_EQ_UINT(outHdr->srcPort, conn->localPort);
+        ASSERT_EQ_UINT(outHdr->dstPort, conn->remotePort);
+        ASSERT_EQ_UINT(outHdr->seq, conn->sndNxt);
+        ASSERT_EQ_UINT(outHdr->ack, conn->rcvNxt);
+        ASSERT_EQ_HEX8(outHdr->flags, TCP_ACK);
+        free(outPkt);
 
-        exit_state(conn, state);
+        ExitState(conn, state);
 
-        test_case_end();
+        TestCaseEnd();
     }
 
     // --------------------------------------------------------------------------------------------
-    for (uint* statep = general_states; *statep; ++statep)
+    for (uint *pState = generalStates; *pState; ++pState)
     {
-        uint state = *statep;
+        uint state = *pState;
 
-        test_case_begin(state, "Bad seq, RST", "segment dropped");
+        TestCaseBegin(state, "Bad seq, RST", "segment dropped");
 
-        conn = create_conn();
-        enter_state(conn, state);
+        conn = CreateConn();
+        EnterState(conn, state);
 
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt - 1, conn->snd_nxt, TCP_RST | TCP_ACK);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt - 1, conn->sndNxt, TCP_RST | TCP_ACK);
+        TcpInput(inPkt);
 
-        exit_state(conn, state);
+        ExitState(conn, state);
 
-        test_case_end();
+        TestCaseEnd();
     }
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_SYN_RECEIVED, "RST, active", "conn refused");
+    TestCaseBegin(TCP_SYN_RECEIVED, "RST, active", "conn refused");
 
-    conn = create_conn();
-    enter_state(conn, TCP_SYN_RECEIVED);
+    conn = CreateConn();
+    EnterState(conn, TCP_SYN_RECEIVED);
 
-    in_pkt = net_alloc_buf();
-    in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, 0, TCP_RST);
-    tcp_input(in_pkt);
+    inPkt = NetAllocBuf();
+    inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, 0, TCP_RST);
+    TcpInput(inPkt);
 
-    expect_error(TCP_CONN_REFUSED);
+    ExpectError(TCP_CONN_REFUSED);
 
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    uint rst_states1[] =
+    uint rstStates1[] =
     {
         TCP_ESTABLISHED,
         TCP_FIN_WAIT_1,
@@ -765,26 +765,26 @@ int main(int argc, const char** argv)
         0,
     };
 
-    for (uint* statep = rst_states1; *statep; ++statep)
+    for (uint *pState = rstStates1; *pState; ++pState)
     {
-        uint state = *statep;
+        uint state = *pState;
 
-        test_case_begin(state, "RST", "conn reset");
+        TestCaseBegin(state, "RST", "conn reset");
 
-        conn = create_conn();
-        enter_state(conn, state);
+        conn = CreateConn();
+        EnterState(conn, state);
 
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, 0, TCP_RST);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, 0, TCP_RST);
+        TcpInput(inPkt);
 
-        expect_error(TCP_CONN_RESET);
+        ExpectError(TCP_CONN_RESET);
 
-        test_case_end();
+        TestCaseEnd();
     }
 
     // --------------------------------------------------------------------------------------------
-    uint rst_states2[] =
+    uint rstStates2[] =
     {
         TCP_CLOSING,
         TCP_LAST_ACK,
@@ -792,67 +792,67 @@ int main(int argc, const char** argv)
         0,
     };
 
-    for (uint* statep = rst_states2; *statep; ++statep)
+    for (uint *pState = rstStates2; *pState; ++pState)
     {
-        uint state = *statep;
+        uint state = *pState;
 
-        test_case_begin(state, "RST", "conn closed");
+        TestCaseBegin(state, "RST", "conn closed");
 
-        conn = create_conn();
-        enter_state(conn, state);
+        conn = CreateConn();
+        EnterState(conn, state);
 
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, 0, TCP_RST);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, 0, TCP_RST);
+        TcpInput(inPkt);
 
-        test_case_end();
+        TestCaseEnd();
     }
 
     // --------------------------------------------------------------------------------------------
-    for (uint* statep = general_states; *statep; ++statep)
+    for (uint *pState = generalStates; *pState; ++pState)
     {
-        uint state = *statep;
+        uint state = *pState;
 
-        test_case_begin(state, "SYN", "conn reset, RST sent");
+        TestCaseBegin(state, "SYN", "conn reset, RST sent");
 
-        conn = create_conn();
-        enter_state(conn, state);
+        conn = CreateConn();
+        EnterState(conn, state);
 
-        u16 local_port = conn->local_port;
-        u16 remote_port = conn->remote_port;
-        u32 rcv_nxt = conn->rcv_nxt;
+        u16 localPort = conn->localPort;
+        u16 remotePort = conn->remotePort;
+        u32 rcvNxt = conn->rcvNxt;
 
-        in_pkt = net_alloc_buf();
-        in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_SYN);
-        tcp_input(in_pkt);
+        inPkt = NetAllocBuf();
+        inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_SYN);
+        TcpInput(inPkt);
 
-        out_pkt = pop_packet();
-        out_hdr = (TCP_Header*)out_pkt->data;
-        tcp_swap(out_hdr);
-        ASSERT_EQ_UINT(out_hdr->src_port, local_port);
-        ASSERT_EQ_UINT(out_hdr->dst_port, remote_port);
-        ASSERT_EQ_UINT(out_hdr->seq, 0);
-        ASSERT_EQ_UINT(out_hdr->ack, rcv_nxt);
-        ASSERT_EQ_HEX8(out_hdr->flags, TCP_RST | TCP_ACK);
-        free(out_pkt);
+        outPkt = PopPacket();
+        outHdr = (TcpHeader *)outPkt->data;
+        TcpSwap(outHdr);
+        ASSERT_EQ_UINT(outHdr->srcPort, localPort);
+        ASSERT_EQ_UINT(outHdr->dstPort, remotePort);
+        ASSERT_EQ_UINT(outHdr->seq, 0);
+        ASSERT_EQ_UINT(outHdr->ack, rcvNxt);
+        ASSERT_EQ_HEX8(outHdr->flags, TCP_RST | TCP_ACK);
+        free(outPkt);
 
-        expect_error(TCP_CONN_RESET);
+        ExpectError(TCP_CONN_RESET);
 
-        test_case_end();
+        TestCaseEnd();
     }
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_SYN_RECEIVED, "bad ACK", "RST sent");
+    TestCaseBegin(TCP_SYN_RECEIVED, "bad ACK", "RST sent");
 
-    test_case_end();
-
-    // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_SYN_RECEIVED, "ACK", "goto ESTABLISHED");
-
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    uint ack_states[] =
+    TestCaseBegin(TCP_SYN_RECEIVED, "ACK", "goto ESTABLISHED");
+
+    TestCaseEnd();
+
+    // --------------------------------------------------------------------------------------------
+    uint ackStates[] =
     {
         TCP_ESTABLISHED,
         TCP_FIN_WAIT_1,
@@ -862,118 +862,118 @@ int main(int argc, const char** argv)
         0
     };
 
-    for (uint* statep = ack_states; *statep; ++statep)
+    for (uint *pState = ackStates; *pState; ++pState)
     {
-        uint state = *statep;
-        test_case_begin(state, "ACK", "update pointers");
+        uint state = *pState;
+        TestCaseBegin(state, "ACK", "update pointers");
 
-        test_case_end();
+        TestCaseEnd();
     }
 
     // --------------------------------------------------------------------------------------------
-    for (uint* statep = ack_states; *statep; ++statep)
+    for (uint *pState = ackStates; *pState; ++pState)
     {
-        uint state = *statep;
-        test_case_begin(state, "dup ACK", "ignore");
+        uint state = *pState;
+        TestCaseBegin(state, "dup ACK", "ignore");
 
-        test_case_end();
+        TestCaseEnd();
     }
 
     // --------------------------------------------------------------------------------------------
-    for (uint* statep = ack_states; *statep; ++statep)
+    for (uint *pState = ackStates; *pState; ++pState)
     {
-        uint state = *statep;
-        test_case_begin(state, "unsent ACK", "resend ACK");
+        uint state = *pState;
+        TestCaseBegin(state, "unsent ACK", "resend ACK");
 
-        test_case_end();
+        TestCaseEnd();
     }
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_FIN_WAIT_1, "ACK, FIN not ACK'd", "ignore");
+    TestCaseBegin(TCP_FIN_WAIT_1, "ACK, FIN not ACK'd", "ignore");
 
-    test_case_end();
-
-    // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_CLOSING, "ACK, FIN not ACK'd", "ignore");
-
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_FIN_WAIT_1, "ACK, FIN ACK'd", "goto FIN-WAIT-2");
+    TestCaseBegin(TCP_CLOSING, "ACK, FIN not ACK'd", "ignore");
 
-    test_case_end();
-
-    // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_CLOSING, "ACK, FIN ACK'd", "goto TIME-WAIT");
-
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_LAST_ACK, "ACK, FIN not ACK'd", "ignore");
+    TestCaseBegin(TCP_FIN_WAIT_1, "ACK, FIN ACK'd", "goto FIN-WAIT-2");
 
-    conn = create_conn();
-    enter_state(conn, TCP_LAST_ACK);
-
-    in_pkt = net_alloc_buf();
-    in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt - 1, TCP_ACK);
-    tcp_input(in_pkt);
-
-    exit_state(conn, TCP_LAST_ACK);
-
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_LAST_ACK, "ACK, FIN ACK'd", "goto CLOSED");
+    TestCaseBegin(TCP_CLOSING, "ACK, FIN ACK'd", "goto TIME-WAIT");
 
-    conn = create_conn();
-    enter_state(conn, TCP_LAST_ACK);
-
-    in_pkt = net_alloc_buf();
-    in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_ACK);
-    tcp_input(in_pkt);
-
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_TIME_WAIT, "ACK, no FIN", "ignore");
+    TestCaseBegin(TCP_LAST_ACK, "ACK, FIN not ACK'd", "ignore");
 
-    conn = create_conn();
-    enter_state(conn, TCP_TIME_WAIT);
+    conn = CreateConn();
+    EnterState(conn, TCP_LAST_ACK);
 
-    in_pkt = net_alloc_buf();
-    in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_ACK);
-    tcp_input(in_pkt);
+    inPkt = NetAllocBuf();
+    inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt - 1, TCP_ACK);
+    TcpInput(inPkt);
 
-    exit_state(conn, TCP_TIME_WAIT);
+    ExitState(conn, TCP_LAST_ACK);
 
-    test_case_end();
+    TestCaseEnd();
 
     // --------------------------------------------------------------------------------------------
-    test_case_begin(TCP_TIME_WAIT, "FIN", "reset 2MSL timer");
+    TestCaseBegin(TCP_LAST_ACK, "ACK, FIN ACK'd", "goto CLOSED");
 
-    conn = create_conn();
-    enter_state(conn, TCP_TIME_WAIT);
+    conn = CreateConn();
+    EnterState(conn, TCP_LAST_ACK);
 
-    pit_ticks += 1000;
-    in_pkt = net_alloc_buf();
-    in_hdr = prepare_in_pkt(conn, in_pkt, conn->rcv_nxt, conn->snd_nxt, TCP_FIN | TCP_ACK);
-    tcp_input(in_pkt);
+    inPkt = NetAllocBuf();
+    inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_ACK);
+    TcpInput(inPkt);
 
-    out_pkt = pop_packet();
-    out_hdr = (TCP_Header*)out_pkt->data;
-    tcp_swap(out_hdr);
-    ASSERT_EQ_UINT(out_hdr->src_port, conn->local_port);
-    ASSERT_EQ_UINT(out_hdr->dst_port, conn->remote_port);
-    ASSERT_EQ_UINT(out_hdr->seq, conn->snd_nxt);
-    ASSERT_EQ_UINT(out_hdr->ack, conn->rcv_nxt);
-    ASSERT_EQ_HEX8(out_hdr->flags, TCP_ACK);
-    free(out_pkt);
+    TestCaseEnd();
 
-    ASSERT_EQ_UINT(conn->msl_wait, pit_ticks + 2 * TCP_MSL);
+    // --------------------------------------------------------------------------------------------
+    TestCaseBegin(TCP_TIME_WAIT, "ACK, no FIN", "ignore");
 
-    exit_state(conn, TCP_TIME_WAIT);
+    conn = CreateConn();
+    EnterState(conn, TCP_TIME_WAIT);
 
-    test_case_end();
+    inPkt = NetAllocBuf();
+    inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_ACK);
+    TcpInput(inPkt);
+
+    ExitState(conn, TCP_TIME_WAIT);
+
+    TestCaseEnd();
+
+    // --------------------------------------------------------------------------------------------
+    TestCaseBegin(TCP_TIME_WAIT, "FIN", "reset 2MSL timer");
+
+    conn = CreateConn();
+    EnterState(conn, TCP_TIME_WAIT);
+
+    g_pitTicks += 1000;
+    inPkt = NetAllocBuf();
+    inHdr = PrepareInPkt(conn, inPkt, conn->rcvNxt, conn->sndNxt, TCP_FIN | TCP_ACK);
+    TcpInput(inPkt);
+
+    outPkt = PopPacket();
+    outHdr = (TcpHeader *)outPkt->data;
+    TcpSwap(outHdr);
+    ASSERT_EQ_UINT(outHdr->srcPort, conn->localPort);
+    ASSERT_EQ_UINT(outHdr->dstPort, conn->remotePort);
+    ASSERT_EQ_UINT(outHdr->seq, conn->sndNxt);
+    ASSERT_EQ_UINT(outHdr->ack, conn->rcvNxt);
+    ASSERT_EQ_HEX8(outHdr->flags, TCP_ACK);
+    free(outPkt);
+
+    ASSERT_EQ_UINT(conn->mslWait, g_pitTicks + 2 * TCP_MSL);
+
+    ExitState(conn, TCP_TIME_WAIT);
+
+    TestCaseEnd();
 
     return EXIT_SUCCESS;
 }

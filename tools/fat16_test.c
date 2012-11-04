@@ -32,7 +32,7 @@ BiosParamBlock bpb =
 };
 
 // ------------------------------------------------------------------------------------------------
-int main(int argc, const char** argv)
+int main(int argc, const char **argv)
 {
     ASSERT_EQ_UINT(sizeof(struct BiosParamBlock), 62);
     ASSERT_EQ_UINT(sizeof(struct DirEntry), 32);
@@ -42,7 +42,7 @@ int main(int argc, const char** argv)
 
     // Allocate image
     uint imageSize = bpb.sectorCount * bpb.bytesPerSector;
-    u8* image = FatAllocImage(imageSize);
+    u8 *image = FatAllocImage(imageSize);
     for (uint i = 0; i < imageSize; ++i)
     {
         ASSERT_EQ_UINT(image[i], ENTRY_ERASED);
@@ -105,7 +105,7 @@ int main(int argc, const char** argv)
     ASSERT_EQ_MEM(ext, "IJK", sizeof(ext));
 
     // Directory Entry Updating
-    DirEntry* entry = FatFindFreeRootEntry(image);
+    DirEntry *entry = FatFindFreeRootEntry(image);
     ASSERT_TRUE(entry != 0);
 
     FatSplitPath(name, ext, "dir/abcdefgh0.ijk0");
@@ -131,19 +131,19 @@ int main(int argc, const char** argv)
     ASSERT_EQ_PTR(entry, 0);
 
     // Free all directory entries we just allocated
-    DirEntry* root = FatGetRootDirectory(image);
+    DirEntry *root = FatGetRootDirectory(image);
     for (uint i = 0; i < bpb.rootEntryCount; ++i)
     {
-        DirEntry* entry = root + i;
+        DirEntry *entry = root + i;
         FatRemoveDirEntry(entry);
     }
 
     // Add file data, single cluster
-    char* data = "Hello World!";
+    char *data = "Hello World!";
     u16 rootClusterIndex = FatAddData(image, data, strlen(data) + 1);
     ASSERT_TRUE(rootClusterIndex != 0);
     ASSERT_EQ_HEX16(FatGetClusterValue(image, 0, rootClusterIndex), 0xffff);
-    char* writtenData = (char*)(image + FatGetClusterOffset(image, rootClusterIndex));
+    char *writtenData = (char *)(image + FatGetClusterOffset(image, rootClusterIndex));
     ASSERT_EQ_STR(writtenData, data);
     FatRemoveData(image, rootClusterIndex);
     ASSERT_EQ_HEX16(FatGetClusterValue(image, 0, rootClusterIndex), 0x0000);
@@ -164,7 +164,7 @@ int main(int argc, const char** argv)
     clusterIndex = rootClusterIndex;
     while (clusterIndex != 0xffff && index < INT_DATA_COUNT)
     {
-        uint* writtenData = (uint*)(image + FatGetClusterOffset(image, clusterIndex));
+        uint *writtenData = (uint *)(image + FatGetClusterOffset(image, clusterIndex));
         for (uint i = 0; i < 128; ++i)
         {
             if (index < INT_DATA_COUNT)
@@ -188,7 +188,7 @@ int main(int argc, const char** argv)
     rootClusterIndex = entry->clusterIndex;
     ASSERT_TRUE(rootClusterIndex != 0);
     ASSERT_EQ_HEX16(FatGetClusterValue(image, 0, rootClusterIndex), 0xffff);
-    writtenData = (char*)(image + FatGetClusterOffset(image, rootClusterIndex));
+    writtenData = (char *)(image + FatGetClusterOffset(image, rootClusterIndex));
     ASSERT_EQ_STR(writtenData, data);
     FatRemoveFile(image, entry);
 

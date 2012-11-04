@@ -5,7 +5,8 @@
 #include "input/keymap.h"
 #include "input/keycode.h"
 
-const Keymap keymap_us101 =
+// ------------------------------------------------------------------------------------------------
+const Keymap g_keymapUs101 =
 {
     .base =
     {

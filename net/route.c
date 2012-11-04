@@ -8,13 +8,13 @@
 #include "stdlib/string.h"
 
 // ------------------------------------------------------------------------------------------------
-static Link net_route_table = { &net_route_table, &net_route_table };
+static Link s_routeTable = { &s_routeTable, &s_routeTable };
 
 // ------------------------------------------------------------------------------------------------
-const Net_Route* net_find_route(const IPv4_Addr* dst)
+const NetRoute *NetFindRoute(const Ipv4Addr *dst)
 {
-    Net_Route* route;
-    list_for_each(route, net_route_table, link)
+    NetRoute *route;
+    ListForEach(route, s_routeTable, link)
     {
         if ((dst->u.bits & route->mask.u.bits) == route->dst.u.bits)
         {
@@ -22,15 +22,15 @@ const Net_Route* net_find_route(const IPv4_Addr* dst)
         }
     }
 
-    console_print("Failed to route IPv4 address\n");
+    ConsolePrint("Failed to route IPv4 address\n");
     return 0;
 }
 
 // ------------------------------------------------------------------------------------------------
-void net_add_route(const IPv4_Addr* dst, const IPv4_Addr* mask, const IPv4_Addr* gateway, Net_Intf* intf)
+void NetAddRoute(const Ipv4Addr *dst, const Ipv4Addr *mask, const Ipv4Addr *gateway, NetIntf *intf)
 {
-    Net_Route* route = vm_alloc(sizeof(Net_Route));
-    link_init(&route->link);
+    NetRoute *route = VMAlloc(sizeof(NetRoute));
+    LinkInit(&route->link);
     route->dst = *dst;
     route->mask = *mask;
     if (gateway)
@@ -45,8 +45,8 @@ void net_add_route(const IPv4_Addr* dst, const IPv4_Addr* mask, const IPv4_Addr*
     route->intf = intf;
 
     // Insert route at appropriate priority in the table.
-    Net_Route* prev;
-    list_for_each(prev, net_route_table, link)
+    NetRoute *prev;
+    ListForEach(prev, s_routeTable, link)
     {
         if (prev->mask.u.bits > mask->u.bits)
         {
@@ -54,38 +54,38 @@ void net_add_route(const IPv4_Addr* dst, const IPv4_Addr* mask, const IPv4_Addr*
         }
     }
 
-    link_after(&prev->link, &route->link);
+    LinkAfter(&prev->link, &route->link);
 }
 
 // ------------------------------------------------------------------------------------------------
-const IPv4_Addr* net_next_addr(const Net_Route* route, const IPv4_Addr* dst_addr)
+const Ipv4Addr *NetNextAddr(const NetRoute *route, const Ipv4Addr *dstAddr)
 {
-    return route->gateway.u.bits ? &route->gateway : dst_addr;
+    return route->gateway.u.bits ? &route->gateway : dstAddr;
 }
 
 // ------------------------------------------------------------------------------------------------
-void net_print_route_table()
+void NetPrintRouteTable()
 {
-    console_print("%-15s  %-15s  %-15s  %s\n", "Destination", "Netmask", "Gateway", "Interface");
+    ConsolePrint("%-15s  %-15s  %-15s  %s\n", "Destination", "Netmask", "Gateway", "Interface");
 
-    Net_Route* route;
-    list_for_each(route, net_route_table, link)
+    NetRoute *route;
+    ListForEach(route, s_routeTable, link)
     {
-        char dst_str[IPV4_ADDR_STRING_SIZE];
-        char mask_str[IPV4_ADDR_STRING_SIZE];
-        char gateway_str[IPV4_ADDR_STRING_SIZE];
+        char dstStr[IPV4_ADDR_STRING_SIZE];
+        char maskStr[IPV4_ADDR_STRING_SIZE];
+        char gatewayStr[IPV4_ADDR_STRING_SIZE];
 
-        ipv4_addr_to_str(dst_str, sizeof(dst_str), &route->dst);
-        ipv4_addr_to_str(mask_str, sizeof(mask_str), &route->mask);
+        Ipv4AddrToStr(dstStr, sizeof(dstStr), &route->dst);
+        Ipv4AddrToStr(maskStr, sizeof(maskStr), &route->mask);
         if (route->gateway.u.bits)
         {
-            ipv4_addr_to_str(gateway_str, sizeof(gateway_str), &route->gateway);
+            Ipv4AddrToStr(gatewayStr, sizeof(gatewayStr), &route->gateway);
         }
         else
         {
-            strcpy(gateway_str, "On-link");
+            strcpy(gatewayStr, "On-link");
         }
 
-        console_print("%-15s  %-15s  %-15s  %s\n", dst_str, mask_str, gateway_str, route->intf->name);
+        ConsolePrint("%-15s  %-15s  %-15s  %s\n", dstStr, maskStr, gatewayStr, route->intf->name);
     }
 }

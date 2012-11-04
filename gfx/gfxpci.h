@@ -6,21 +6,23 @@
 
 #include "stdlib/types.h"
 
+// ------------------------------------------------------------------------------------------------
 typedef struct GfxPCI
 {
     uint    id;
 
-    void   *aperture_bar;
-    void   *mmio_bar;
-    u32    *gtt_addr;
+    void   *apertureBar;
+    void   *mmioBar;
+    u32    *gttAddr;
     u16     iobase;
 
-    u32    aperture_size;
+    u32     apertureSize;
 } GfxPCI;
 
-void gfx_init_pci(GfxPCI *pPci);
+// ------------------------------------------------------------------------------------------------
+void GfxInitPci(GfxPCI *pci);
 
-u32 gfx_read32(GfxPCI *pPci, uint reg);
-u64 gfx_read64(GfxPCI *pPci, uint reg);
-void gfx_write32(GfxPCI *pPci, uint reg, u32 value);
-void gfx_write64(GfxPCI *pPci, uint reg, u32 value);
+u32 GfxRead32(GfxPCI *pci, uint reg);
+u64 GfxRead64(GfxPCI *pci, uint reg);
+void GfxWrite32(GfxPCI *pci, uint reg, u32 value);
+void GfxWrite64(GfxPCI *pci, uint reg, u32 value);

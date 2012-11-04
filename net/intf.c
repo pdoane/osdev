@@ -9,20 +9,20 @@
 // ------------------------------------------------------------------------------------------------
 // Globals
 
-Link net_intf_list = { &net_intf_list, &net_intf_list };
+Link g_netIntfList = { &g_netIntfList, &g_netIntfList };
 
 // ------------------------------------------------------------------------------------------------
-Net_Intf* net_intf_create()
+NetIntf *NetIntfCreate()
 {
-    Net_Intf* intf = vm_alloc(sizeof(Net_Intf));
-    memset(intf, 0, sizeof(Net_Intf));
-    link_init(&intf->link);
+    NetIntf *intf = VMAlloc(sizeof(NetIntf));
+    memset(intf, 0, sizeof(NetIntf));
+    LinkInit(&intf->link);
 
     return intf;
 }
 
 // ------------------------------------------------------------------------------------------------
-void net_intf_add(Net_Intf* intf)
+void NetIntfAdd(NetIntf *intf)
 {
-    link_before(&net_intf_list, &intf->link);
+    LinkBefore(&g_netIntfList, &intf->link);
 }

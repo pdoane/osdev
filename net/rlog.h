@@ -7,4 +7,4 @@
 #include "stdlib/types.h"
 
 // ------------------------------------------------------------------------------------------------
-void rlog_print(const char* fmt, ...);
+void RlogPrint(const char *fmt, ...);

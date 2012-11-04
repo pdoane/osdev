@@ -58,41 +58,41 @@
 #define PCI_BAR_64                      0x04
 #define PCI_BAR_PREFETCH                0x08
 
-typedef struct PCI_Bar
+typedef struct PciBar
 {
     union
     {
-        void* address;
+        void *address;
         u16 port;
     } u;
     u64 size;
     uint flags;
-} PCI_Bar;
+} PciBar;
 
 // ------------------------------------------------------------------------------------------------
-typedef struct PCI_DeviceInfo
+typedef struct PciDeviceInfo
 {
-    u16 vendor_id;
-    u16 device_id;
-    u8 class_code;
+    u16 vendorId;
+    u16 deviceId;
+    u8 classCode;
     u8 subclass;
-    u8 prog_intf;
-} PCI_DeviceInfo;
+    u8 progIntf;
+} PciDeviceInfo;
 
-typedef struct PCI_Driver
+typedef struct PciDriver
 {
-    void (*init)(uint id, PCI_DeviceInfo* info);
-} PCI_Driver;
+    void (*init)(uint id, PciDeviceInfo *info);
+} PciDriver;
 
 // ------------------------------------------------------------------------------------------------
-extern const PCI_Driver pci_driver_table[];
+extern const PciDriver g_pciDriverTable[];
 
-u8 pci_in8(uint id, uint reg);
-u16 pci_in16(uint id, uint reg);
-u32 pci_in32(uint id, uint reg);
+u8 PciRead8(uint id, uint reg);
+u16 PciRead16(uint id, uint reg);
+u32 PciRead32(uint id, uint reg);
 
-void pci_out8(uint id, uint reg, u8 data);
-void pci_out16(uint id, uint reg, u16 data);
-void pci_out32(uint id, uint reg, u32 data);
+void PciWrite8(uint id, uint reg, u8 data);
+void PciWrite16(uint id, uint reg, u16 data);
+void PciWrite32(uint id, uint reg, u32 data);
 
-void pci_get_bar(PCI_Bar* bar, uint id, uint index);
+void PciGetBar(PciBar *bar, uint id, uint index);

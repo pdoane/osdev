@@ -13,93 +13,93 @@
 #include "console/console.h"
 
 // ------------------------------------------------------------------------------------------------
-void udp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt)
+void UdpRecv(NetIntf *intf, const Ipv4Header *ipHdr, NetBuf *pkt)
 {
-    udp_print(pkt);
+    UdpPrint(pkt);
 
     // Validate packet header
-    if (pkt->start + sizeof(UDP_Header) > pkt->end)
+    if (pkt->start + sizeof(UdpHeader) > pkt->end)
     {
         return;
     }
 
-    const UDP_Header* hdr = (const UDP_Header*)pkt->start;
+    const UdpHeader *hdr = (const UdpHeader *)pkt->start;
 
-    u16 src_port = net_swap16(hdr->src_port);
-    //u16 dst_port = net_swap16(hdr->dst_port);
+    u16 srcPort = NetSwap16(hdr->srcPort);
+    //u16 dstPort = NetSwap16(hdr->dstPort);
 
-    pkt->start += sizeof(UDP_Header);
+    pkt->start += sizeof(UdpHeader);
 
-    switch (src_port)
+    switch (srcPort)
     {
     case PORT_DNS:
-        dns_rx(intf, pkt);
+        DnsRecv(intf, pkt);
         break;
 
     case PORT_BOOTP_SERVER:
-        dhcp_rx(intf, pkt);
+        DhcpRecv(intf, pkt);
         break;
 
     case PORT_NTP:
-        ntp_rx(intf, pkt);
+        NtpRecv(intf, pkt);
         break;
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void udp_tx(const IPv4_Addr* dst_addr, uint dst_port, uint src_port, Net_Buf* pkt)
+void UdpSend(const Ipv4Addr *dstAddr, uint dstPort, uint srcPort, NetBuf *pkt)
 {
     // UDP Header
-    pkt->start -= sizeof(UDP_Header);
+    pkt->start -= sizeof(UdpHeader);
 
-    UDP_Header* hdr = (UDP_Header*)pkt->start;
-    hdr->src_port = net_swap16(src_port);
-    hdr->dst_port = net_swap16(dst_port);
-    hdr->len = net_swap16(pkt->end - pkt->start);
+    UdpHeader *hdr = (UdpHeader *)pkt->start;
+    hdr->srcPort = NetSwap16(srcPort);
+    hdr->dstPort = NetSwap16(dstPort);
+    hdr->len = NetSwap16(pkt->end - pkt->start);
     hdr->checksum = 0;  // don't compute checksum yet
 
-    udp_print(pkt);
+    UdpPrint(pkt);
 
-    ipv4_tx(dst_addr, IP_PROTOCOL_UDP, pkt);
+    Ipv4Send(dstAddr, IP_PROTOCOL_UDP, pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-void udp_tx_intf(Net_Intf* intf, const IPv4_Addr* dst_addr, uint dst_port, uint src_port, Net_Buf* pkt)
+void UdpSendIntf(NetIntf *intf, const Ipv4Addr *dstAddr, uint dstPort, uint srcPort, NetBuf *pkt)
 {
     // UDP Header
-    pkt->start -= sizeof(UDP_Header);
+    pkt->start -= sizeof(UdpHeader);
 
-    UDP_Header* hdr = (UDP_Header*)pkt->start;
-    hdr->src_port = net_swap16(src_port);
-    hdr->dst_port = net_swap16(dst_port);
-    hdr->len = net_swap16(pkt->end - pkt->start);
+    UdpHeader *hdr = (UdpHeader *)pkt->start;
+    hdr->srcPort = NetSwap16(srcPort);
+    hdr->dstPort = NetSwap16(dstPort);
+    hdr->len = NetSwap16(pkt->end - pkt->start);
     hdr->checksum = 0;  // don't compute checksum yet
 
-    udp_print(pkt);
+    UdpPrint(pkt);
 
-    ipv4_tx_intf(intf, dst_addr, dst_addr, IP_PROTOCOL_UDP, pkt);
+    Ipv4SendIntf(intf, dstAddr, dstAddr, IP_PROTOCOL_UDP, pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-void udp_print(const Net_Buf* pkt)
+void UdpPrint(const NetBuf *pkt)
 {
-    if (~net_trace & TRACE_TRANSPORT)
+    if (~g_netTrace & TRACE_TRANSPORT)
     {
         return;
     }
 
-    if (pkt->start + sizeof(UDP_Header) > pkt->end)
+    if (pkt->start + sizeof(UdpHeader) > pkt->end)
     {
         return;
     }
 
-    const UDP_Header* hdr = (const UDP_Header*)pkt->start;
+    const UdpHeader *hdr = (const UdpHeader *)pkt->start;
 
-    u16 src_port = net_swap16(hdr->src_port);
-    u16 dst_port = net_swap16(hdr->dst_port);
-    u16 len = net_swap16(hdr->len);
-    u16 checksum = net_swap16(hdr->checksum);
+    u16 srcPort = NetSwap16(hdr->srcPort);
+    u16 dstPort = NetSwap16(hdr->dstPort);
+    u16 len = NetSwap16(hdr->len);
+    u16 checksum = NetSwap16(hdr->checksum);
 
-    console_print("  UDP: src=%d dst=%d len=%d checksum=%d\n",
-        src_port, dst_port, len, checksum);
+    ConsolePrint("  UDP: src=%d dst=%d len=%d checksum=%d\n",
+        srcPort, dstPort, len, checksum);
 }

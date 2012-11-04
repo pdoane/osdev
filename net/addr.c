@@ -6,14 +6,14 @@
 #include "stdlib/format.h"
 
 // ------------------------------------------------------------------------------------------------
-const Eth_Addr null_eth_addr            = { { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
-const Eth_Addr broadcast_eth_addr       = { { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
+const EthAddr g_nullEthAddr            = { { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+const EthAddr g_broadcastEthAddr       = { { 0xff, 0xff, 0xff, 0xff, 0xff, 0xff } };
 
-const IPv4_Addr null_ipv4_addr          = { { { 0x00, 0x00, 0x00, 0x00 } } };
-const IPv4_Addr broadcast_ipv4_addr     = { { { 0xff, 0xff, 0xff, 0xff } } };
+const Ipv4Addr g_nullIpv4Addr          = { { { 0x00, 0x00, 0x00, 0x00 } } };
+const Ipv4Addr g_broadcastIpv4Addr     = { { { 0xff, 0xff, 0xff, 0xff } } };
 
 // ------------------------------------------------------------------------------------------------
-bool eth_addr_eq(const Eth_Addr* x, const Eth_Addr* y)
+bool EthAddrEq(const EthAddr *x, const EthAddr *y)
 {
     for (uint i = 0; i < 6; ++i)
     {
@@ -27,34 +27,34 @@ bool eth_addr_eq(const Eth_Addr* x, const Eth_Addr* y)
 }
 
 // ------------------------------------------------------------------------------------------------
-bool ipv4_addr_eq(const IPv4_Addr* x, const IPv4_Addr* y)
+bool Ipv4AddrEq(const Ipv4Addr *x, const Ipv4Addr *y)
 {
     return x->u.bits == y->u.bits;
 }
 
 // ------------------------------------------------------------------------------------------------
-void eth_addr_to_str(char* str, size_t size, const Eth_Addr* addr)
+void EthAddrToStr(char *str, size_t size, const EthAddr *addr)
 {
     snprintf(str, size, "%02x:%02x:%02x:%02x:%02x:%02x",
             addr->n[0], addr->n[1], addr->n[2], addr->n[3], addr->n[4], addr->n[5]);
 }
 
 // ------------------------------------------------------------------------------------------------
-void ipv4_addr_to_str(char* str, size_t size, const IPv4_Addr* addr)
+void Ipv4AddrToStr(char *str, size_t size, const Ipv4Addr *addr)
 {
     snprintf(str, size, "%d.%d.%d.%d",
         addr->u.n[0], addr->u.n[1], addr->u.n[2], addr->u.n[3]);
 }
 
 // ------------------------------------------------------------------------------------------------
-void ipv4_addr_port_to_str(char* str, size_t size, const IPv4_Addr* addr, u16 port)
+void Ipv4AddrPortToStr(char *str, size_t size, const Ipv4Addr *addr, u16 port)
 {
     snprintf(str, size, "%d.%d.%d.%d:%d",
         addr->u.n[0], addr->u.n[1], addr->u.n[2], addr->u.n[3], port);
 }
 
 // ------------------------------------------------------------------------------------------------
-bool str_to_ipv4_addr(IPv4_Addr* addr, const char* str)
+bool StrToIpv4Addr(Ipv4Addr *addr, const char *str)
 {
     int a[4];
     if (sscanf(str, "%d.%d.%d.%d", &a[0], &a[1], &a[2], &a[3]) == 4)
@@ -70,7 +70,7 @@ bool str_to_ipv4_addr(IPv4_Addr* addr, const char* str)
 }
 
 // ------------------------------------------------------------------------------------------------
-bool str_to_ipv4_addr_port(IPv4_Addr* addr, const char* str, u16* port)
+bool StrToIpv4AddrPort(Ipv4Addr *addr, const char *str, u16 *port)
 {
     int a[4];
     int n;

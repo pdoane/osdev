@@ -8,8 +8,8 @@
 
 typedef struct ConsoleCmd
 {
-    const char* name;
-    void (*exec)(uint argc, const char** argv);
+    const char *name;
+    void (*exec)(uint argc, const char **argv);
 } ConsoleCmd;
 
-extern const ConsoleCmd console_cmd_table[];
+extern const ConsoleCmd g_consoleCmdTable[];

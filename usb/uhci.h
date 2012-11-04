@@ -6,4 +6,4 @@
 
 #include "pci/driver.h"
 
-void uhci_init(uint id, PCI_DeviceInfo* info);
+void UhciInit(uint id, PciDeviceInfo *info);

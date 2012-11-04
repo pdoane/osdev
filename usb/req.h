@@ -87,11 +87,11 @@
 // ------------------------------------------------------------------------------------------------
 // USB Device Request
 
-typedef struct USB_DevReq
+typedef struct UsbDevReq
 {
     u8 type;
     u8 req;
     u16 value;
     u16 index;
     u16 len;
-} PACKED USB_DevReq;
+} PACKED UsbDevReq;

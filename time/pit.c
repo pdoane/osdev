@@ -5,10 +5,11 @@
 #include "time/pit.h"
 #include "cpu/io.h"
 
-volatile u32 pit_ticks;
+volatile u32 g_pitTicks;
 
 // ------------------------------------------------------------------------------------------------
 // I/O Ports
+
 #define PIT_COUNTER0                    0x40
 #define PIT_CMD                         0x43
 
@@ -44,22 +45,22 @@ volatile u32 pit_ticks;
 #define PIT_FREQUENCY                   1193182
 
 // ------------------------------------------------------------------------------------------------
-void pit_init()
+void PitInit()
 {
     uint hz = 1000;
     uint divisor = PIT_FREQUENCY / hz;
-    out8(PIT_CMD, CMD_BINARY | CMD_MODE3 | CMD_RW_BOTH | CMD_COUNTER0);
-    out8(PIT_COUNTER0, divisor);
-    out8(PIT_COUNTER0, divisor >> 8);
+    IoWrite8(PIT_CMD, CMD_BINARY | CMD_MODE3 | CMD_RW_BOTH | CMD_COUNTER0);
+    IoWrite8(PIT_COUNTER0, divisor);
+    IoWrite8(PIT_COUNTER0, divisor >> 8);
 }
 
 // ------------------------------------------------------------------------------------------------
-void pit_wait(uint ms)
+void PitWait(uint ms)
 {
-    u32 now = pit_ticks;
+    u32 now = g_pitTicks;
     ++ms;
 
-    while (pit_ticks - now < ms)
+    while (g_pitTicks - now < ms)
     {
         ;
     }

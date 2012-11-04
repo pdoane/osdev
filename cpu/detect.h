@@ -6,4 +6,4 @@
 
 #include "stdlib/types.h"
 
-void cpu_detect();
+void CpuDetect();

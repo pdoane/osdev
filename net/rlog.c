@@ -15,7 +15,7 @@
 #include "console/console.h"
 
 // ------------------------------------------------------------------------------------------------
-void rlog_print(const char* fmt, ...)
+void RlogPrint(const char *fmt, ...)
 {
     char msg[1024];
     va_list args;
@@ -24,22 +24,22 @@ void rlog_print(const char* fmt, ...)
     vsnprintf(msg, sizeof(msg), fmt, args);
     va_end(args);
 
-    console_print(msg);
+    ConsolePrint(msg);
 
     uint len = strlen(msg) + 1;
 
     // For each interface, broadcast a packet
-    Net_Intf* intf;
-    list_for_each(intf, net_intf_list, link)
+    NetIntf *intf;
+    ListForEach(intf, g_netIntfList, link)
     {
-        if (!ipv4_addr_eq(&intf->broadcast_addr, &null_ipv4_addr))
+        if (!Ipv4AddrEq(&intf->broadcastAddr, &g_nullIpv4Addr))
         {
-            Net_Buf* pkt = net_alloc_buf();
+            NetBuf *pkt = NetAllocBuf();
 
-            strcpy((char*)pkt->start, msg);
+            strcpy((char *)pkt->start, msg);
             pkt->end += len;
 
-            udp_tx(&intf->broadcast_addr, PORT_OSHELPER, PORT_OSHELPER, pkt);
+            UdpSend(&intf->broadcastAddr, PORT_OSHELPER, PORT_OSHELPER, pkt);
         }
     }
 }

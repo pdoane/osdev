@@ -405,7 +405,7 @@ gdt32:
 ; IDT Descriptor
 idt:
 .desc:
-        dw 4095                     ; 256 * sizeof(IDT_Entry) - 1
+        dw 4095                     ; 256 * sizeof(IdtEntry) - 1
         dq idt_base                 ; 64-bit Base Address
 
 ; -------------------------------------------------------------------------------------------------

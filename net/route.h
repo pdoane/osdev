@@ -9,19 +9,19 @@
 // ------------------------------------------------------------------------------------------------
 // Route Entry
 
-typedef struct Net_Route
+typedef struct NetRoute
 {
     Link link;
-    IPv4_Addr dst;
-    IPv4_Addr mask;
-    IPv4_Addr gateway;
-    Net_Intf* intf;
-} Net_Route;
+    Ipv4Addr dst;
+    Ipv4Addr mask;
+    Ipv4Addr gateway;
+    NetIntf *intf;
+} NetRoute;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-const Net_Route* net_find_route(const IPv4_Addr* dst);
-void net_add_route(const IPv4_Addr* dst, const IPv4_Addr* mask, const IPv4_Addr* gateway, Net_Intf* intf);
-const IPv4_Addr* net_next_addr(const Net_Route* route, const IPv4_Addr* dst_addr);
-void net_print_route_table();
+const NetRoute *NetFindRoute(const Ipv4Addr *dst);
+void NetAddRoute(const Ipv4Addr *dst, const Ipv4Addr *mask, const Ipv4Addr *gateway, NetIntf *intf);
+const Ipv4Addr *NetNextAddr(const NetRoute *route, const Ipv4Addr *dstAddr);
+void NetPrintRouteTable();

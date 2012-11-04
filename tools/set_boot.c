@@ -18,7 +18,7 @@ static void Usage()
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool ReadSector(const char* path, char* data)
+static bool ReadSector(const char *path, char *data)
 {
     bool result = false;
 
@@ -42,7 +42,7 @@ static bool ReadSector(const char* path, char* data)
 }
 
 // ------------------------------------------------------------------------------------------------
-static bool WriteSector(const char* path, const char* data)
+static bool WriteSector(const char *path, const char *data)
 {
     bool result = false;
 
@@ -66,7 +66,7 @@ static bool WriteSector(const char* path, const char* data)
 }
 
 // ------------------------------------------------------------------------------------------------
-int main(int argc, const char** argv)
+int main(int argc, const char **argv)
 {
     // Parse arguments
     if (argc < 3)
@@ -75,8 +75,8 @@ int main(int argc, const char** argv)
         return EXIT_FAILURE;
     }
 
-    const char* diskPath = argv[1];
-    const char* bootSectorPath = argv[2];
+    const char *diskPath = argv[1];
+    const char *bootSectorPath = argv[2];
 
     // Read boot loader
     char bootLoader[SECTOR_SIZE];

@@ -4,4 +4,4 @@
 
 #pragma once
 
-void loopback_init();
+void LoopbackInit();

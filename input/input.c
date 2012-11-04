@@ -8,8 +8,8 @@
 #include "console/console.h"
 
 // ------------------------------------------------------------------------------------------------
-int g_mouse_x;
-int g_mouse_y;
+int g_mouseX;
+int g_mouseY;
 
 // ------------------------------------------------------------------------------------------------
 #define KBD_LSHIFT                      0x01
@@ -20,14 +20,14 @@ int g_mouse_y;
 static u8 s_flags;
 
 // ------------------------------------------------------------------------------------------------
-void input_event(uint code, uint val)
+void InputOnKey(uint code, uint val)
 {
-    const Keymap* keymap = &keymap_us101;
+    const Keymap *keymap = &g_keymapUs101;
 
     if (val)
     {
         // key press
-        console_on_keydown(code);
+        ConsoleOnKeyDown(code);
 
         if (code == KEY_LSHIFT)
         {
@@ -85,14 +85,14 @@ void input_event(uint code, uint val)
                     }
                 }
 
-                console_on_char(ch);
+                ConsoleOnChar(ch);
             }
         }
     }
     else
     {
         // key release
-        console_on_keyup(code);
+        ConsoleOnKeyUp(code);
 
         if (code == KEY_LSHIFT)
         {
@@ -106,28 +106,28 @@ void input_event(uint code, uint val)
 }
 
 // ------------------------------------------------------------------------------------------------
-void mouse_event(int dx, int dy)
+void InputOnMouse(int dx, int dy)
 {
-    g_mouse_x += dx;
-    g_mouse_y += dy;
+    g_mouseX += dx;
+    g_mouseY += dy;
 
-    if (g_mouse_x < 0)
+    if (g_mouseX < 0)
     {
-        g_mouse_x = 0;
+        g_mouseX = 0;
     }
 
-    if (g_mouse_x > 720)
+    if (g_mouseX > 720)
     {
-        g_mouse_x = 720;
+        g_mouseX = 720;
     }
 
-    if (g_mouse_y < 0)
+    if (g_mouseY < 0)
     {
-        g_mouse_y = 0;
+        g_mouseY = 0;
     }
 
-    if (g_mouse_y > 400)
+    if (g_mouseY > 400)
     {
-        g_mouse_y = 400;
+        g_mouseY = 400;
     }
 }

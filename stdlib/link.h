@@ -9,22 +9,22 @@
 // ------------------------------------------------------------------------------------------------
 typedef struct Link
 {
-    struct Link* prev;
-    struct Link* next;
+    struct Link *prev;
+    struct Link *next;
 } Link;
 
 // ------------------------------------------------------------------------------------------------
-static inline void link_init(Link* x)
+static inline void LinkInit(Link *x)
 {
     x->prev = x;
     x->next = x;
 }
 
 // ------------------------------------------------------------------------------------------------
-static inline void link_after(Link* a, Link* x)
+static inline void LinkAfter(Link *a, Link *x)
 {
-    Link* p = a;
-    Link* n = a->next;
+    Link *p = a;
+    Link *n = a->next;
     n->prev = x;
     x->next = n;
     x->prev = p;
@@ -32,10 +32,10 @@ static inline void link_after(Link* a, Link* x)
 }
 
 // ------------------------------------------------------------------------------------------------
-static inline void link_before(Link* a, Link* x)
+static inline void LinkBefore(Link *a, Link *x)
 {
-    Link* p = a->prev;
-    Link* n = a;
+    Link *p = a->prev;
+    Link *n = a;
     n->prev = x;
     x->next = n;
     x->prev = p;
@@ -43,10 +43,10 @@ static inline void link_before(Link* a, Link* x)
 }
 
 // ------------------------------------------------------------------------------------------------
-static inline void link_remove(Link* x)
+static inline void LinkRemove(Link *x)
 {
-    Link* p = x->prev;
-    Link* n = x->next;
+    Link *p = x->prev;
+    Link *n = x->next;
     n->prev = p;
     p->next = n;
     x->next = 0;
@@ -54,10 +54,10 @@ static inline void link_remove(Link* x)
 }
 
 // ------------------------------------------------------------------------------------------------
-static inline void link_move_after(Link* a, Link* x)
+static inline void LinkMoveAfter(Link *a, Link *x)
 {
-    Link* p = x->prev;
-    Link* n = x->next;
+    Link *p = x->prev;
+    Link *n = x->next;
     n->prev = p;
     p->next = n;
 
@@ -70,10 +70,10 @@ static inline void link_move_after(Link* a, Link* x)
 }
 
 // ------------------------------------------------------------------------------------------------
-static inline void link_move_before(Link* a, Link* x)
+static inline void LinkMoveBefore(Link *a, Link *x)
 {
-    Link* p = x->prev;
-    Link* n = x->next;
+    Link *p = x->prev;
+    Link *n = x->next;
     n->prev = p;
     p->next = n;
 
@@ -86,25 +86,25 @@ static inline void link_move_before(Link* a, Link* x)
 }
 
 // ------------------------------------------------------------------------------------------------
-static inline bool list_empty(Link* x)
+static inline bool ListIsEmpty(Link *x)
 {
     return x->next == x;
 }
 
 // ------------------------------------------------------------------------------------------------
-#define link_data(link,T,m) \
-    (T*)((char*)(link) - (unsigned long)(&(((T*)0)->m)))
+#define LinkData(link,T,m) \
+    (T *)((char *)(link) - (unsigned long)(&(((T*)0)->m)))
 
 // ------------------------------------------------------------------------------------------------
-#define list_for_each(it, list, m) \
-    for (it = link_data((list).next, typeof(*it), m); \
+#define ListForEach(it, list, m) \
+    for (it = LinkData((list).next, typeof(*it), m); \
         &it->m != &(list); \
-        it = link_data(it->m.next, typeof(*it), m))
+        it = LinkData(it->m.next, typeof(*it), m))
 
 // ------------------------------------------------------------------------------------------------
-#define list_for_each_safe(it, n, list, m) \
-    for (it = link_data((list).next, typeof(*it), m), \
-        n = link_data(it->m.next, typeof(*it), m); \
+#define ListForEachSafe(it, n, list, m) \
+    for (it = LinkData((list).next, typeof(*it), m), \
+        n = LinkData(it->m.next, typeof(*it), m); \
         &it->m != &(list); \
         it = n, \
-        n = link_data(n->m.next, typeof(*it), m))
+        n = LinkData(n->m.next, typeof(*it), m))

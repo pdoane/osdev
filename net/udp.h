@@ -9,20 +9,20 @@
 // ------------------------------------------------------------------------------------------------
 // UDP Header
 
-typedef struct UDP_Header
+typedef struct UdpHeader
 {
-    u16 src_port;
-    u16 dst_port;
+    u16 srcPort;
+    u16 dstPort;
     u16 len;
     u16 checksum;
-} PACKED UDP_Header;
+} PACKED UdpHeader;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void udp_rx(Net_Intf* intf, const IPv4_Header* ip_hdr, Net_Buf* pkt);
-void udp_tx(const IPv4_Addr* dst_addr, uint dst_port, uint src_port, Net_Buf* pkt);
-void udp_tx_intf(Net_Intf* intf, const IPv4_Addr* dst_addr,
-    uint dst_port, uint src_port, Net_Buf* pkt);
+void UdpRecv(NetIntf *intf, const Ipv4Header *ipHdr, NetBuf *pkt);
+void UdpSend(const Ipv4Addr *dstAddr, uint dstPort, uint srcPort, NetBuf *pkt);
+void UdpSendIntf(NetIntf *intf, const Ipv4Addr *dstAddr,
+    uint dstPort, uint srcPort, NetBuf *pkt);
 
-void udp_print(const Net_Buf* pkt);
+void UdpPrint(const NetBuf *pkt);

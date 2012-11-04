@@ -6,4 +6,4 @@
 
 #include "stdlib/types.h"
 
-void usb_poll();
+void UsbPoll();

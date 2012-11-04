@@ -6,6 +6,6 @@
 
 #include "stdlib/types.h"
 
-extern volatile u8 active_cpu_count;
+extern volatile u8 g_activeCpuCount;
 
-void smp_init();
+void SmpInit();

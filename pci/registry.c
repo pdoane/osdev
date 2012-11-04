@@ -5,15 +5,15 @@
 #include "pci/registry.h"
 
 // ------------------------------------------------------------------------------------------------
-const char* pci_device_name(uint vendor_id, uint device_id)
+const char *PciDeviceName(uint vendorId, uint deviceId)
 {
     return "Unknown Device";
 }
 
 // ------------------------------------------------------------------------------------------------
-const char* pci_class_name(uint class_code, uint subclass, uint prog_intf)
+const char *PciClassName(uint classCode, uint subclass, uint progIntf)
 {
-    switch ((class_code << 8) | subclass)
+    switch ((classCode << 8) | subclass)
     {
     case PCI_VGA_COMPATIBLE:            return "VGA-Compatible Device";
     case PCI_STORAGE_SCSI:              return "SCSI Storage Controller";
@@ -83,7 +83,7 @@ const char* pci_class_name(uint class_code, uint subclass, uint prog_intf)
     case PCI_SERIAL_FIREWIRE:           return "FireWire (IEEE 1394)";
     case PCI_SERIAL_SSA:                return "SSA";
     case PCI_SERIAL_USB:
-        switch (prog_intf)
+        switch (progIntf)
         {
         case PCI_SERIAL_USB_UHCI:       return "USB (UHCI)";
         case PCI_SERIAL_USB_OHCI:       return "USB (OHCI)";

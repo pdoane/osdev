@@ -6,7 +6,7 @@
 
 #include "stdlib/types.h"
 
-extern volatile u32 pit_ticks;
+extern volatile u32 g_pitTicks;
 
-void pit_init();
-void pit_wait(uint ms);
+void PitInit();
+void PitWait(uint ms);

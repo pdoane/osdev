@@ -9,61 +9,61 @@
 #include "mem/vm.h"
 
 // ------------------------------------------------------------------------------------------------
-typedef struct USB_Mouse
+typedef struct UsbMouse
 {
-    USB_Transfer data_transfer;
+    UsbTransfer dataTransfer;
     u8 data[4];
-} USB_Mouse;
+} UsbMouse;
 
 // ------------------------------------------------------------------------------------------------
-static void usb_mouse_process(USB_Mouse* mouse)
+static void UsbMouseProcess(UsbMouse *mouse)
 {
-    u8* data = mouse->data;
+    u8 *data = mouse->data;
 
-    console_print("%c%c%c dx=%d dy=%d\n",
+    ConsolePrint("%c%c%c dx=%d dy=%d\n",
         data[0] & 0x1 ? 'L' : ' ',
         data[0] & 0x2 ? 'R' : ' ',
         data[0] & 0x4 ? 'M' : ' ',
         (i8)data[1],
         (i8)data[2]);
 
-    mouse_event((i8)data[1], (i8)data[2]);
+    InputOnMouse((i8)data[1], (i8)data[2]);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void usb_mouse_poll(USB_Device* dev)
+static void UsbMousePoll(UsbDevice *dev)
 {
-    USB_Mouse* mouse = dev->drv;
-    USB_Transfer* t = &mouse->data_transfer;
+    UsbMouse *mouse = dev->drv;
+    UsbTransfer *t = &mouse->dataTransfer;
 
     if (t->complete)
     {
         if (t->success)
         {
-            usb_mouse_process(mouse);
+            UsbMouseProcess(mouse);
         }
 
         t->complete = false;
-        dev->hc_intr(dev, t);
+        dev->hcIntr(dev, t);
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-bool usb_mouse_init(USB_Device* dev)
+bool UsbMouseInit(UsbDevice *dev)
 {
-    if (dev->intf_desc.intf_class == USB_CLASS_HID &&
-        dev->intf_desc.intf_subclass == USB_SUBCLASS_BOOT &&
-        dev->intf_desc.intf_protocol == USB_PROTOCOL_MOUSE)
+    if (dev->intfDesc.intfClass == USB_CLASS_HID &&
+        dev->intfDesc.intfSubClass == USB_SUBCLASS_BOOT &&
+        dev->intfDesc.intfProtocol == USB_PROTOCOL_MOUSE)
     {
-        console_print("Initializing Mouse\n");
+        ConsolePrint("Initializing Mouse\n");
 
-        USB_Mouse* mouse = vm_alloc(sizeof(USB_Mouse));
+        UsbMouse *mouse = VMAlloc(sizeof(UsbMouse));
 
         dev->drv = mouse;
-        dev->drv_poll = usb_mouse_poll;
+        dev->drvPoll = UsbMousePoll;
 
         // Prepare transfer
-        USB_Transfer* t = &mouse->data_transfer;
+        UsbTransfer *t = &mouse->dataTransfer;
         t->endp = &dev->endp;
         t->req = 0;
         t->data = mouse->data;
@@ -71,7 +71,7 @@ bool usb_mouse_init(USB_Device* dev)
         t->complete = false;
         t->success = false;
 
-        dev->hc_intr(dev, t);
+        dev->hcIntr(dev, t);
         return true;
     }
 

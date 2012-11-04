@@ -23,22 +23,22 @@ int kmain()
 {
     memset(&__bss_start, 0, &__bss_end - &__bss_start);
 
-    vga_text_init();
-    console_init();
-    console_print("Welcome!\n");
+    VgaTextInit();
+    ConsoleInit();
+    ConsolePrint("Welcome!\n");
 
-    vm_init();
-    acpi_init();
-    intr_init();
-    pci_init();
-    net_init();
-    smp_init();
+    VMInit();
+    AcpiInit();
+    IntrInit();
+    PciInit();
+    NetInit();
+    SmpInit();
 
     for (;;)
     {
-        usb_poll();
-        net_poll();
-        gfx_poll();
+        UsbPoll();
+        NetPoll();
+        GfxPoll();
     }
 
     return 0;

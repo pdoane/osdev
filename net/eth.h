@@ -16,27 +16,27 @@
 // ------------------------------------------------------------------------------------------------
 // Ethernet Header
 
-typedef struct Eth_Header
+typedef struct EthHeader
 {
-    Eth_Addr dst;
-    Eth_Addr src;
-    u16 ether_type;
-} PACKED Eth_Header;
+    EthAddr dst;
+    EthAddr src;
+    u16 etherType;
+} PACKED EthHeader;
 
 // ------------------------------------------------------------------------------------------------
 // Ethernet Packet
 
-typedef struct Eth_Packet
+typedef struct EthPacket
 {
-    Eth_Header* hdr;
-    u16 ether_type;
-    u16 hdr_len;
-} Eth_Packet;
+    EthHeader *hdr;
+    u16 etherType;
+    u16 hdrLen;
+} EthPacket;
 
 // ------------------------------------------------------------------------------------------------
 // Functions
 
-void eth_rx(Net_Intf* intf, Net_Buf* pkt);
-void eth_tx_intf(Net_Intf* intf, const void* dst_addr, u16 ether_type, Net_Buf* pkt);
+void EthRecv(NetIntf *intf, NetBuf *pkt);
+void EthSendIntf(NetIntf *intf, const void *dstAddr, u16 etherType, NetBuf *pkt);
 
-void eth_print(Net_Buf* pkt);
+void EthPrint(NetBuf *pkt);

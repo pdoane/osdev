@@ -17,24 +17,24 @@
 // ------------------------------------------------------------------------------------------------
 // DHCP Header
 
-typedef struct DHCP_Header
+typedef struct DhcpHeader
 {
     u8 opcode;
     u8 htype;
     u8 hlen;
-    u8 hop_count;
+    u8 hopCount;
     u32 xid;
-    u16 sec_count;
+    u16 secCount;
     u16 flags;
-    IPv4_Addr client_ip_addr;
-    IPv4_Addr your_ip_addr;
-    IPv4_Addr server_ip_addr;
-    IPv4_Addr gateway_ip_addr;
-    Eth_Addr client_eth_addr;
+    Ipv4Addr clientIpAddr;
+    Ipv4Addr yourIpAddr;
+    Ipv4Addr serverIpAddr;
+    Ipv4Addr gatewayIpAddr;
+    EthAddr clientEthAddr;
     u8 reserved[10];
-    char server_name[64];
-    char boot_filename[128];
-} PACKED DHCP_Header;
+    char serverName[64];
+    char bootFilename[128];
+} PACKED DhcpHeader;
 
 // ------------------------------------------------------------------------------------------------
 // Opcode
@@ -63,20 +63,20 @@ typedef struct DHCP_Header
 #define OPT_PARAMETER_REQUEST           55
 #define OPT_END                         255
 
-typedef struct DHCP_Options
+typedef struct DhcpOptions
 {
-    const IPv4_Addr* subnet_mask;
-    const IPv4_Addr* router_list;
-    const IPv4_Addr* router_end;
-    const IPv4_Addr* dns_list;
-    const IPv4_Addr* dns_end;
-    const IPv4_Addr* requested_ip_addr;
-    uint lease_time;
-    uint message_type;
-    const IPv4_Addr* server_id;
-    const u8* parameter_list;
-    const u8* parameter_end;
-} DHCP_Options;
+    const Ipv4Addr *subnetMask;
+    const Ipv4Addr *routerList;
+    const Ipv4Addr *routerEnd;
+    const Ipv4Addr *dnsList;
+    const Ipv4Addr *dnsEnd;
+    const Ipv4Addr *requestedIpAddr;
+    uint leaseTime;
+    uint messageType;
+    const Ipv4Addr *serverId;
+    const u8 *parameterList;
+    const u8 *parameterEnd;
+} DhcpOptions;
 
 // ------------------------------------------------------------------------------------------------
 // Message Types
@@ -91,20 +91,20 @@ typedef struct DHCP_Options
 #define DHCP_INFORM                     8
 
 // ------------------------------------------------------------------------------------------------
-static bool dhcp_parse_options(DHCP_Options* opt, const Net_Buf* pkt)
+static bool DhcpParseOptions(DhcpOptions *opt, const NetBuf *pkt)
 {
-    const u8* p = pkt->start + sizeof(DHCP_Header);
-    const u8* end = pkt->end;
+    const u8 *p = pkt->start + sizeof(DhcpHeader);
+    const u8 *end = pkt->end;
 
     if (p + 4 > end)
     {
         return false;
     }
 
-    u32 magic_cookie = net_swap32(*(u32*)p);
+    u32 magicCookie = NetSwap32(*(u32 *)p);
     p += 4;
 
-    if (magic_cookie != MAGIC_COOKIE)
+    if (magicCookie != MAGIC_COOKIE)
     {
         return false;
     }
@@ -125,9 +125,9 @@ static bool dhcp_parse_options(DHCP_Options* opt, const Net_Buf* pkt)
         }
         else
         {
-            u8 opt_len = *p++;
+            u8 optLen = *p++;
 
-            const u8* next = p + opt_len;
+            const u8 *next = p + optLen;
             if (next > end)
             {
                 return false;
@@ -136,34 +136,34 @@ static bool dhcp_parse_options(DHCP_Options* opt, const Net_Buf* pkt)
             switch (type)
             {
             case OPT_SUBNET_MASK:
-                opt->subnet_mask = (const IPv4_Addr*)p;
+                opt->subnetMask = (const Ipv4Addr *)p;
                 break;
             case OPT_ROUTER:
-                opt->router_list = (const IPv4_Addr*)p;
-                opt->router_end = (const IPv4_Addr*)next;
+                opt->routerList = (const Ipv4Addr *)p;
+                opt->routerEnd = (const Ipv4Addr *)next;
                 break;
             case OPT_DNS:
-                opt->dns_list = (const IPv4_Addr*)p;
-                opt->dns_end = (const IPv4_Addr*)next;
+                opt->dnsList = (const Ipv4Addr *)p;
+                opt->dnsEnd = (const Ipv4Addr *)next;
                 break;
             case OPT_REQUESTED_IP_ADDR:
-                opt->requested_ip_addr = (const IPv4_Addr*)p;
+                opt->requestedIpAddr = (const Ipv4Addr *)p;
                 break;
             case OPT_LEASE_TIME:
-                opt->lease_time = net_swap32(*(u32*)p);
+                opt->leaseTime = NetSwap32(*(u32 *)p);
                 break;
             case OPT_DHCP_MESSAGE_TYPE:
-                opt->message_type = *p;
+                opt->messageType = *p;
                 break;
             case OPT_SERVER_ID:
-                opt->server_id = (const IPv4_Addr*)p;
+                opt->serverId = (const Ipv4Addr *)p;
                 break;
             case OPT_PARAMETER_REQUEST:
-                opt->parameter_list = p;
-                opt->parameter_end = next;
+                opt->parameterList = p;
+                opt->parameterEnd = next;
                 break;
             default:
-                console_print("   DHCP: unknown option (%d)\n", type);
+                ConsolePrint("   DHCP: unknown option (%d)\n", type);
                 break;
             }
 
@@ -175,62 +175,62 @@ static bool dhcp_parse_options(DHCP_Options* opt, const Net_Buf* pkt)
 }
 
 // ------------------------------------------------------------------------------------------------
-static u8* dhcp_build_header(Net_Buf* pkt, uint xid, const Eth_Addr* client_eth_addr, u8 message_type)
+static u8 *DhcpBuildHeader(NetBuf *pkt, uint xid, const EthAddr *clientEthAddr, u8 messageType)
 {
-    DHCP_Header* hdr = (DHCP_Header*)pkt->start;
+    DhcpHeader *hdr = (DhcpHeader *)pkt->start;
 
-    memset(hdr, 0, sizeof(DHCP_Header));
+    memset(hdr, 0, sizeof(DhcpHeader));
     hdr->opcode = OP_REQUEST;
     hdr->htype = HTYPE_ETH;
-    hdr->hlen = sizeof(Eth_Addr);
-    hdr->hop_count = 0;
-    hdr->xid = net_swap32(xid);
-    hdr->sec_count = net_swap16(0);
-    hdr->flags = net_swap16(0);
-    hdr->client_eth_addr = *client_eth_addr;
+    hdr->hlen = sizeof(EthAddr);
+    hdr->hopCount = 0;
+    hdr->xid = NetSwap32(xid);
+    hdr->secCount = NetSwap16(0);
+    hdr->flags = NetSwap16(0);
+    hdr->clientEthAddr = *clientEthAddr;
 
     // Options
-    u8* p = pkt->start + sizeof(DHCP_Header);
+    u8 *p = pkt->start + sizeof(DhcpHeader);
 
     // Magic Cookie
-    *(u32*)p = net_swap32(MAGIC_COOKIE);
+    *(u32 *)p = NetSwap32(MAGIC_COOKIE);
     p += 4;
 
     // DHCP Message Type
     *p++ = OPT_DHCP_MESSAGE_TYPE;
     *p++ = 1;
-    *p++ = message_type;
+    *p++ = messageType;
 
     return p;
 }
 
 // ------------------------------------------------------------------------------------------------
-static void dhcp_request(Net_Intf* intf, const DHCP_Header* hdr, const DHCP_Options* opt)
+static void DhcpRequest(NetIntf *intf, const DhcpHeader *hdr, const DhcpOptions *opt)
 {
-    uint xid = net_swap32(hdr->xid);
-    const IPv4_Addr* requested_ip_addr = &hdr->your_ip_addr;
-    const IPv4_Addr* server_id = opt->server_id;
+    uint xid = NetSwap32(hdr->xid);
+    const Ipv4Addr *requestedIpAddr = &hdr->yourIpAddr;
+    const Ipv4Addr *serverId = opt->serverId;
 
-    char requested_ip_addr_str[IPV4_ADDR_STRING_SIZE];
-    ipv4_addr_to_str(requested_ip_addr_str, sizeof(requested_ip_addr_str), requested_ip_addr);
-    console_print("DHCP requesting lease for %s\n", requested_ip_addr_str);
+    char requestedIpAddrStr[IPV4_ADDR_STRING_SIZE];
+    Ipv4AddrToStr(requestedIpAddrStr, sizeof(requestedIpAddrStr), requestedIpAddr);
+    ConsolePrint("DHCP requesting lease for %s\n", requestedIpAddrStr);
 
-    Net_Buf* pkt = net_alloc_buf();
+    NetBuf *pkt = NetAllocBuf();
 
     // Header
-    u8* p = dhcp_build_header(pkt, xid, &intf->eth_addr, DHCP_REQUEST);
+    u8 *p = DhcpBuildHeader(pkt, xid, &intf->ethAddr, DHCP_REQUEST);
 
     // Server Identifier
     *p++ = OPT_SERVER_ID;
-    *p++ = sizeof(IPv4_Addr);
-    *(IPv4_Addr*)p = *server_id;
-    p += sizeof(IPv4_Addr);
+    *p++ = sizeof(Ipv4Addr);
+    *(Ipv4Addr *)p = *serverId;
+    p += sizeof(Ipv4Addr);
 
     // Requested IP address
     *p++ = OPT_REQUESTED_IP_ADDR;
-    *p++ = sizeof(IPv4_Addr);
-    *(IPv4_Addr*)p = *requested_ip_addr;
-    p += sizeof(IPv4_Addr);
+    *p++ = sizeof(Ipv4Addr);
+    *(Ipv4Addr *)p = *requestedIpAddr;
+    p += sizeof(Ipv4Addr);
 
     // Parameter Request list
     *p++ = OPT_PARAMETER_REQUEST;
@@ -245,112 +245,112 @@ static void dhcp_request(Net_Intf* intf, const DHCP_Header* hdr, const DHCP_Opti
     // Send packet
     pkt->end = p;
 
-    dhcp_print(pkt);
-    udp_tx_intf(intf, &broadcast_ipv4_addr, PORT_BOOTP_SERVER, PORT_BOOTP_CLIENT, pkt);
+    DhcpPrint(pkt);
+    UdpSendIntf(intf, &g_broadcastIpv4Addr, PORT_BOOTP_SERVER, PORT_BOOTP_CLIENT, pkt);
 }
 
 
 // ------------------------------------------------------------------------------------------------
-static void dhcp_ack(Net_Intf* intf, const DHCP_Header* hdr, const DHCP_Options* opt)
+static void DhcpAck(NetIntf *intf, const DhcpHeader *hdr, const DhcpOptions *opt)
 {
     // Update interface IP address
-    intf->ip_addr = hdr->your_ip_addr;
+    intf->ipAddr = hdr->yourIpAddr;
 
     // Add gateway route
-    if (opt->router_list)
+    if (opt->routerList)
     {
-        net_add_route(&null_ipv4_addr, &null_ipv4_addr, opt->router_list, intf);
+        NetAddRoute(&g_nullIpv4Addr, &g_nullIpv4Addr, opt->routerList, intf);
     }
 
     // Add subnet route
-    if (opt->subnet_mask)
+    if (opt->subnetMask)
     {
-        IPv4_Addr subnet_addr;
-        subnet_addr.u.bits = intf->ip_addr.u.bits & opt->subnet_mask->u.bits;
-        net_add_route(&subnet_addr, opt->subnet_mask, 0, intf);
+        Ipv4Addr subnetAddr;
+        subnetAddr.u.bits = intf->ipAddr.u.bits & opt->subnetMask->u.bits;
+        NetAddRoute(&subnetAddr, opt->subnetMask, 0, intf);
     }
 
     // Add host route
-    IPv4_Addr host_mask = { { { 0xff, 0xff, 0xff, 0xff } } };
-    net_add_route(&intf->ip_addr, &host_mask, 0, intf);
+    Ipv4Addr hostMask = { { { 0xff, 0xff, 0xff, 0xff } } };
+    NetAddRoute(&intf->ipAddr, &hostMask, 0, intf);
 
     // Record broadcast address
-    if (opt->subnet_mask)
+    if (opt->subnetMask)
     {
-        intf->broadcast_addr.u.bits = intf->ip_addr.u.bits | ~opt->subnet_mask->u.bits;
+        intf->broadcastAddr.u.bits = intf->ipAddr.u.bits | ~opt->subnetMask->u.bits;
     }
 
     // Set DNS server
-    if (opt->dns_list)
+    if (opt->dnsList)
     {
-        dns_server = *opt->dns_list;
+        g_dnsServer = *opt->dnsList;
     }
 
     // TODO - how to handle ARP with DHCP sequence?
 }
 
 // ------------------------------------------------------------------------------------------------
-void dhcp_rx(Net_Intf* intf, const Net_Buf* pkt)
+void DhcpRecv(NetIntf *intf, const NetBuf *pkt)
 {
-    dhcp_print(pkt);
+    DhcpPrint(pkt);
 
-    if (pkt->start + sizeof(DHCP_Header) > pkt->end)
+    if (pkt->start + sizeof(DhcpHeader) > pkt->end)
     {
         return;
     }
 
-    const DHCP_Header* hdr = (const DHCP_Header*)pkt->start;
-    if (hdr->opcode != OP_REPLY || hdr->htype != HTYPE_ETH || hdr->hlen != sizeof(Eth_Addr))
+    const DhcpHeader *hdr = (const DhcpHeader *)pkt->start;
+    if (hdr->opcode != OP_REPLY || hdr->htype != HTYPE_ETH || hdr->hlen != sizeof(EthAddr))
     {
         return;
     }
 
-    if (!eth_addr_eq(&intf->eth_addr, &hdr->client_eth_addr))
+    if (!EthAddrEq(&intf->ethAddr, &hdr->clientEthAddr))
     {
         return;
     }
 
-    DHCP_Options opt;
-    if (!dhcp_parse_options(&opt, pkt))
+    DhcpOptions opt;
+    if (!DhcpParseOptions(&opt, pkt))
     {
         return;
     }
 
-    char your_ip_addr_str[IPV4_ADDR_STRING_SIZE];
-    ipv4_addr_to_str(your_ip_addr_str, sizeof(your_ip_addr_str), &hdr->your_ip_addr);
+    char yourIpAddrStr[IPV4_ADDR_STRING_SIZE];
+    Ipv4AddrToStr(yourIpAddrStr, sizeof(yourIpAddrStr), &hdr->yourIpAddr);
 
-    switch (opt.message_type)
+    switch (opt.messageType)
     {
     case DHCP_OFFER:
-        console_print("DHCP offer received for %s\n", your_ip_addr_str);
-        dhcp_request(intf, hdr, &opt);
+        ConsolePrint("DHCP offer received for %s\n", yourIpAddrStr);
+        DhcpRequest(intf, hdr, &opt);
         break;
 
     case DHCP_ACK:
-        console_print("DHCP ack received for %s\n", your_ip_addr_str);
-        dhcp_ack(intf, hdr, &opt);
+        ConsolePrint("DHCP ack received for %s\n", yourIpAddrStr);
+        DhcpAck(intf, hdr, &opt);
         break;
 
     case DHCP_NAK:
-        console_print("DHCP nak received for %s\n", your_ip_addr_str);
+        ConsolePrint("DHCP nak received for %s\n", yourIpAddrStr);
         break;
 
     default:
-        console_print("DHCP message unhandled\n");
+        ConsolePrint("DHCP message unhandled\n");
         break;
     }
 }
 
 // ------------------------------------------------------------------------------------------------
-void dhcp_discover(Net_Intf* intf)
+void DhcpDiscover(NetIntf *intf)
 {
-    console_print("DHCP discovery\n");
+    ConsolePrint("DHCP discovery\n");
 
-    Net_Buf* pkt = net_alloc_buf();
+    NetBuf *pkt = NetAllocBuf();
 
     // Header
     uint xid = 0;
-    u8* p = dhcp_build_header(pkt, xid, &intf->eth_addr, DHCP_DISCOVER);
+    u8 *p = DhcpBuildHeader(pkt, xid, &intf->ethAddr, DHCP_DISCOVER);
 
     // Parameter Request list
     *p++ = OPT_PARAMETER_REQUEST;
@@ -365,95 +365,95 @@ void dhcp_discover(Net_Intf* intf)
     // Send packet
     pkt->end = p;
 
-    dhcp_print(pkt);
-    udp_tx_intf(intf, &broadcast_ipv4_addr, PORT_BOOTP_SERVER, PORT_BOOTP_CLIENT, pkt);
+    DhcpPrint(pkt);
+    UdpSendIntf(intf, &g_broadcastIpv4Addr, PORT_BOOTP_SERVER, PORT_BOOTP_CLIENT, pkt);
 }
 
 // ------------------------------------------------------------------------------------------------
-void dhcp_print(const Net_Buf* pkt)
+void DhcpPrint(const NetBuf *pkt)
 {
-    if (~net_trace & TRACE_APP)
+    if (~g_netTrace & TRACE_APP)
     {
         return;
     }
 
-    if (pkt->start + sizeof(DHCP_Header) > pkt->end)
+    if (pkt->start + sizeof(DhcpHeader) > pkt->end)
     {
         return;
     }
 
-    const DHCP_Header* hdr = (const DHCP_Header*)pkt->start;
+    const DhcpHeader *hdr = (const DhcpHeader *)pkt->start;
 
-    char client_ip_addr_str[IPV4_ADDR_STRING_SIZE];
-    char your_ip_addr_str[IPV4_ADDR_STRING_SIZE];
-    char server_ip_addr_str[IPV4_ADDR_STRING_SIZE];
-    char gateway_ip_addr_str[IPV4_ADDR_STRING_SIZE];
-    char client_eth_addr_str[ETH_ADDR_STRING_SIZE];
+    char clientIpAddrStr[IPV4_ADDR_STRING_SIZE];
+    char yourIpAddrStr[IPV4_ADDR_STRING_SIZE];
+    char serverIpAddrStr[IPV4_ADDR_STRING_SIZE];
+    char gatewayIpAddrStr[IPV4_ADDR_STRING_SIZE];
+    char clientEthAddrStr[ETH_ADDR_STRING_SIZE];
 
-    ipv4_addr_to_str(client_ip_addr_str, sizeof(client_ip_addr_str), &hdr->client_ip_addr);
-    ipv4_addr_to_str(your_ip_addr_str, sizeof(your_ip_addr_str), &hdr->your_ip_addr);
-    ipv4_addr_to_str(server_ip_addr_str, sizeof(server_ip_addr_str), &hdr->server_ip_addr);
-    ipv4_addr_to_str(gateway_ip_addr_str, sizeof(gateway_ip_addr_str), &hdr->gateway_ip_addr);
-    eth_addr_to_str(client_eth_addr_str, sizeof(client_eth_addr_str), &hdr->client_eth_addr);
+    Ipv4AddrToStr(clientIpAddrStr, sizeof(clientIpAddrStr), &hdr->clientIpAddr);
+    Ipv4AddrToStr(yourIpAddrStr, sizeof(yourIpAddrStr), &hdr->yourIpAddr);
+    Ipv4AddrToStr(serverIpAddrStr, sizeof(serverIpAddrStr), &hdr->serverIpAddr);
+    Ipv4AddrToStr(gatewayIpAddrStr, sizeof(gatewayIpAddrStr), &hdr->gatewayIpAddr);
+    EthAddrToStr(clientEthAddrStr, sizeof(clientEthAddrStr), &hdr->clientEthAddr);
 
-    console_print("   DHCP: opcode=%d htype=%d hlen=%d hop_count=%d xid=%d secs=%d flags=%d len=%d\n",
-        hdr->opcode, hdr->htype, hdr->hlen, hdr->hop_count,
-        net_swap32(hdr->xid), net_swap16(hdr->sec_count), net_swap16(hdr->flags), pkt->end - pkt->start);
-    console_print("   DHCP: client=%s your=%s server=%s gateway=%s\n",
-        client_ip_addr_str, your_ip_addr_str, server_ip_addr_str, gateway_ip_addr_str);
-    console_print("   DHCP: eth=%s server_name=%s boot_filename=%s\n",
-        client_eth_addr_str, hdr->server_name, hdr->boot_filename);
+    ConsolePrint("   DHCP: opcode=%d htype=%d hlen=%d hopCount=%d xid=%d secs=%d flags=%d len=%d\n",
+        hdr->opcode, hdr->htype, hdr->hlen, hdr->hopCount,
+        NetSwap32(hdr->xid), NetSwap16(hdr->secCount), NetSwap16(hdr->flags), pkt->end - pkt->start);
+    ConsolePrint("   DHCP: client=%s your=%s server=%s gateway=%s\n",
+        clientIpAddrStr, yourIpAddrStr, serverIpAddrStr, gatewayIpAddrStr);
+    ConsolePrint("   DHCP: eth=%s serverName=%s bootFilename=%s\n",
+        clientEthAddrStr, hdr->serverName, hdr->bootFilename);
 
-    DHCP_Options opt;
-    if (!dhcp_parse_options(&opt, pkt))
+    DhcpOptions opt;
+    if (!DhcpParseOptions(&opt, pkt))
     {
         return;
     }
 
-    char ipv4_addr_str[IPV4_ADDR_STRING_SIZE];
+    char ipv4AddrStr[IPV4_ADDR_STRING_SIZE];
 
-    if (opt.message_type)
+    if (opt.messageType)
     {
-        console_print("   DHCP: message type: %d\n", opt.message_type);
+        ConsolePrint("   DHCP: message type: %d\n", opt.messageType);
     }
 
-    if (opt.subnet_mask)
+    if (opt.subnetMask)
     {
-        ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), opt.subnet_mask);
-        console_print("   DHCP: subnet_mask: %s\n", ipv4_addr_str);
+        Ipv4AddrToStr(ipv4AddrStr, sizeof(ipv4AddrStr), opt.subnetMask);
+        ConsolePrint("   DHCP: subnetMask: %s\n", ipv4AddrStr);
     }
 
-    for (const IPv4_Addr* addr = opt.router_list; addr != opt.router_end; ++addr)
+    for (const Ipv4Addr *addr = opt.routerList; addr != opt.routerEnd; ++addr)
     {
-        ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), addr);
-        console_print("   DHCP: router: %s\n", ipv4_addr_str);
+        Ipv4AddrToStr(ipv4AddrStr, sizeof(ipv4AddrStr), addr);
+        ConsolePrint("   DHCP: router: %s\n", ipv4AddrStr);
     }
 
-    for (const IPv4_Addr* addr = opt.dns_list; addr != opt.dns_end; ++addr)
+    for (const Ipv4Addr *addr = opt.dnsList; addr != opt.dnsEnd; ++addr)
     {
-        ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), addr);
-        console_print("   DHCP: dns: %s\n", ipv4_addr_str);
+        Ipv4AddrToStr(ipv4AddrStr, sizeof(ipv4AddrStr), addr);
+        ConsolePrint("   DHCP: dns: %s\n", ipv4AddrStr);
     }
 
-    if (opt.requested_ip_addr)
+    if (opt.requestedIpAddr)
     {
-        ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), opt.requested_ip_addr);
-        console_print("   DHCP: requested ip: %s\n", ipv4_addr_str);
+        Ipv4AddrToStr(ipv4AddrStr, sizeof(ipv4AddrStr), opt.requestedIpAddr);
+        ConsolePrint("   DHCP: requested ip: %s\n", ipv4AddrStr);
     }
 
-    if (opt.lease_time)
+    if (opt.leaseTime)
     {
-        console_print("   DHCP: lease time: %d\n", opt.lease_time);
+        ConsolePrint("   DHCP: lease time: %d\n", opt.leaseTime);
     }
 
-    if (opt.server_id)
+    if (opt.serverId)
     {
-        ipv4_addr_to_str(ipv4_addr_str, sizeof(ipv4_addr_str), opt.server_id);
-        console_print("   DHCP: server id: %s\n", ipv4_addr_str);
+        Ipv4AddrToStr(ipv4AddrStr, sizeof(ipv4AddrStr), opt.serverId);
+        ConsolePrint("   DHCP: server id: %s\n", ipv4AddrStr);
     }
 
-    for (const u8* p = opt.parameter_list; p != opt.parameter_end; ++p)
+    for (const u8 *p = opt.parameterList; p != opt.parameterEnd; ++p)
     {
-        console_print("   DHCP: parameter request: %d\n", *p);
+        ConsolePrint("   DHCP: parameter request: %d\n", *p);
     }
 }

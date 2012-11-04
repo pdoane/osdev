@@ -73,55 +73,55 @@
 #define ICR_DESTINATION_SHIFT           24
 
 // ------------------------------------------------------------------------------------------------
-static u32 lapic_in(uint reg)
+static u32 LocalApicIn(uint reg)
 {
-    return mmio_read32(local_apic_address + reg);
+    return MmioRead32(g_localApicAddr + reg);
 }
 
 // ------------------------------------------------------------------------------------------------
-static void lapic_out(uint reg, u32 data)
+static void LocalApicOut(uint reg, u32 data)
 {
-    mmio_write32(local_apic_address + reg, data);
+    MmioWrite32(g_localApicAddr + reg, data);
 }
 
 // ------------------------------------------------------------------------------------------------
-void lapic_init()
+void LocalApicInit()
 {
     // Clear task priority to enable all interrupts
-    lapic_out(LAPIC_TPR, 0);
+    LocalApicOut(LAPIC_TPR, 0);
 
     // Logical Destination Mode
-    lapic_out(LAPIC_DFR, 0xffffffff);   // Flat mode
-    lapic_out(LAPIC_LDR, 0x01000000);   // All cpus use logical id 1
+    LocalApicOut(LAPIC_DFR, 0xffffffff);   // Flat mode
+    LocalApicOut(LAPIC_LDR, 0x01000000);   // All cpus use logical id 1
 
     // Configure Spurious Interrupt Vector Register
-    lapic_out(LAPIC_SVR, 0x100 | 0xff);
+    LocalApicOut(LAPIC_SVR, 0x100 | 0xff);
 }
 
 // ------------------------------------------------------------------------------------------------
-uint lapic_getid()
+uint LocalApicGetId()
 {
-    return lapic_in(LAPIC_ID) >> 24;
+    return LocalApicIn(LAPIC_ID) >> 24;
 }
 
 // ------------------------------------------------------------------------------------------------
-void lapic_send_init(uint apic_id)
+void LocalApicSendInit(uint apic_id)
 {
-    lapic_out(LAPIC_ICRHI, apic_id << ICR_DESTINATION_SHIFT);
-    lapic_out(LAPIC_ICRLO, ICR_INIT | ICR_PHYSICAL
+    LocalApicOut(LAPIC_ICRHI, apic_id << ICR_DESTINATION_SHIFT);
+    LocalApicOut(LAPIC_ICRLO, ICR_INIT | ICR_PHYSICAL
         | ICR_ASSERT | ICR_EDGE | ICR_NO_SHORTHAND);
 
-    while (lapic_in(LAPIC_ICRLO) & ICR_SEND_PENDING)
+    while (LocalApicIn(LAPIC_ICRLO) & ICR_SEND_PENDING)
         ;
 }
 
 // ------------------------------------------------------------------------------------------------
-void lapic_send_startup(uint apic_id, uint vector)
+void LocalApicSendStartup(uint apic_id, uint vector)
 {
-    lapic_out(LAPIC_ICRHI, apic_id << ICR_DESTINATION_SHIFT);
-    lapic_out(LAPIC_ICRLO, vector | ICR_STARTUP
+    LocalApicOut(LAPIC_ICRHI, apic_id << ICR_DESTINATION_SHIFT);
+    LocalApicOut(LAPIC_ICRLO, vector | ICR_STARTUP
         | ICR_PHYSICAL | ICR_ASSERT | ICR_EDGE | ICR_NO_SHORTHAND);
 
-    while (lapic_in(LAPIC_ICRLO) & ICR_SEND_PENDING)
+    while (LocalApicIn(LAPIC_ICRLO) & ICR_SEND_PENDING)
         ;
 }

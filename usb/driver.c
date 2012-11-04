@@ -10,10 +10,10 @@
 #include "usb/mouse.h"
 
 // ------------------------------------------------------------------------------------------------
-const USB_Driver usb_driver_table[] =
+const UsbDriver g_usbDriverTable[] =
 {
-    { usb_hub_init },
-    { usb_kbd_init },
-    { usb_mouse_init },
+    { UsbHubInit },
+    { UsbKbdInit },
+    { UsbMouseInit },
     { 0 }
 };

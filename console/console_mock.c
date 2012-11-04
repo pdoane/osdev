@@ -8,51 +8,51 @@
 // ------------------------------------------------------------------------------------------------
 static struct MockData
 {
-    DECLARE_QUEUE(console_on_keydown, code);
-    DECLARE_QUEUE(console_on_keyup, code);
-    DECLARE_QUEUE(console_on_char, ch);
+    DECLARE_QUEUE(ConsoleOnKeyDown, code);
+    DECLARE_QUEUE(ConsoleOnKeyUp, code);
+    DECLARE_QUEUE(ConsoleOnChar, ch);
 } Mock;
 
 // ------------------------------------------------------------------------------------------------
-void console_on_keydown(uint code)
+void ConsoleOnKeyDown(uint code)
 {
-    MATCH_INT(console_on_keydown, code);
+    MATCH_INT(ConsoleOnKeyDown, code);
 }
 
 // ------------------------------------------------------------------------------------------------
-void expect_console_on_keydown(uint code)
+void Expect_ConsoleOnKeyDown(uint code)
 {
-    EXPECT_INT(console_on_keydown, code);
+    EXPECT_INT(ConsoleOnKeyDown, code);
 }
 
 // ------------------------------------------------------------------------------------------------
-void console_on_keyup(uint code)
+void ConsoleOnKeyUp(uint code)
 {
-    MATCH_INT(console_on_keyup, code);
+    MATCH_INT(ConsoleOnKeyUp, code);
 }
 
 // ------------------------------------------------------------------------------------------------
-void expect_console_on_keyup(uint code)
+void Expect_ConsoleOnKeyUp(uint code)
 {
-    EXPECT_INT(console_on_keyup, code);
+    EXPECT_INT(ConsoleOnKeyUp, code);
 }
 
 // ------------------------------------------------------------------------------------------------
-void console_on_char(char ch)
+void ConsoleOnChar(char ch)
 {
-    MATCH_CHAR(console_on_char, ch);
+    MATCH_CHAR(ConsoleOnChar, ch);
 }
 
 // ------------------------------------------------------------------------------------------------
-void expect_console_on_char(char ch)
+void Expect_ConsoleOnChar(char ch)
 {
-    EXPECT_CHAR(console_on_char, ch);
+    EXPECT_CHAR(ConsoleOnChar, ch);
 }
 
 // ------------------------------------------------------------------------------------------------
-void mock_console_init()
+void Mock_ConsoleInit()
 {
-    INIT_QUEUE(console_on_keydown, code);
-    INIT_QUEUE(console_on_keyup, code);
-    INIT_QUEUE(console_on_char, ch);
+    INIT_QUEUE(ConsoleOnKeyDown, code);
+    INIT_QUEUE(ConsoleOnKeyUp, code);
+    INIT_QUEUE(ConsoleOnChar, ch);
 }

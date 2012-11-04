@@ -6,4 +6,4 @@
 
 #include "stdlib/types.h"
 
-void pci_init();
+void PciInit();
