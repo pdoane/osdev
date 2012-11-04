@@ -44,14 +44,12 @@ static GfxDevice s_gfxDevice;
 
 
 // ------------------------------------------------------------------------------------------------
-/*
 static u32 GfxAddr(u8 *phyAddr)
 {
     return (u32)(phyAddr - s_gfxDevice.gfxMemBase);
-}*/
+}
 
 // ------------------------------------------------------------------------------------------------
-/*
 static void *GfxAlloc(uint size, uint align)
 {
     // Align memory request
@@ -65,7 +63,6 @@ static void *GfxAlloc(uint size, uint align)
     s_gfxDevice.gfxMemNext = result + size;
     return result;
 }
-*/
 
 // ------------------------------------------------------------------------------------------------
 static void GfxPrintPortState()
@@ -255,6 +252,32 @@ void GfxStart()
     }
     ExitForceWake();
 
+    s_gfxDevice.gfxMemBase = s_gfxDevice.pci.apertureBar;
+    s_gfxDevice.gfxMemNext = s_gfxDevice.gfxMemBase + 4 * GTT_PAGE_SIZE;
+
+    // Allocate Surface - 256KB aligned, +512 PTEs
+    uint surfaceMemSize = 16 * MB;         // TODO: compute appropriate surface size
+    s_gfxDevice.surface = GfxAlloc(surfaceMemSize, 256 * KB);
+    memset(s_gfxDevice.surface, 0x77, 720 * 400 * 4);
+
+    // Allocate Cursor - 64KB aligned, +2 PTEs
+    uint cursorMemSize = 64 * 64 * sizeof(u32) + 8 * KB;
+    s_gfxDevice.cursor = GfxAlloc(cursorMemSize, 64 * KB);
+    memcpy(s_gfxDevice.cursor, cursor_image.pixel_data, 64 * 64 * sizeof(u32));
+
+    // Setup Primary Plane
+    uint width = 720;                       // TODO: mode support
+    //uint height = 400;
+    uint stride = (width * sizeof(u32) + 63) & ~63;   // 64-byte aligned
+
+    GfxWrite32(&s_gfxDevice.pci, PRI_CTL_A, PRI_PLANE_ENABLE | PRI_PLANE_32BPP);
+    GfxWrite32(&s_gfxDevice.pci, PRI_LINOFF_A, 0);
+    GfxWrite32(&s_gfxDevice.pci, PRI_STRIDE_A, stride);
+    GfxWrite32(&s_gfxDevice.pci, PRI_SURF_A, GfxAddr(s_gfxDevice.surface));
+
+    // Setup Cursor Plane
+    GfxWrite32(&s_gfxDevice.pci, CUR_CTL_A, CUR_MODE_ARGB | CUR_MODE_64_32BPP);
+    GfxWrite32(&s_gfxDevice.pci, CUR_BASE_A, GfxAddr(s_gfxDevice.cursor));
 
     // MWDD FIX: Enable MSI
 
@@ -285,24 +308,6 @@ void GfxStart()
 
     /*
 
-    uint gfxMemSize = 512 * MB;       // TODO: how to know size of GTT?
-    uint gfxMemAlign = 256 * KB;             // TODO: Max alignment needed for primary surface
-    s_gfxDevice.gfxMemBase = VMAllocAlign(gfxMemSize, gfxMemAlign);
-    s_gfxDevice.gfxMemNext = s_gfxDevice.gfxMemBase;
-
-    // Map memory uncached
-    VMMapPages(s_gfxDevice.gfxMemBase, gfxMemSize, PAGE_WRITE_THROUGH | PAGE_CACHE_DISABLE);
-
-    // Allocate Surface - 256KB aligned, +512 PTEs
-    uint surfaceMemSize = 16 * MB;         // TODO: compute appropriate surface size
-    s_gfxDevice.surface = GfxAlloc(surfaceMemSize, 256 * KB);
-    memset(s_gfxDevice.surface, 0x77, 720 * 400 * 4);
-
-    // Allocate Cursor - 64KB aligned, +2 PTEs
-    uint cursorMemSize = 64 * 64 * sizeof(u32) + 8 * KB;
-    s_gfxDevice.cursor = GfxAlloc(cursorMemSize, 64 * KB);
-    memcpy(s_gfxDevice.cursor, cursor_image.pixel_data, 64 * 64 * sizeof(u32));
-
     // Allocate Render Engine Command Stream - 4KB aligned
     uint rcsMemSize = 4 * KB;
     s_gfxDevice.renderCS = GfxAlloc(rcsMemSize, 4 * KB);
@@ -312,47 +317,6 @@ void GfxStart()
     memset(s_gfxDevice.renderStatus, 0, 4 * KB);
 
 
-
-    RlogPrint("VGA Plane disabled\n");
-
-    // Setup Virtual Memory
-    u8 *physPage = s_gfxDevice.gfxMemBase;
-    for (uint i = 0; i < 512 * 256; ++i)
-    {
-        uintptr_t addr = (uintptr_t)physPage;
-
-        // Mark as Uncached and Valid
-        s_gfxDevice.gttAddr[i] = addr | ((addr >> 28) & 0xff0) | (1 << 1) | (1 << 0);
-
-        physPage += 4096;
-    }
-
-    // Setup Primary Plane
-    uint width = 720;                       // TODO: mode support
-    uint height = 400;
-    uint stride = (width * sizeof(u32) + 63) & ~63;   // 64-byte aligned
-
-    GfxWrite32(PRI_CTL_A, PRI_PLANE_ENABLE | PRI_PLANE_32BPP);
-    GfxWrite32(PRI_LINOFF_A, 0);
-    GfxWrite32(PRI_STRIDE_A, stride);
-    GfxWrite32(PRI_SURF_A, GfxAddr(s_gfxDevice.surface));
-
-    // Setup Cursor Plane
-    GfxWrite32(CUR_CTL_A, CUR_MODE_ARGB | CUR_MODE_64_32BPP);
-    GfxWrite32(CUR_BASE_A, GfxAddr(s_gfxDevice.cursor));
-
-    // Pipe State
-    GfxPrintPipeState();
-
-    
-    // Set up H/W Status Page
-
-
-    
-    // Initalise ring buffer
-
-
-    
     // First command has to be a flush
 
     // BCS Data
