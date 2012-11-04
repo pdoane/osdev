@@ -141,12 +141,12 @@ static void GfxPrintPipeState()
 /*
 static void GfxPrintRingState()
 {
-    RlogPrint("  BCS_HWS_PGA: 0x%08X\n", GfxRead32(BCS_HWS_PGA));
+    RlogPrint("  BCS_HWS_PGA: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, BCS_HWS_PGA));
 
-    RlogPrint("  BCS_RING_BUFFER_TAIL: 0x%08X\n", GfxRead32(BCS_RING_BUFFER_TAIL));
-    RlogPrint("  BCS_RING_BUFFER_HEAD: 0x%08X\n", GfxRead32(BCS_RING_BUFFER_HEAD));
-    RlogPrint("  BCS_RING_BUFFER_START: 0x%08X\n", GfxRead32(BCS_RING_BUFFER_START));
-    RlogPrint("  BCS_RING_BUFFER_CTL: 0x%08X\n", GfxRead32(BCS_RING_BUFFER_CTL));
+    RlogPrint("  BCS_RING_BUFFER_TAIL: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, BCS_RING_BUFFER_TAIL));
+    RlogPrint("  BCS_RING_BUFFER_HEAD: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, BCS_RING_BUFFER_HEAD));
+    RlogPrint("  BCS_RING_BUFFER_START: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, BCS_RING_BUFFER_START));
+    RlogPrint("  BCS_RING_BUFFER_CTL: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, BCS_RING_BUFFER_CTL));
 }
 */
 
@@ -285,8 +285,8 @@ void GfxStart()
 
     /*
 
-    uint gfxMemSize = 512 * 1024 * 1024;       // TODO: how to know size of GTT?
-    uint gfxMemAlign = 256 * 1024;             // TODO: Max alignment needed for primary surface
+    uint gfxMemSize = 512 * MB;       // TODO: how to know size of GTT?
+    uint gfxMemAlign = 256 * KB;             // TODO: Max alignment needed for primary surface
     s_gfxDevice.gfxMemBase = VMAllocAlign(gfxMemSize, gfxMemAlign);
     s_gfxDevice.gfxMemNext = s_gfxDevice.gfxMemBase;
 
@@ -294,22 +294,22 @@ void GfxStart()
     VMMapPages(s_gfxDevice.gfxMemBase, gfxMemSize, PAGE_WRITE_THROUGH | PAGE_CACHE_DISABLE);
 
     // Allocate Surface - 256KB aligned, +512 PTEs
-    uint surfaceMemSize = 16 * 1024 * 1024;         // TODO: compute appropriate surface size
-    s_gfxDevice.surface = GfxAlloc(surfaceMemSize, 256 * 1024);
+    uint surfaceMemSize = 16 * MB;         // TODO: compute appropriate surface size
+    s_gfxDevice.surface = GfxAlloc(surfaceMemSize, 256 * KB);
     memset(s_gfxDevice.surface, 0x77, 720 * 400 * 4);
 
     // Allocate Cursor - 64KB aligned, +2 PTEs
-    uint cursorMemSize = 64 * 64 * sizeof(u32) + 8 * 1024;
-    s_gfxDevice.cursor = GfxAlloc(cursorMemSize, 64 * 1024);
+    uint cursorMemSize = 64 * 64 * sizeof(u32) + 8 * KB;
+    s_gfxDevice.cursor = GfxAlloc(cursorMemSize, 64 * KB);
     memcpy(s_gfxDevice.cursor, cursor_image.pixel_data, 64 * 64 * sizeof(u32));
 
     // Allocate Render Engine Command Stream - 4KB aligned
-    uint rcsMemSize = 4 * 1024;
-    s_gfxDevice.renderCS = GfxAlloc(rcsMemSize, 4 * 1024);
+    uint rcsMemSize = 4 * KB;
+    s_gfxDevice.renderCS = GfxAlloc(rcsMemSize, 4 * KB);
 
     // Allocate RCS Hardware Status Page - 4KB aligned
-    s_gfxDevice.renderStatus = GfxAlloc(4 * 1024, 4 * 1024);
-    memset(s_gfxDevice.renderStatus, 0, 4 * 1024);
+    s_gfxDevice.renderStatus = GfxAlloc(4 * KB, 4 * KB);
+    memset(s_gfxDevice.renderStatus, 0, 4 * KB);
 
 
 
@@ -317,7 +317,7 @@ void GfxStart()
 
     // Setup Virtual Memory
     u8 *physPage = s_gfxDevice.gfxMemBase;
-    for (uint i = 0; i < 512 * 1024; ++i)
+    for (uint i = 0; i < 512 * 256; ++i)
     {
         uintptr_t addr = (uintptr_t)physPage;
 

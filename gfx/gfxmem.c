@@ -10,16 +10,15 @@ void GfxInitMemManager(GfxMemManager *memMgr, const GfxGTT *gtt, GfxPCI *pci)
 {
     memMgr->vram.base       = 0;
     memMgr->vram.current    = memMgr->vram.base;
-    memMgr->vram.top        = gtt->stolenMemSize - 1;
+    memMgr->vram.top        = gtt->stolenMemSize;
 
     memMgr->shared.base     = gtt->stolenMemSize;
     memMgr->shared.current  = memMgr->shared.base;
-    memMgr->shared.top      = (gtt->numMappableEntries << GTT_PAGE_SHIFT) - 1;
-
+    memMgr->shared.top      = gtt->numMappableEntries << GTT_PAGE_SHIFT;
 
     memMgr->private.base    = gtt->numMappableEntries << GTT_PAGE_SHIFT;
     memMgr->private.current = memMgr->private.base;
-    memMgr->private.top     = (((u64)gtt->numTotalEntries) << GTT_PAGE_SHIFT) - 1;
+    memMgr->private.top     = ((u64)gtt->numTotalEntries) << GTT_PAGE_SHIFT;
 
     // Clear all fence registers (provide linear access to mem to cpu)
     for (u8 fenceNum = 0; fenceNum < FENCE_COUNT; ++fenceNum)
@@ -31,8 +30,21 @@ void GfxInitMemManager(GfxMemManager *memMgr, const GfxGTT *gtt, GfxPCI *pci)
 // ------------------------------------------------------------------------------------------------
 void GfxMemEnableSwizzle(GfxPCI *pci)
 {
-    // Assume Dimms are same size, so bit 6 swizzling is on.
-    // So enable DRAM swizzling.
+    // Only enable swizzling when DIMMs are the same size.
+    RegMadDIMM dimmCh0;
+    RegMadDIMM dimmCh1;
+
+    dimmCh0.dword = GfxRead32(pci, GFX_MCHBAR + MAD_DIMM_CH0);
+    dimmCh1.dword = GfxRead32(pci, GFX_MCHBAR + MAD_DIMM_CH1);
+    RlogPrint("dimmCh0: 0x%08X\n", dimmCh0);
+    RlogPrint("dimmCh1: 0x%08X\n", dimmCh1);
+    if (dimmCh0.bits.dimmASize != dimmCh1.bits.dimmASize ||
+        dimmCh0.bits.dimmBSize != dimmCh1.bits.dimmBSize)
+    {
+        return;
+    }
+
+    // Enable Bit 6 Swizzling
     RegArbCtl  arbCtrl;
     RegTileCtl tileCtrl;
     RegArbMode arbMode; 
@@ -50,9 +62,7 @@ void GfxMemEnableSwizzle(GfxPCI *pci)
     arbMode.bits.mask.as4ts = 1;
     GfxWrite32(pci, ARB_MODE, arbMode.dword);
 
-    // Tile Control may not be implemented.  It's not in the docs
-    // and writes don't seem to work
     RlogPrint("ARB_CTL: 0x%08X\n", GfxRead32(pci, ARB_CTL));
-    RlogPrint("TILECTL: 0x%08X\n", GfxRead32(pci, TILE_CTL));
+    RlogPrint("TILE_CTL: 0x%08X\n", GfxRead32(pci, TILE_CTL));
     RlogPrint("ARB_MODE: 0x%08X\n", GfxRead32(pci, ARB_MODE));
 }

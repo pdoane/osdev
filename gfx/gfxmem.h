@@ -11,14 +11,14 @@
 typedef struct GfxMemRange
 {
     GfxAddress base;
-    GfxAddress top;
+    GfxAddress top;         // Non-inclusive
     GfxAddress current;
 } GfxMemRange;
 
 // ------------------------------------------------------------------------------------------------
 typedef struct GfxMemManager
 {
-    GfxMemRange vram;      // Stollen Memory
+    GfxMemRange vram;      // Stolen Memory
     GfxMemRange shared;    // Addresses mapped through aperture.
     GfxMemRange private;   // Only accessable by GPU, but allocated by CPU.
 } GfxMemManager;

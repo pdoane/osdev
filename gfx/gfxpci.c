@@ -19,14 +19,14 @@ void GfxInitPci(GfxPCI *pci)
     // GTTMMADDR
     PciGetBar(&bar, pci->id, 0);
     pci->mmioBar = bar.u.address;
-    pci->gttAddr = (u32 *)((u8*)bar.u.address + (2 * 1024 * 1024));
-    RlogPrint("    GTTMMADR:     0x%llX (%llu MB)\n", bar.u.address, bar.size / (1024 * 1024));
+    pci->gttAddr = (u32 *)((u8*)bar.u.address + 2 * MB);
+    RlogPrint("    GTTMMADR:     0x%llX (%llu MB)\n", bar.u.address, bar.size / MB);
 
     // GMADR
     PciGetBar(&bar, pci->id, 2);
     pci->apertureBar  = bar.u.address;
     pci->apertureSize = bar.size;
-    RlogPrint("    GMADR:        0x%llX (%llu MB)\n", bar.u.address, bar.size / (1024 * 1024));
+    RlogPrint("    GMADR:        0x%llX (%llu MB)\n", bar.u.address, bar.size / MB);
 
     // IOBASE
     PciGetBar(&bar, pci->id, 4);

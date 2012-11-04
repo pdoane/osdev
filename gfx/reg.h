@@ -6,8 +6,6 @@
 
 #include "stdlib/types.h"
 
-#define MB (1024 * 1024)   // MWDD FIX: Hacky - need to find a proper home
-
 // ------------------------------------------------------------------------------------------------
 // Vol 1. Part 2. MMIO, Media Registers, and Programming Environment
 // ------------------------------------------------------------------------------------------------
@@ -15,7 +13,8 @@
 typedef u64 GfxAddress;    // Address in Gfx Virtual space
 
 // ------------------------------------------------------------------------------------------------
-// 2.1.2.1 Instruction Parser Mode
+// 2.1.2.1 GTT Page Table Entries
+
 #define GTT_PAGE_SHIFT 12
 #define GTT_PAGE_SIZE (1 << GTT_PAGE_SHIFT)
 
@@ -30,8 +29,13 @@ typedef union GttEntry
         u32 physStartAddrExt :  8;
         u32 physPageAddr     : 20;
     } bits;
-    u32 word;
+    u32 dword;
 } GttEntry;
+
+// ------------------------------------------------------------------------------------------------
+// 3. GFX MMIO - MCHBAR Aperture
+
+#define GFX_MCHBAR                      0x140000
 
 // ------------------------------------------------------------------------------------------------
 // Vol 1. Part 3. Memory Interface and Commands for the Render Engine
@@ -190,49 +194,49 @@ typedef union RegArbMode
 
 #define MGGC0                          0x50 // In PCI Config Space
 
-typedef enum RegMGGCO_GMS
+typedef enum RegMGGC0_GMS
 {
-    RegMGGCO_GMS_32MB     = 0x05,
-    RegMGGCO_GMS_48MB     = 0x06,
-    RegMGGCO_GMS_64MB     = 0x07,
-    RegMGGCO_GMS_128MB    = 0x08,
-    RegMGGCO_GMS_256MB    = 0x09,
-    RegMGGCO_GMS_96MB     = 0x0A,
-    RegMGGCO_GMS_160MB    = 0x0B,
-    RegMGGCO_GMS_224MB    = 0x0C,
-    RegMGGCO_GMS_352MB    = 0x0D,
-    RegMGGCO_GMS_0MB      = 0x00,
-    RegMGGCO_GMS_32MB_1   = 0x01,
-    RegMGGCO_GMS_64MB_1   = 0x02,
-    RegMGGCO_GMS_96MB_1   = 0x03,
-    RegMGGCO_GMS_128MB_1  = 0x04,
-    RegMGGCO_GMS_448MB    = 0x0E,
-    RegMGGCO_GMS_480MB    = 0x0F,
-    RegMGGCO_GMS_512MB    = 0x10,
-} RegMGGCO_GMS;
+    RegMGGC0_GMS_32MB     = 0x05,
+    RegMGGC0_GMS_48MB     = 0x06,
+    RegMGGC0_GMS_64MB     = 0x07,
+    RegMGGC0_GMS_128MB    = 0x08,
+    RegMGGC0_GMS_256MB    = 0x09,
+    RegMGGC0_GMS_96MB     = 0x0A,
+    RegMGGC0_GMS_160MB    = 0x0B,
+    RegMGGC0_GMS_224MB    = 0x0C,
+    RegMGGC0_GMS_352MB    = 0x0D,
+    RegMGGC0_GMS_0MB      = 0x00,
+    RegMGGC0_GMS_32MB_1   = 0x01,
+    RegMGGC0_GMS_64MB_1   = 0x02,
+    RegMGGC0_GMS_96MB_1   = 0x03,
+    RegMGGC0_GMS_128MB_1  = 0x04,
+    RegMGGC0_GMS_448MB    = 0x0E,
+    RegMGGC0_GMS_480MB    = 0x0F,
+    RegMGGC0_GMS_512MB    = 0x10,
+} RegMGGC0_GMS;
 
-typedef enum RegMGGCO_GGMS
+typedef enum RegMGGC0_GGMS
 {
-    RegMGGCO_GGMS_None = 0x0,
-    RegMGGCO_GGMS_1MB  = 0x1,
-    RegMGGCO_GGMS_2MB  = 0x2,
-} RegMGGCO_GGMS;
+    RegMGGC0_GGMS_None = 0x0,
+    RegMGGC0_GGMS_1MB  = 0x1,
+    RegMGGC0_GGMS_2MB  = 0x2,
+} RegMGGC0_GGMS;
 
-typedef union RegMGGCO
+typedef union RegMGGC0
 {
-    struct RegMGGCO_Bits
+    struct RegMGGC0_Bits
     {
         u16 lock               : 1;
         u16 igdVGADisable      : 1;
         u16 reserved0          : 1;
-        u16 graphicsModeSelect : 5;  // RegMGGCO_GMS
-        u16 gttMemSize         : 2;  // RegMGGCO_GGMS
+        u16 graphicsModeSelect : 5;  // RegMGGC0_GMS
+        u16 gttMemSize         : 2;  // RegMGGC0_GGMS
         u16 reserved1          : 4;
         u16 vesatileAccModeEna : 1;
         u16 reserved2          : 1;
     } bits;
     u16 word;
-} RegMGGCO;
+} RegMGGC0;
 
 
 // ------------------------------------------------------------------------------------------------
@@ -546,6 +550,35 @@ typedef struct OpRegionMailbox3ASLE
 
 #define OPREGION_VBT_OFFSET 0x0500
 
+// ------------------------------------------------------------------------------------------------
+// Desktop 3rd Generation Intel® Core™ Processor Family and Desktop Intel® Pentium® Processor Family
+// Datasheet - Volume 2
+// ------------------------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------
+// 2.16.2-3 Address Decode Channel Registers
+
+#define MAD_DIMM_CH0			        0x5004
+#define MAD_DIMM_CH1			        0x5008
+
+typedef union RegMadDIMM
+{
+    struct RegMadDIMM_Bits
+    {
+        u32 dimmASize           : 8;
+        u32 dimmBSize           : 8;
+        u32 dimmASelect         : 1;
+        u32 dimmANumRanks       : 1;
+        u32 dimmBNumRanks       : 1;
+        u32 dimmAWidth          : 1;
+        u32 dimmBWidth          : 1;
+        u32 rankInterleave      : 1;
+        u32 enhInterleave       : 1;
+        u32 reserved            : 1;
+        u32 eccActive           : 2;
+    } bits;
+    u32 dword;
+} RegMadDIMM;
 
 // ------------------------------------------------------------------------------------------------
 // Registers not in the Spec (Found in Linux Driver)
@@ -567,7 +600,7 @@ typedef struct OpRegionMailbox3ASLE
 
 #define FENCE_BASE                      0x100000
 #define FENCE_COUNT                     16
-typedef struct RegFence
+typedef union RegFence
 {
     struct RegFence_Bits
     {
@@ -585,7 +618,7 @@ typedef struct RegFence
 // Tile Ctrl - control register for cpu gtt access
 
 #define TILE_CTL                         0x101000     // R/W
-typedef struct RegTileCtl
+typedef union RegTileCtl
 {
     struct RegTileCtl_Bits
     {

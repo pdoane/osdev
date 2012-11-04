@@ -7,54 +7,55 @@
 #include "net/rlog.h"
 
 // ------------------------------------------------------------------------------------------------
-static const u32 MGGCO_GMS_TO_SIZE[] =
+static const u32 MGGC0_GMS_TO_SIZE[] =
 {
-      0 * MB,     // RegMGGCO_GMS_0MB
-     32 * MB,     // RegMGGCO_GMS_32MB_1
-     64 * MB,     // RegMGGCO_GMS_64MB_1
-     96 * MB,     // RegMGGCO_GMS_96MB_1
-    128 * MB,     // RegMGGCO_GMS_128MB_1
-     32 * MB,     // RegMGGCO_GMS_32MB
-     48 * MB,     // RegMGGCO_GMS_48MB
-     64 * MB,     // RegMGGCO_GMS_64MB
-    128 * MB,     // RegMGGCO_GMS_128MB
-    256 * MB,     // RegMGGCO_GMS_256MB
-     96 * MB,     // RegMGGCO_GMS_96MB
-    160 * MB,     // RegMGGCO_GMS_160MB
-    224 * MB,     // RegMGGCO_GMS_224MB
-    352 * MB,     // RegMGGCO_GMS_352MB
-    448 * MB,     // RegMGGCO_GMS_448MB
-    480 * MB,     // RegMGGCO_GMS_480MB
-    512 * MB,     // RegMGGCO_GMS_512MB
+      0 * MB,     // RegMGGC0_GMS_0MB
+     32 * MB,     // RegMGGC0_GMS_32MB_1
+     64 * MB,     // RegMGGC0_GMS_64MB_1
+     96 * MB,     // RegMGGC0_GMS_96MB_1
+    128 * MB,     // RegMGGC0_GMS_128MB_1
+     32 * MB,     // RegMGGC0_GMS_32MB
+     48 * MB,     // RegMGGC0_GMS_48MB
+     64 * MB,     // RegMGGC0_GMS_64MB
+    128 * MB,     // RegMGGC0_GMS_128MB
+    256 * MB,     // RegMGGC0_GMS_256MB
+     96 * MB,     // RegMGGC0_GMS_96MB
+    160 * MB,     // RegMGGC0_GMS_160MB
+    224 * MB,     // RegMGGC0_GMS_224MB
+    352 * MB,     // RegMGGC0_GMS_352MB
+    448 * MB,     // RegMGGC0_GMS_448MB
+    480 * MB,     // RegMGGC0_GMS_480MB
+    512 * MB,     // RegMGGC0_GMS_512MB
 };
 
 // ------------------------------------------------------------------------------------------------
 void GfxInitGtt(GfxGTT *gtt, const GfxPCI *pci)
 {
-    RegMGGCO mggco;
+    RegMGGC0 mggc0;
     RegBDSM  bdsm;
 
-    mggco.word = PciRead16(pci->id, MGGC0);
+    mggc0.word = PciRead16(pci->id, MGGC0);
     bdsm.dword = PciRead32(pci->id, BDSM);
 
-    gtt->stolenMemSize = MGGCO_GMS_TO_SIZE[mggco.bits.graphicsModeSelect];
+    gtt->stolenMemSize = MGGC0_GMS_TO_SIZE[mggc0.bits.graphicsModeSelect];
     
-    switch (mggco.bits.gttMemSize)
+    switch (mggc0.bits.gttMemSize)
     {
-        case RegMGGCO_GGMS_None:
-            gtt->gttMemSize = 0;
-            break;
+    case RegMGGC0_GGMS_None:
+        gtt->gttMemSize = 0;
+        break;
 
-        case RegMGGCO_GGMS_1MB:
-            gtt->gttMemSize = 1 * MB;
-            break;
+    case RegMGGC0_GGMS_1MB:
+        gtt->gttMemSize = 1 * MB;
+        break;
 
-        case RegMGGCO_GGMS_2MB:
-            gtt->gttMemSize = 2 * MB;
-            break;
+    case RegMGGC0_GGMS_2MB:
+        gtt->gttMemSize = 2 * MB;
+        break;
 
-        default:
-           gtt->gttMemSize = -1;
+    default:
+        gtt->gttMemSize = -1;
+        break;
     }
 
     bdsm.bits.lock = 0;
