@@ -11,6 +11,7 @@ KERNEL_SOURCES := \
 	gfx/gfxdisplay.c \
 	gfx/gfxmem.c \
 	gfx/gfxpci.c \
+	gfx/gfxring.c \
 	gfx/gtt.c \
 	gfx/vga.c \
 	input/input.c \

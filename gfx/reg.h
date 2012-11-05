@@ -123,6 +123,38 @@ typedef union RegArbMode
 #define BCS_RING_BUFFER_CTL             0x2203c     // R/W
 
 // ------------------------------------------------------------------------------------------------
+// 1.2.18 MI_STORE_DATA_INDEX
+
+#define MI_COMMAND              0x00
+#define MI_STORE_DATA_INDEX     0x21
+
+typedef union CmdMiStoreDataIndex
+{
+    struct CmdMiStoreDataIndex_Bits
+    {
+        // DWORD 0
+        u32 len : 8;
+        u32 reserved0 : 13;
+        u32 reserved1 : 1;
+        u32 reserved2 : 1;
+        u32 opcode : 6;
+        u32 commandType : 3;
+
+        // DWORD 1
+        u32 reserved3 : 2;
+        u32 offset : 10;
+        u32 reserved4 : 20;
+
+        // DWORD 2
+        u32 data0;
+
+        // DWORD 3
+        u32 data1;
+    } bits;
+    u32 dwords[4];
+} CmdMiStoreDataIndex;
+
+// ------------------------------------------------------------------------------------------------
 // Vol 1. Part 4. Blitter Engine
 // ------------------------------------------------------------------------------------------------
 

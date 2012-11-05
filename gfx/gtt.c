@@ -29,7 +29,7 @@ static const u32 MGGC0_GMS_TO_SIZE[] =
 };
 
 // ------------------------------------------------------------------------------------------------
-void GfxInitGtt(GfxGTT *gtt, const GfxPCI *pci)
+void GfxInitGtt(GfxGTT *gtt, const GfxPci *pci)
 {
     RegMGGC0 mggc0;
     RegBDSM  bdsm;

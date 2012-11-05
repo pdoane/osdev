@@ -6,7 +6,7 @@
 #include "net/rlog.h"
 
 // ------------------------------------------------------------------------------------------------
-void GfxInitMemManager(GfxMemManager *memMgr, const GfxGTT *gtt, GfxPCI *pci)
+void GfxInitMemManager(GfxMemManager *memMgr, const GfxGTT *gtt, GfxPci *pci)
 {
     memMgr->vram.base       = 0;
     memMgr->vram.current    = memMgr->vram.base;
@@ -25,10 +25,14 @@ void GfxInitMemManager(GfxMemManager *memMgr, const GfxGTT *gtt, GfxPCI *pci)
     {
         GfxWrite64(pci, FENCE_BASE + sizeof(RegFence) * fenceNum, 0);
     }
+
+    // TEMP
+    memMgr->gfxMemBase = pci->apertureBar;
+    memMgr->gfxMemNext = memMgr->gfxMemBase + 4 * GTT_PAGE_SIZE;
 }
 
 // ------------------------------------------------------------------------------------------------
-void GfxMemEnableSwizzle(GfxPCI *pci)
+void GfxMemEnableSwizzle(GfxPci *pci)
 {
     // Only enable swizzling when DIMMs are the same size.
     RegMadDIMM dimmCh0;
@@ -65,4 +69,25 @@ void GfxMemEnableSwizzle(GfxPCI *pci)
     RlogPrint("ARB_CTL: 0x%08X\n", GfxRead32(pci, ARB_CTL));
     RlogPrint("TILE_CTL: 0x%08X\n", GfxRead32(pci, TILE_CTL));
     RlogPrint("ARB_MODE: 0x%08X\n", GfxRead32(pci, ARB_MODE));
+}
+
+// ------------------------------------------------------------------------------------------------
+u32 GfxAddr(GfxMemManager *memMgr, void *phyAddr)
+{
+    return (u32)((u8*)phyAddr - memMgr->gfxMemBase);
+}
+
+// ------------------------------------------------------------------------------------------------
+void *GfxAlloc(GfxMemManager *memMgr, uint size, uint align)
+{
+    // Align memory request
+    u8 *result = memMgr->gfxMemNext;
+    uintptr_t offset = (uintptr_t)result & (align - 1);
+    if (offset)
+    {
+        result += align - offset;
+    }
+
+    memMgr->gfxMemNext = result + size;
+    return result;
 }

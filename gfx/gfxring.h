@@ -1,20 +1,22 @@
 // ------------------------------------------------------------------------------------------------
-// gfx/gfxdisplay.h
-//
-// VGA and Mode Change Function
+// gfx/gfx.h
 // ------------------------------------------------------------------------------------------------
 
 #pragma once
 
 #include "gfx/gfxpci.h"
+#include "gfx/gfxmem.h"
 
 // ------------------------------------------------------------------------------------------------
-typedef struct GfxDisplay
+typedef struct GfxRing
 {
-    // MWDD FIX: TO DO
-    int dummy;
-} GfxDisplay;
+    u8 *cmdStream;
+    u8 *statusPage;
+    u8 *tail;
+} GfxRing;
 
 // ------------------------------------------------------------------------------------------------
-void GfxInitDisplay(GfxDisplay *display);
-void GfxDisableVga(GfxPci *pci);
+void GfxPrintRingState(GfxPci *pci, GfxRing *ring);
+void GfxInitRing(GfxRing *ring, GfxMemManager *memMgr);
+void *GfxAllocCmd(GfxRing *ring, uint cmdSize);
+void GfxWriteCmd(GfxPci *pci, GfxRing *ring, uint cmdSize);

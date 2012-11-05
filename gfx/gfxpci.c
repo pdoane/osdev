@@ -8,7 +8,7 @@
 #include "cpu/io.h"
 
 // ------------------------------------------------------------------------------------------------
-void GfxInitPci(GfxPCI *pci)
+void GfxInitPci(GfxPci *pci)
 {
     // Read PCI registers
     PciBar bar;
@@ -35,25 +35,25 @@ void GfxInitPci(GfxPCI *pci)
 }
 
 // ------------------------------------------------------------------------------------------------
-u32 GfxRead32(GfxPCI *pci, uint reg)
+u32 GfxRead32(GfxPci *pci, uint reg)
 {
     return MmioRead32((u8 *)pci->mmioBar + reg);
 }
 
 // ------------------------------------------------------------------------------------------------
-u64 GfxRead64(GfxPCI *pci, uint reg)
+u64 GfxRead64(GfxPci *pci, uint reg)
 {
     return MmioRead64((u8 *)pci->mmioBar + reg);
 }
 
 // ------------------------------------------------------------------------------------------------
-void GfxWrite32(GfxPCI *pci, uint reg, u32 value)
+void GfxWrite32(GfxPci *pci, uint reg, u32 value)
 {
     MmioWrite32((u8 *)pci->mmioBar + reg, value);
 }
 
 // ------------------------------------------------------------------------------------------------
-void GfxWrite64(GfxPCI *pci, uint reg, u32 value)
+void GfxWrite64(GfxPci *pci, uint reg, u32 value)
 {
     MmioWrite64((u8 *)pci->mmioBar + reg, value);
 }

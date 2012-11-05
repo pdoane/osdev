@@ -7,6 +7,7 @@
 #include "gfx/gtt.h"
 #include "gfx/gfxmem.h"
 #include "gfx/gfxdisplay.h"
+#include "gfx/gfxring.h"
 #include "console/console.h"
 #include "cpu/io.h"
 #include "input/input.h"
@@ -26,24 +27,21 @@ typedef struct GfxDevice
 {
     bool    active;
 
-    GfxPCI        pci;
+    GfxPci        pci;
     GfxGTT        gtt;
     GfxMemManager memManager;
     GfxDisplay    display;
 
-    u8     *gfxMemBase;
-    u8     *gfxMemNext;
-
     u8     *surface;
     u8     *cursor;
-    u8     *renderCS;
-    u8     *renderStatus;
+
+    GfxRing render;
 } GfxDevice;
 
-static GfxDevice s_gfxDevice;
+GfxDevice s_gfxDevice;
 
 // ------------------------------------------------------------------------------------------------
-static void EnterForceWake()
+void EnterForceWake()
 {
     RlogPrint("Trying to entering force wake...\n");
 
@@ -71,31 +69,10 @@ static void EnterForceWake()
 }
 
 // ------------------------------------------------------------------------------------------------
-static void ExitForceWake()
+void ExitForceWake()
 {
     GfxWrite32(&s_gfxDevice.pci, FORCE_WAKE_MT, (1 << 16) | 0);
     GfxRead32(&s_gfxDevice.pci, ECOBUS);
-}
-
-// ------------------------------------------------------------------------------------------------
-static u32 GfxAddr(u8 *phyAddr)
-{
-    return (u32)(phyAddr - s_gfxDevice.gfxMemBase);
-}
-
-// ------------------------------------------------------------------------------------------------
-static void *GfxAlloc(uint size, uint align)
-{
-    // Align memory request
-    u8 *result = s_gfxDevice.gfxMemNext;
-    uintptr_t offset = (uintptr_t)result & (align - 1);
-    if (offset)
-    {
-        result += align - offset;
-    }
-
-    s_gfxDevice.gfxMemNext = result + size;
-    return result;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -169,23 +146,6 @@ static void GfxPrintPipeState()
 */
 
 // ------------------------------------------------------------------------------------------------
-static void GfxPrintRingState()
-{
-    EnterForceWake();
-    {
-        RlogPrint("  RCS_HWS_PGA: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, RCS_HWS_PGA));
-
-        RlogPrint("  RCS_RING_BUFFER_TAIL: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, RCS_RING_BUFFER_TAIL));
-        RlogPrint("  RCS_RING_BUFFER_HEAD: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, RCS_RING_BUFFER_HEAD));
-        RlogPrint("  RCS_RING_BUFFER_START: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, RCS_RING_BUFFER_START));
-        RlogPrint("  RCS_RING_BUFFER_CTL: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, RCS_RING_BUFFER_CTL));
-
-        RlogPrint("  %08x\n", *(u32 *)s_gfxDevice.renderStatus);
-    }
-    ExitForceWake();
-}
-
-// ------------------------------------------------------------------------------------------------
 void GfxInit(uint id, PciDeviceInfo *info)
 {
     if (!(((info->classCode << 8) | info->subclass) == PCI_DISPLAY_VGA &&
@@ -255,17 +215,14 @@ void GfxStart()
     }
     ExitForceWake();
 
-    s_gfxDevice.gfxMemBase = s_gfxDevice.pci.apertureBar;
-    s_gfxDevice.gfxMemNext = s_gfxDevice.gfxMemBase + 4 * GTT_PAGE_SIZE;
-
     // Allocate Surface - 256KB aligned, +512 PTEs
     uint surfaceMemSize = 16 * MB;         // TODO: compute appropriate surface size
-    s_gfxDevice.surface = GfxAlloc(surfaceMemSize, 256 * KB);
+    s_gfxDevice.surface = GfxAlloc(&s_gfxDevice.memManager, surfaceMemSize, 256 * KB);
     memset(s_gfxDevice.surface, 0x77, 720 * 400 * 4);
 
     // Allocate Cursor - 64KB aligned, +2 PTEs
     uint cursorMemSize = 64 * 64 * sizeof(u32) + 8 * KB;
-    s_gfxDevice.cursor = GfxAlloc(cursorMemSize, 64 * KB);
+    s_gfxDevice.cursor = GfxAlloc(&s_gfxDevice.memManager, cursorMemSize, 64 * KB);
     memcpy(s_gfxDevice.cursor, cursor_image.pixel_data, 64 * 64 * sizeof(u32));
 
     // Setup Primary Plane
@@ -276,19 +233,14 @@ void GfxStart()
     GfxWrite32(&s_gfxDevice.pci, PRI_CTL_A, PRI_PLANE_ENABLE | PRI_PLANE_32BPP);
     GfxWrite32(&s_gfxDevice.pci, PRI_LINOFF_A, 0);
     GfxWrite32(&s_gfxDevice.pci, PRI_STRIDE_A, stride);
-    GfxWrite32(&s_gfxDevice.pci, PRI_SURF_A, GfxAddr(s_gfxDevice.surface));
+    GfxWrite32(&s_gfxDevice.pci, PRI_SURF_A, GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.surface));
 
     // Setup Cursor Plane
     GfxWrite32(&s_gfxDevice.pci, CUR_CTL_A, CUR_MODE_ARGB | CUR_MODE_64_32BPP);
-    GfxWrite32(&s_gfxDevice.pci, CUR_BASE_A, GfxAddr(s_gfxDevice.cursor));
+    GfxWrite32(&s_gfxDevice.pci, CUR_BASE_A, GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.cursor));
 
-    // Allocate Render Engine Command Stream - 4KB aligned
-    uint rcsMemSize = 4 * KB;
-    s_gfxDevice.renderCS = GfxAlloc(rcsMemSize, 4 * KB);
-
-    // Allocate RCS Hardware Status Page - 4KB aligned
-    s_gfxDevice.renderStatus = GfxAlloc(4 * KB, 4 * KB);
-    memset(s_gfxDevice.renderStatus, 0, 4 * KB);
+    // Allocate Render Ring
+    GfxInitRing(&s_gfxDevice.render, &s_gfxDevice.memManager);
 
     // Log initial port state
     GfxPrintPortState();
@@ -299,32 +251,30 @@ void GfxStart()
     {
         RlogPrint("Setting Ring...\n");
 
-        volatile u32 *pCmd = (volatile u32 *)s_gfxDevice.renderCS;
-        *pCmd++ = (0x21 << 23) | (1);
-        *pCmd++ = 0;
-        *pCmd++ = 0x12345678;
-        *pCmd++ = 0;
-        u32 tail = (u8*)pCmd - s_gfxDevice.renderCS;
-
-        GfxWrite32(&s_gfxDevice.pci, RCS_HWS_PGA, GfxAddr(s_gfxDevice.renderStatus));
-
         // Setup Render Ring Buffer
+        GfxWrite32(&s_gfxDevice.pci, RCS_HWS_PGA, GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.render.statusPage));
         GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_TAIL, 0);
         GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_HEAD, 0);
-        GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_START, GfxAddr(s_gfxDevice.renderCS));
+        GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_START, GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.render.cmdStream));
         GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_CTL,
               (0 << 12)         // # of pages - 1
             | 1                 // Ring Buffer Enable
             );
         RlogPrint("...done\n");
 
-        // Update Tail
-        GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_TAIL, tail);
-        RlogPrint("...tail updated\n");
-
     }
     ExitForceWake();
-    GfxPrintRingState();
+
+    // Write MI_STORE_DATA_INDEX
+    CmdMiStoreDataIndex *cmd;
+    cmd = (CmdMiStoreDataIndex *)GfxAllocCmd(&s_gfxDevice.render, sizeof(*cmd));
+    cmd->bits.commandType = MI_COMMAND;
+    cmd->bits.opcode = MI_STORE_DATA_INDEX;
+    cmd->bits.len = 1;
+    cmd->bits.data0 = 0x12345678;
+    GfxWriteCmd(&s_gfxDevice.pci, &s_gfxDevice.render, sizeof(*cmd));
+
+    GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.render);
 
     /*
 
@@ -377,6 +327,6 @@ void GfxPoll()
     {
         lastCursorPos = cursorPos;
         GfxWrite32(&s_gfxDevice.pci, CUR_POS_A, cursorPos);
-        GfxPrintRingState();
+        GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.render);
     }
 }

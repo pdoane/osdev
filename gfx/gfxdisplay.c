@@ -16,7 +16,7 @@ void GfxInitDisplay(GfxDisplay *display)
 }
 
 // ------------------------------------------------------------------------------------------------
-void GfxDisableVga(GfxPCI *pci)
+void GfxDisableVga(GfxPci *pci)
 {
     IoWrite8(SR_INDEX, SEQ_CLOCKING);
     IoWrite8(SR_DATA, IoRead8(SR_DATA) | SCREEN_OFF);

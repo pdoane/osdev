@@ -22,4 +22,4 @@ typedef struct GfxGTT
 } GfxGTT;
 
 // ------------------------------------------------------------------------------------------------
-void GfxInitGtt(GfxGTT *gtt, const GfxPCI *pci);
+void GfxInitGtt(GfxGTT *gtt, const GfxPci *pci);

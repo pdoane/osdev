@@ -7,7 +7,7 @@
 #include "stdlib/types.h"
 
 // ------------------------------------------------------------------------------------------------
-typedef struct GfxPCI
+typedef struct GfxPci
 {
     uint    id;
 
@@ -17,12 +17,12 @@ typedef struct GfxPCI
     u16     iobase;
 
     u32     apertureSize;
-} GfxPCI;
+} GfxPci;
 
 // ------------------------------------------------------------------------------------------------
-void GfxInitPci(GfxPCI *pci);
+void GfxInitPci(GfxPci *pci);
 
-u32 GfxRead32(GfxPCI *pci, uint reg);
-u64 GfxRead64(GfxPCI *pci, uint reg);
-void GfxWrite32(GfxPCI *pci, uint reg, u32 value);
-void GfxWrite64(GfxPCI *pci, uint reg, u32 value);
+u32 GfxRead32(GfxPci *pci, uint reg);
+u64 GfxRead64(GfxPci *pci, uint reg);
+void GfxWrite32(GfxPci *pci, uint reg, u32 value);
+void GfxWrite64(GfxPci *pci, uint reg, u32 value);
