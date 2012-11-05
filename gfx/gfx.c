@@ -299,7 +299,6 @@ void GfxStart()
         cmd->bits.csStall = 1;
         cmd->bits.destinationAddressType = 1;
 
-        // Write doesn't seem to be working...
         cmd->bits.address = GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.render.statusPage);
         cmd->bits.data = 2;
 

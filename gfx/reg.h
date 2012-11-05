@@ -246,12 +246,13 @@ typedef union CmdPipeControl
         u32 globalSnapshotCountReset            : 1;
         u32 csStall                             : 1;
         u32 storeDataIndex                      : 1;
+        u32 reserved2                           : 1;
         u32 lriPostSyncOperation                : 1;
         u32 destinationAddressType              : 1;
-        u32 reserved2                           : 1;
         u32 reserved3                           : 1;
         u32 reserved4                           : 1;
-        u32 reserved5                           : 4;
+        u32 reserved5                           : 1;
+        u32 reserved6                           : 4;
 
         // DWORD 2
         u32 address;
