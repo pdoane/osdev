@@ -6,6 +6,11 @@
 
 #include "stdlib/types.h"
 
+#define MAKE_MI_INSTR(opcode, flags) \
+    (((opcode) << 23) | (flags))
+#define MAKE_3D_INSTR(opcode, subOpcode, flags) \
+    ((0x3 << 29) | (0x3 << 27) | ((opcode) << 24) | ((subOpcode) << 16) | (flags))
+
 // ------------------------------------------------------------------------------------------------
 // Vol 1. Part 2. MMIO, Media Registers, and Programming Environment
 // ------------------------------------------------------------------------------------------------
@@ -85,6 +90,11 @@ typedef union RegArbMode
 #define INSTPM                          0x020c0     // R/W
 
 // ------------------------------------------------------------------------------------------------
+// 1.1.10.2 Render Mode Register for Software Interface
+
+#define MI_MODE                         0x0209c     // R/W
+
+// ------------------------------------------------------------------------------------------------
 // 1.1.10.13 Render/Video Semaphore Sync
 
 #define RVSYNC                          0x02040     // R/W
@@ -125,25 +135,18 @@ typedef union RegArbMode
 // ------------------------------------------------------------------------------------------------
 // 1.2.18 MI_STORE_DATA_INDEX
 
-#define MI_COMMAND              0x00
-#define MI_STORE_DATA_INDEX     0x21
+#define MI_STORE_DATA_INDEX             MAKE_MI_INSTR(0x21, 1)
 
 typedef union CmdMiStoreDataIndex
 {
     struct CmdMiStoreDataIndex_Bits
     {
         // DWORD 0
-        u32 len : 8;
-        u32 reserved0 : 13;
-        u32 reserved1 : 1;
-        u32 reserved2 : 1;
-        u32 opcode : 6;
-        u32 commandType : 3;
+        u32 opcode;
 
         // DWORD 1
-        u32 reserved3 : 2;
-        u32 offset : 10;
-        u32 reserved4 : 20;
+        u32 offset              : 12;
+        u32 reserved0           : 20;
 
         // DWORD 2
         u32 data0;
@@ -205,6 +208,59 @@ typedef union CmdMiStoreDataIndex
 
 #define BVSYNC                          0x22044     // R/W
 
+// ------------------------------------------------------------------------------------------------
+// Vol 2. Part 1. 3D Pipeline
+// ------------------------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------
+// 1.10.4 PIPE_CONTROL Command
+
+#define PIPE_CONTROL                    MAKE_3D_INSTR(0x2, 0x0, 2)
+
+typedef union CmdPipeControl
+{
+    struct CmdPipeControl_Bits
+    {
+        // DWORD 0
+        u32 opcode;
+
+        // DWORD 1
+        u32 depthCacheFlushEnable               : 1;
+        u32 stallAtPixelScoreboard              : 1;
+        u32 stateCacheInvalidationEnable        : 1;
+        u32 constantCacheInvalidationEnable     : 1;
+        u32 vfCacheInvalidationEnable           : 1;
+        u32 dcFlushEnable                       : 1;
+        u32 reserved0                           : 1;
+        u32 pipeControlFlushEnable              : 1;
+        u32 notifyEnable                        : 1;
+        u32 indirectStatePointersDisable        : 1;
+        u32 textureCacheInvalidationEnable      : 1;
+        u32 instructionCacheInvalidateEnable    : 1;
+        u32 renderTargetCacheFlushEnable        : 1;
+        u32 depthStallEnable                    : 1;
+        u32 postSyncOperation                   : 2;
+        u32 genericMediaStateClear              : 1;
+        u32 reserved1                           : 1;
+        u32 tlbInvalidate                       : 1;
+        u32 globalSnapshotCountReset            : 1;
+        u32 csStall                             : 1;
+        u32 storeDataIndex                      : 1;
+        u32 lriPostSyncOperation                : 1;
+        u32 destinationAddressType              : 1;
+        u32 reserved2                           : 1;
+        u32 reserved3                           : 1;
+        u32 reserved4                           : 1;
+        u32 reserved5                           : 4;
+
+        // DWORD 2
+        u32 address;
+
+        // DWORD 3
+        u32 data;
+    } bits;
+    u32 dwords[4];
+} CmdPipeControl;
 
 // ------------------------------------------------------------------------------------------------
 // Vol 3. Part 1. VGA and Extended VGA Registers

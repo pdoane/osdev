@@ -266,48 +266,48 @@ void GfxStart()
     ExitForceWake();
 
     // Write MI_STORE_DATA_INDEX
-    CmdMiStoreDataIndex *cmd;
-    cmd = (CmdMiStoreDataIndex *)GfxAllocCmd(&s_gfxDevice.render, sizeof(*cmd));
-    cmd->bits.commandType = MI_COMMAND;
-    cmd->bits.opcode = MI_STORE_DATA_INDEX;
-    cmd->bits.len = 1;
-    cmd->bits.data0 = 0x12345678;
-    GfxWriteCmd(&s_gfxDevice.pci, &s_gfxDevice.render, sizeof(*cmd));
+    {
+        CmdMiStoreDataIndex *cmd = (CmdMiStoreDataIndex *)GfxAllocCmd(&s_gfxDevice.render, sizeof(*cmd));
+        cmd->bits.opcode = MI_STORE_DATA_INDEX;
+        cmd->bits.offset = 0;
+        cmd->bits.data0 = 0x12345678;
+        GfxWriteCmd(&s_gfxDevice.pci, &s_gfxDevice.render, sizeof(*cmd));
+    }
+
+    // Write PIPE_CONTROL with CS_STALL
+    {
+        CmdPipeControl *cmd = (CmdPipeControl *)GfxAllocCmd(&s_gfxDevice.render, sizeof(*cmd));
+        cmd->bits.opcode = PIPE_CONTROL;
+        cmd->bits.stallAtPixelScoreboard = 1;
+        cmd->bits.csStall = 1;
+        GfxWriteCmd(&s_gfxDevice.pci, &s_gfxDevice.render, sizeof(*cmd));
+    }
+
+    // Write PIPE_CONTROL for flush
+    {
+        CmdPipeControl *cmd = (CmdPipeControl *)GfxAllocCmd(&s_gfxDevice.render, sizeof(*cmd));
+        cmd->bits.opcode = PIPE_CONTROL;
+        cmd->bits.depthCacheFlushEnable = 1;
+        cmd->bits.stateCacheInvalidationEnable = 1;
+        cmd->bits.constantCacheInvalidationEnable = 1;
+        cmd->bits.vfCacheInvalidationEnable = 1;
+        cmd->bits.textureCacheInvalidationEnable = 1;
+        cmd->bits.instructionCacheInvalidateEnable = 1;
+        cmd->bits.renderTargetCacheFlushEnable = 1;
+        cmd->bits.postSyncOperation = 1;
+        cmd->bits.tlbInvalidate = 1;
+        cmd->bits.csStall = 1;
+        cmd->bits.destinationAddressType = 1;
+
+        // Write doesn't seem to be working...
+        cmd->bits.address = GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.render.statusPage);
+        cmd->bits.data = 2;
+
+        GfxWriteCmd(&s_gfxDevice.pci, &s_gfxDevice.render, sizeof(*cmd));
+    }
 
     GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.render);
 
-    /*
-
-    // First command has to be a flush
-
-    // RCS Data
-    uint rop = 0xf0;                        // P
-    u32 bltAddr = GfxAddr(s_gfxDevice.surface);
-    uint bltHeight = 200;
-    uint bltWidth = width * sizeof(u32);
-
-    volatile u32 *pCmd = (volatile u32 *)s_gfxDevice.blitterCS;
-    *pCmd++ = COLOR_BLT | WRITE_ALPHA | WRITE_RGB;
-    *pCmd++ = COLOR_DEPTH_32 | (rop << ROP_SHIFT) | stride;
-    *pCmd++ = (bltHeight << HEIGHT_SHIFT) | bltWidth;
-    *pCmd++ = bltAddr;
-    *pCmd++ = 0xffffffff;
-    *pCmd++ = 0;
-
-    // Blitter Virtual Memory Control
-    GfxWrite32(BCS_HWS_PGA, GfxAddr(s_gfxDevice.blitterStatus));
-
-    // Setup Blitter Ring Buffer
-    GfxWrite32(BCS_RING_BUFFER_TAIL, 3);     // Number of quad words
-    GfxWrite32(BCS_RING_BUFFER_HEAD, 0);
-    GfxWrite32(BCS_RING_BUFFER_START, GfxAddr(s_gfxDevice.blitterCS));
-    GfxWrite32(BCS_RING_BUFFER_CTL,
-          (0 << 12)         // # of pages - 1
-        | 1                 // Ring Buffer Enable
-        );
-
-    GfxPrintRingState();
-*/
     s_gfxDevice.active = true;
 }
 
