@@ -42,6 +42,40 @@ typedef struct GfxDevice
 
 static GfxDevice s_gfxDevice;
 
+// ------------------------------------------------------------------------------------------------
+static void EnterForceWake()
+{
+    RlogPrint("Trying to entering force wake...\n");
+
+    int trys = 0;
+    int forceWakeAck;
+    do {
+        ++trys;
+        forceWakeAck = GfxRead32(&s_gfxDevice.pci, FORCE_WAKE_MT_ACK);
+        ConsolePrint("Waiting for Force Ack to Clear: Try=%d - Ack=0x%X\n", trys, forceWakeAck);
+    } while (forceWakeAck != 0);
+
+    RlogPrint("  ACK cleared...\n");
+
+    GfxWrite32(&s_gfxDevice.pci, FORCE_WAKE_MT, (1 << 16) | 1);
+    GfxRead32(&s_gfxDevice.pci, ECOBUS);
+
+    RlogPrint("Wake written...\n");
+    do {
+        ++trys;
+        forceWakeAck = GfxRead32(&s_gfxDevice.pci, FORCE_WAKE_MT_ACK);
+        ConsolePrint("Waiting for Force Ack to be Set: Try=%d - Ack=0x%X\n", trys, forceWakeAck);
+    } while (forceWakeAck == 0);
+
+    RlogPrint("...Force Wake done\n");
+}
+
+// ------------------------------------------------------------------------------------------------
+static void ExitForceWake()
+{
+    GfxWrite32(&s_gfxDevice.pci, FORCE_WAKE_MT, (1 << 16) | 0);
+    GfxRead32(&s_gfxDevice.pci, ECOBUS);
+}
 
 // ------------------------------------------------------------------------------------------------
 static u32 GfxAddr(u8 *phyAddr)
@@ -135,17 +169,21 @@ static void GfxPrintPipeState()
 */
 
 // ------------------------------------------------------------------------------------------------
-/*
 static void GfxPrintRingState()
 {
-    RlogPrint("  BCS_HWS_PGA: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, BCS_HWS_PGA));
+    EnterForceWake();
+    {
+        RlogPrint("  RCS_HWS_PGA: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, RCS_HWS_PGA));
 
-    RlogPrint("  BCS_RING_BUFFER_TAIL: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, BCS_RING_BUFFER_TAIL));
-    RlogPrint("  BCS_RING_BUFFER_HEAD: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, BCS_RING_BUFFER_HEAD));
-    RlogPrint("  BCS_RING_BUFFER_START: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, BCS_RING_BUFFER_START));
-    RlogPrint("  BCS_RING_BUFFER_CTL: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, BCS_RING_BUFFER_CTL));
+        RlogPrint("  RCS_RING_BUFFER_TAIL: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, RCS_RING_BUFFER_TAIL));
+        RlogPrint("  RCS_RING_BUFFER_HEAD: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, RCS_RING_BUFFER_HEAD));
+        RlogPrint("  RCS_RING_BUFFER_START: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, RCS_RING_BUFFER_START));
+        RlogPrint("  RCS_RING_BUFFER_CTL: 0x%08X\n", GfxRead32(&s_gfxDevice.pci, RCS_RING_BUFFER_CTL));
+
+        RlogPrint("  %08x\n", *(u32 *)s_gfxDevice.renderStatus);
+    }
+    ExitForceWake();
 }
-*/
 
 // ------------------------------------------------------------------------------------------------
 void GfxInit(uint id, PciDeviceInfo *info)
@@ -166,41 +204,6 @@ void GfxInit(uint id, PciDeviceInfo *info)
 
     memset(&s_gfxDevice, 0, sizeof(s_gfxDevice));
     s_gfxDevice.pci.id = id;
-}
-
-// ------------------------------------------------------------------------------------------------
-static void EnterForceWake()
-{
-    RlogPrint("Trying to entering force wake...\n");
-
-    int trys = 0;
-    int forceWakeAck;
-    do {
-        ++trys;
-        forceWakeAck = GfxRead32(&s_gfxDevice.pci, FORCE_WAKE_MT_ACK);
-        ConsolePrint("Waiting for Force Ack to Clear: Try=%d - Ack=0x%X\n", trys, forceWakeAck);
-    } while (forceWakeAck != 0);
-
-    RlogPrint("  ACK cleared...\n");
-
-    GfxWrite32(&s_gfxDevice.pci, FORCE_WAKE_MT, (1 << 16) | 1);
-    GfxRead32(&s_gfxDevice.pci, ECOBUS);
-
-    RlogPrint("Wake written...\n");
-    do {
-        ++trys;
-        forceWakeAck = GfxRead32(&s_gfxDevice.pci, FORCE_WAKE_MT_ACK);
-        ConsolePrint("Waiting for Force Ack to be Set: Try=%d - Ack=0x%X\n", trys, forceWakeAck);
-    } while (forceWakeAck == 0);
-
-    RlogPrint("...Force Wake done\n");
-}
-
-// ------------------------------------------------------------------------------------------------
-static void ExitForceWake()
-{
-    GfxWrite32(&s_gfxDevice.pci, FORCE_WAKE_MT, 0);
-    GfxRead32(&s_gfxDevice.pci, ECOBUS);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -279,35 +282,6 @@ void GfxStart()
     GfxWrite32(&s_gfxDevice.pci, CUR_CTL_A, CUR_MODE_ARGB | CUR_MODE_64_32BPP);
     GfxWrite32(&s_gfxDevice.pci, CUR_BASE_A, GfxAddr(s_gfxDevice.cursor));
 
-    // MWDD FIX: Enable MSI
-
-    // Log initial port state
-    GfxPrintPortState();
-
-/*
-    EnterForceWake();
-    {
-        RlogPrint("Setting Ring...\n");
-
-        // Setup Blitter Ring Buffer
-        GfxWrite32(BCS_RING_BUFFER_TAIL, 0);     // Number of quad words
-        GfxWrite32(BCS_RING_BUFFER_HEAD, 0);
-        GfxWrite32(BCS_RING_BUFFER_START, 8 * MB);
-        GfxWrite32(BCS_RING_BUFFER_CTL,
-              (0 << 12)         // # of pages - 1
-            | 1                 // Ring Buffer Enable
-            );
-        RlogPrint("...done\n");
-
-    }
-    ExitForceWake();
-    GfxPrintRingState();
-*/
-
-
-
-    /*
-
     // Allocate Render Engine Command Stream - 4KB aligned
     uint rcsMemSize = 4 * KB;
     s_gfxDevice.renderCS = GfxAlloc(rcsMemSize, 4 * KB);
@@ -316,10 +290,47 @@ void GfxStart()
     s_gfxDevice.renderStatus = GfxAlloc(4 * KB, 4 * KB);
     memset(s_gfxDevice.renderStatus, 0, 4 * KB);
 
+    // Log initial port state
+    GfxPrintPortState();
+
+    // MWDD FIX: Enable MSI
+
+    EnterForceWake();
+    {
+        RlogPrint("Setting Ring...\n");
+
+        volatile u32 *pCmd = (volatile u32 *)s_gfxDevice.renderCS;
+        *pCmd++ = (0x21 << 23) | (1);
+        *pCmd++ = 0;
+        *pCmd++ = 0x12345678;
+        *pCmd++ = 0;
+        u32 tail = (u8*)pCmd - s_gfxDevice.renderCS;
+
+        GfxWrite32(&s_gfxDevice.pci, RCS_HWS_PGA, GfxAddr(s_gfxDevice.renderStatus));
+
+        // Setup Render Ring Buffer
+        GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_TAIL, 0);
+        GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_HEAD, 0);
+        GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_START, GfxAddr(s_gfxDevice.renderCS));
+        GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_CTL,
+              (0 << 12)         // # of pages - 1
+            | 1                 // Ring Buffer Enable
+            );
+        RlogPrint("...done\n");
+
+        // Update Tail
+        GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_TAIL, tail);
+        RlogPrint("...tail updated\n");
+
+    }
+    ExitForceWake();
+    GfxPrintRingState();
+
+    /*
 
     // First command has to be a flush
 
-    // BCS Data
+    // RCS Data
     uint rop = 0xf0;                        // P
     u32 bltAddr = GfxAddr(s_gfxDevice.surface);
     uint bltHeight = 200;
@@ -366,5 +377,6 @@ void GfxPoll()
     {
         lastCursorPos = cursorPos;
         GfxWrite32(&s_gfxDevice.pci, CUR_POS_A, cursorPos);
+        GfxPrintRingState();
     }
 }

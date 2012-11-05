@@ -75,6 +75,11 @@ typedef union RegArbMode
 } RegArbMode;
 
 // ------------------------------------------------------------------------------------------------
+// 1.1.5.1 Hardware Status Page Address
+
+#define RCS_HWS_PGA                     0x04080     // R/W
+
+// ------------------------------------------------------------------------------------------------
 // 1.1.9 Instruction Parser Mode
 
 #define INSTPM                          0x020c0     // R/W
