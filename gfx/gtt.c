@@ -7,49 +7,49 @@
 #include "net/rlog.h"
 
 // ------------------------------------------------------------------------------------------------
-static const u32 MGGC0_GMS_TO_SIZE[] =
+static const u32 GMS_TO_SIZE[] =
 {
-      0 * MB,     // RegMGGC0_GMS_0MB
-     32 * MB,     // RegMGGC0_GMS_32MB_1
-     64 * MB,     // RegMGGC0_GMS_64MB_1
-     96 * MB,     // RegMGGC0_GMS_96MB_1
-    128 * MB,     // RegMGGC0_GMS_128MB_1
-     32 * MB,     // RegMGGC0_GMS_32MB
-     48 * MB,     // RegMGGC0_GMS_48MB
-     64 * MB,     // RegMGGC0_GMS_64MB
-    128 * MB,     // RegMGGC0_GMS_128MB
-    256 * MB,     // RegMGGC0_GMS_256MB
-     96 * MB,     // RegMGGC0_GMS_96MB
-    160 * MB,     // RegMGGC0_GMS_160MB
-    224 * MB,     // RegMGGC0_GMS_224MB
-    352 * MB,     // RegMGGC0_GMS_352MB
-    448 * MB,     // RegMGGC0_GMS_448MB
-    480 * MB,     // RegMGGC0_GMS_480MB
-    512 * MB,     // RegMGGC0_GMS_512MB
+      0 * MB,     // GMS_0MB
+     32 * MB,     // GMS_32MB_1
+     64 * MB,     // GMS_64MB_1
+     96 * MB,     // GMS_96MB_1
+    128 * MB,     // GMS_128MB_1
+     32 * MB,     // GMS_32MB
+     48 * MB,     // GMS_48MB
+     64 * MB,     // GMS_64MB
+    128 * MB,     // GMS_128MB
+    256 * MB,     // GMS_256MB
+     96 * MB,     // GMS_96MB
+    160 * MB,     // GMS_160MB
+    224 * MB,     // GMS_224MB
+    352 * MB,     // GMS_352MB
+    448 * MB,     // GMS_448MB
+    480 * MB,     // GMS_480MB
+    512 * MB,     // GMS_512MB
 };
 
 // ------------------------------------------------------------------------------------------------
 void GfxInitGtt(GfxGTT *gtt, const GfxPci *pci)
 {
-    RegMGGC0 mggc0;
-    RegBDSM  bdsm;
+    u16 ggc = PciRead16(pci->id, MGGC0);
+    u32 bdsm = PciRead32(pci->id, BDSM);
 
-    mggc0.word = PciRead16(pci->id, MGGC0);
-    bdsm.dword = PciRead32(pci->id, BDSM);
-
-    gtt->stolenMemSize = MGGC0_GMS_TO_SIZE[mggc0.bits.graphicsModeSelect];
+    uint gms = (ggc >> GGC_GMS_SHIFT) & GGC_GMS_MASK;
+    gtt->stolenMemSize = GMS_TO_SIZE[gms];
     
-    switch (mggc0.bits.gttMemSize)
+    uint ggms = (ggc >> GGC_GGMS_SHIFT) & GGC_GGMS_MASK;
+
+    switch (ggms)
     {
-    case RegMGGC0_GGMS_None:
+    case GGMS_None:
         gtt->gttMemSize = 0;
         break;
 
-    case RegMGGC0_GGMS_1MB:
+    case GGMS_1MB:
         gtt->gttMemSize = 1 * MB;
         break;
 
-    case RegMGGC0_GGMS_2MB:
+    case GGMS_2MB:
         gtt->gttMemSize = 2 * MB;
         break;
 
@@ -58,12 +58,11 @@ void GfxInitGtt(GfxGTT *gtt, const GfxPci *pci)
         break;
     }
 
-    bdsm.bits.lock = 0;
-    gtt->stolenMemBase = bdsm.dword;
+    gtt->stolenMemBase = bdsm & BDSM_ADDR_MASK;
 
-    gtt->numTotalEntries    = gtt->gttMemSize / sizeof(GttEntry);
+    gtt->numTotalEntries    = gtt->gttMemSize / sizeof(u32);
     gtt->numMappableEntries = pci->apertureSize >> GTT_PAGE_SHIFT;
-    gtt->gtt = (GttEntry *) pci->gttAddr;
+    gtt->entries = pci->gttAddr;
 
     // MWDD FIX: Should map unused pages to a safe page.
 

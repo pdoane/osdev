@@ -18,5 +18,5 @@ typedef struct GfxRing
 // ------------------------------------------------------------------------------------------------
 void GfxPrintRingState(GfxPci *pci, GfxRing *ring);
 void GfxInitRing(GfxRing *ring, GfxMemManager *memMgr);
-void *GfxAllocCmd(GfxRing *ring, uint cmdSize);
-void GfxWriteCmd(GfxPci *pci, GfxRing *ring, uint cmdSize);
+u32 *GfxBeginCmd(GfxRing *ring, uint dwordCount);
+void GfxEndCmd(GfxPci *pci, GfxRing *ring, u32* tail);

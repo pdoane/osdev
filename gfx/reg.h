@@ -6,10 +6,16 @@
 
 #include "stdlib/types.h"
 
+// ------------------------------------------------------------------------------------------------
+// Common macros
+
 #define MAKE_MI_INSTR(opcode, flags) \
     (((opcode) << 23) | (flags))
 #define MAKE_3D_INSTR(opcode, subOpcode, flags) \
     ((0x3 << 29) | (0x3 << 27) | ((opcode) << 24) | ((subOpcode) << 16) | (flags))
+
+#define MASKED_ENABLE(x)                (((x) << 16) | (x))
+#define MASKED_DISABLE(x)               ((x) << 16)
 
 // ------------------------------------------------------------------------------------------------
 // Vol 1. Part 2. MMIO, Media Registers, and Programming Environment
@@ -20,22 +26,14 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 // 2.1.2.1 GTT Page Table Entries
 
-#define GTT_PAGE_SHIFT 12
-#define GTT_PAGE_SIZE (1 << GTT_PAGE_SHIFT)
+#define GTT_PAGE_SHIFT                  12
+#define GTT_PAGE_SIZE                   (1 << GTT_PAGE_SHIFT)
 
-typedef union GttEntry
-{
-    struct GttEntry_Bits
-    {
-        u32 valid            :  1;
-        u32 l3CacheControl   :  1;
-        u32 llcCacheControl  :  1;
-        u32 gfxDataType      :  1;
-        u32 physStartAddrExt :  8;
-        u32 physPageAddr     : 20;
-    } bits;
-    u32 dword;
-} GttEntry;
+#define GTT_ENTRY_VALID                 (1 << 0)
+#define GTT_ENTRY_L3_CACHE_CONTROL      (1 << 1)
+#define GTT_ENTRY_LLC_CACHE_CONTROL     (1 << 2)
+#define GTT_ENTRY_GFX_DATA_TYPE         (1 << 3)
+#define GTT_ENTRY_ADDR(x)               ((x) | ((x >> 28) & 0xff0))
 
 // ------------------------------------------------------------------------------------------------
 // 3. GFX MMIO - MCHBAR Aperture
@@ -49,35 +47,21 @@ typedef union GttEntry
 // ------------------------------------------------------------------------------------------------
 // 1.1.1.1 ARB_MODE – Arbiter Mode Control register
 
-#define ARB_MODE                        0x04030 // R/W
+#define ARB_MODE                        0x04030     // R/W
 
-typedef struct RegArbMode_Data
-{
-    u16 gttAccessesGdr     : 1;
-    u16 colorCacheGdrEna   : 1;
-    u16 depthCacheGdrEna   : 1;
-    u16 textureCacheGdrEna : 1;
-    u16 vmcGdrEna          : 1;
-    u16 as4ts              : 1; // Address swizzling for Tiled-Surfaces
-    u16 reserved0          : 2;
-    u16 cdps               : 1; // Color/Depth Port Share Bit
-    u16 gampd_gdr          : 1; // GAM PD GDR
-    u16 blb_gdr            : 1;
-    u16 stc_gdr            : 1;
-    u16 hiz_gdr            : 1;
-    u16 dc_gdr             : 1;
-    u16 gam2bgttt          : 1; // GAM to Bypass GTT Translation
-} RegArbMode_Data;
-
-typedef union RegArbMode
-{
-    struct RegArbMode_Bits
-    {
-        RegArbMode_Data data;
-        RegArbMode_Data mask;
-    } bits;
-    u32 dword;
-} RegArbMode;
+#define ARB_MODE_GGTAGDR                (1 << 0)    // GTT Accesses GDR
+#define ARB_MODE_CCGDREN                (1 << 1)    // Color Cache GDR Enable Bit
+#define ARB_MODE_DCGDREN                (1 << 2)    // Depth Cache GDR Enable Bit
+#define ARB_MODE_TCGDREN                (1 << 3)    // Texture Cache GDR Enable Bit
+#define ARB_MODE_VMC_GDR_EN             (1 << 4)    // VMC GDR Enable
+#define ARB_MODE_AS4TS                  (1 << 5)    // Address Swizzling for Tiled Surfaces
+#define ARB_MODE_CDPS                   (1 << 8)    // Color/Depth Port Share Bit
+#define ARB_MODE_GAMPD_GDR              (1 << 9)    // GAM PD GDR
+#define ARB_MODE_BLB_GDR                (1 << 10)   // BLB GDR
+#define ARB_MODE_STC_GDR                (1 << 11)   // STC GDR
+#define ARB_MODE_HIZ_GDR                (1 << 12)   // HIZ GDR
+#define ARB_MODE_DC_GDR                 (1 << 13)   // DC GDR
+#define ARB_MODE_GAM2BGTTT              (1 << 14)   // GAM to Bypass GTT Translation
 
 // ------------------------------------------------------------------------------------------------
 // 1.1.5.1 Hardware Status Page Address
@@ -133,29 +117,18 @@ typedef union RegArbMode
 #define BCS_RING_BUFFER_CTL             0x2203c     // R/W
 
 // ------------------------------------------------------------------------------------------------
+// 1.2.18 MI_NOOP
+
+#define MI_NOOP                         MAKE_MI_INSTR(0x00, 0)
+
+// ------------------------------------------------------------------------------------------------
 // 1.2.18 MI_STORE_DATA_INDEX
 
 #define MI_STORE_DATA_INDEX             MAKE_MI_INSTR(0x21, 1)
 
-typedef union CmdMiStoreDataIndex
-{
-    struct CmdMiStoreDataIndex_Bits
-    {
-        // DWORD 0
-        u32 opcode;
-
-        // DWORD 1
-        u32 offset              : 12;
-        u32 reserved0           : 20;
-
-        // DWORD 2
-        u32 data0;
-
-        // DWORD 3
-        u32 data1;
-    } bits;
-    u32 dwords[4];
-} CmdMiStoreDataIndex;
+// DWORD 1 = offset
+// DWORD 2 = data 0
+// DWORD 3 = data 1
 
 // ------------------------------------------------------------------------------------------------
 // Vol 1. Part 4. Blitter Engine
@@ -215,53 +188,36 @@ typedef union CmdMiStoreDataIndex
 // ------------------------------------------------------------------------------------------------
 // 1.10.4 PIPE_CONTROL Command
 
-#define PIPE_CONTROL                    MAKE_3D_INSTR(0x2, 0x0, 2)
+#define PIPE_CONTROL                                MAKE_3D_INSTR(0x2, 0x0, 3)
 
-typedef union CmdPipeControl
-{
-    struct CmdPipeControl_Bits
-    {
-        // DWORD 0
-        u32 opcode;
+// DWORD 1 - flags
+#define PIPE_CONTROL_DEPTH_CACHE_FLUSH              (1 << 0)
+#define PIPE_CONTROL_SCOREBOARD_STALL               (1 << 1)
+#define PIPE_CONTROL_STATE_CACHE_INVALIDATE         (1 << 2)
+#define PIPE_CONTROL_CONST_CACHE_INVALIDATE         (1 << 3)
+#define PIPE_CONTROL_VF_CACHE_INVALIDATE            (1 << 4)
+#define PIPE_CONTROL_DC_FLUSH                       (1 << 5)
+#define PIPE_CONTROL_PIPE_CONTROL_FLUSH             (1 << 7)
+#define PIPE_CONTROL_NOTIFY                         (1 << 8)
+#define PIPE_CONTROL_INDIRECT_STATE_DISABLE         (1 << 9)
+#define PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE       (1 << 10)
+#define PIPE_CONTROL_INSTR_CACHE_INVALIDATE         (1 << 11)
+#define PIPE_CONTROL_RENDER_TARGET_CACHE_FLUSH      (1 << 12)
+#define PIPE_CONTROL_DEPTH_STALL                    (1 << 13)
+#define PIPE_CONTROL_WRITE_IMM                      (1 << 14)
+#define PIPE_CONTROL_WRITE_PS_DEPTH_COUNT           (2 << 14)
+#define PIPE_CONTROL_WRITE_TIMESTAMP                (3 << 14)
+#define PIPE_CONTROL_GENERIC_MEDIA_STATE_CLEAR      (1 << 16)
+#define PIPE_CONTROL_TLB_INVALIDATE                 (1 << 18)
+#define PIPE_CONTROL_GLOBAL_SNAPSHOT_COUNT_RESET    (1 << 19)
+#define PIPE_CONTROL_CS_STALL                       (1 << 20)
+#define PIPE_CONTROL_STORE_DATA_INDEX               (1 << 21)
+#define PIPE_CONTROL_MMIO_WRITE_IMM                 (1 << 23)
+#define PIPE_CONTROL_USE_GGTT                       (1 << 24)
 
-        // DWORD 1
-        u32 depthCacheFlushEnable               : 1;
-        u32 stallAtPixelScoreboard              : 1;
-        u32 stateCacheInvalidationEnable        : 1;
-        u32 constantCacheInvalidationEnable     : 1;
-        u32 vfCacheInvalidationEnable           : 1;
-        u32 dcFlushEnable                       : 1;
-        u32 reserved0                           : 1;
-        u32 pipeControlFlushEnable              : 1;
-        u32 notifyEnable                        : 1;
-        u32 indirectStatePointersDisable        : 1;
-        u32 textureCacheInvalidationEnable      : 1;
-        u32 instructionCacheInvalidateEnable    : 1;
-        u32 renderTargetCacheFlushEnable        : 1;
-        u32 depthStallEnable                    : 1;
-        u32 postSyncOperation                   : 2;
-        u32 genericMediaStateClear              : 1;
-        u32 reserved1                           : 1;
-        u32 tlbInvalidate                       : 1;
-        u32 globalSnapshotCountReset            : 1;
-        u32 csStall                             : 1;
-        u32 storeDataIndex                      : 1;
-        u32 reserved2                           : 1;
-        u32 lriPostSyncOperation                : 1;
-        u32 destinationAddressType              : 1;
-        u32 reserved3                           : 1;
-        u32 reserved4                           : 1;
-        u32 reserved5                           : 1;
-        u32 reserved6                           : 4;
-
-        // DWORD 2
-        u32 address;
-
-        // DWORD 3
-        u32 data;
-    } bits;
-    u32 dwords[4];
-} CmdPipeControl;
+// DWORD 2 - address
+// DWORD 3 - immediate data (low)
+// DWORD 4 - immediate data (high)
 
 // ------------------------------------------------------------------------------------------------
 // Vol 3. Part 1. VGA and Extended VGA Registers
@@ -286,75 +242,52 @@ typedef union CmdPipeControl
 // ------------------------------------------------------------------------------------------------
 // 1.25 MGGC0 - Mirror of GMCH Graphics Control Register
 
-#define MGGC0                          0x50 // In PCI Config Space
+#define MGGC0                           0x50        // In PCI Config Space
 
-typedef enum RegMGGC0_GMS
-{
-    RegMGGC0_GMS_32MB     = 0x05,
-    RegMGGC0_GMS_48MB     = 0x06,
-    RegMGGC0_GMS_64MB     = 0x07,
-    RegMGGC0_GMS_128MB    = 0x08,
-    RegMGGC0_GMS_256MB    = 0x09,
-    RegMGGC0_GMS_96MB     = 0x0A,
-    RegMGGC0_GMS_160MB    = 0x0B,
-    RegMGGC0_GMS_224MB    = 0x0C,
-    RegMGGC0_GMS_352MB    = 0x0D,
-    RegMGGC0_GMS_0MB      = 0x00,
-    RegMGGC0_GMS_32MB_1   = 0x01,
-    RegMGGC0_GMS_64MB_1   = 0x02,
-    RegMGGC0_GMS_96MB_1   = 0x03,
-    RegMGGC0_GMS_128MB_1  = 0x04,
-    RegMGGC0_GMS_448MB    = 0x0E,
-    RegMGGC0_GMS_480MB    = 0x0F,
-    RegMGGC0_GMS_512MB    = 0x10,
-} RegMGGC0_GMS;
+#define GGC_LOCK                        (1 << 0)
+#define GGC_IVD                         (1 << 1)    // IGD VGA Disable
+#define GGC_GMS_SHIFT                   3           // Graphics Mode Select
+#define GGC_GMS_MASK                    0x1f
+#define GGC_GGMS_SHIFT                  8           // GTT Graphics Memory Size
+#define GGC_GGMS_MASK                   0x3
+#define GGC_VAMEN                       (1 << 14)   // Versatile Acceleration Mode Enable
 
-typedef enum RegMGGC0_GGMS
-{
-    RegMGGC0_GGMS_None = 0x0,
-    RegMGGC0_GGMS_1MB  = 0x1,
-    RegMGGC0_GGMS_2MB  = 0x2,
-} RegMGGC0_GGMS;
+// This matches the IVB graphics documentation, not the IVB CPU documentation
+#define GMS_32MB                        0x05
+#define GMS_48MB                        0x06
+#define GMS_64MB                        0x07
+#define GMS_128MB                       0x08
+#define GMS_256MB                       0x09
+#define GMS_96MB                        0x0A
+#define GMS_160MB                       0x0B
+#define GMS_224MB                       0x0C
+#define GMS_352MB                       0x0D
+#define GMS_0MB                         0x00
+#define GMS_32MB_1                      0x01
+#define GMS_64MB_1                      0x02
+#define GMS_96MB_1                      0x03
+#define GMS_128MB_1                     0x04
+#define GMS_448MB                       0x0E
+#define GMS_480MB                       0x0F
+#define GMS_512MB                       0x10
 
-typedef union RegMGGC0
-{
-    struct RegMGGC0_Bits
-    {
-        u16 lock               : 1;
-        u16 igdVGADisable      : 1;
-        u16 reserved0          : 1;
-        u16 graphicsModeSelect : 5;  // RegMGGC0_GMS
-        u16 gttMemSize         : 2;  // RegMGGC0_GGMS
-        u16 reserved1          : 4;
-        u16 vesatileAccModeEna : 1;
-        u16 reserved2          : 1;
-    } bits;
-    u16 word;
-} RegMGGC0;
-
+#define GGMS_None                       0x00
+#define GGMS_1MB                        0x01
+#define GGMS_2MB                        0x02
 
 // ------------------------------------------------------------------------------------------------
 // 1.27 BDSM - Base Data of Stolen Memory
 
-#define BDSM                          0x5C // In PCI Config Space
+#define BDSM                            0x5C // In PCI Config Space
 
-typedef union RegBDSM
-{
-    struct RegBDSM_Bits
-    {
-        u32 lock               : 1;
-        u32 reserved0          : 19;
-        u32 address            : 12;
-    } bits;
-    u32 dword;
-} RegBDSM;
+#define BDSM_LOCK                       (1 << 0)
+#define BDSM_ADDR_MASK                  (0xfff << 20)
 
 // ------------------------------------------------------------------------------------------------
 // 1.45 ASLS - ASL Storage
 // Software scratch register (BIOS sets the opregion address in here)
 
-#define ASLS                          0xFC // In PCI Config Space
-
+#define ASLS                            0xFC // In PCI Config Space
 
 // ------------------------------------------------------------------------------------------------
 // Vol 3. Part 3. North Display Engine Registers
@@ -371,23 +304,19 @@ typedef union RegBDSM
 // 3.7.1 ARB_CTL-Display Arbitration Control 1
 
 #define ARB_CTL                         0x45000     // R/W
-typedef union RegArbCtl
-{
-    struct RegArbCtl_Bits
-    {
-        u32 hpDataRequestLimit      : 7;
-        u32 reserved0               : 1;
-        u32 hpPageBreakLimit        : 5;
-        u32 tiledAddressSwizzling   : 2;
-        u32 tlbRequestInFlightLimit : 3;
-        u32 tlbRequestLimit         : 3;
-        u32 lpWriteRequestLimit     : 2;
-        u32 hpQueueWatermark        : 3;
-        u32 reserved1               : 3;
-    } bits;
-    u32 dword;
-} RegArbCtl;
 
+#define ARB_CTL_HP_DATA_REQUEST_LIMIT_MASK          0x7f
+#define ARB_CTL_HP_PAGE_BREAK_LIMIT_SHIFT           8
+#define ARB_CTL_HP_PAGE_BREAK_LIMIT_MASK            0x1f
+#define ARB_CTL_TILED_ADDRESS_SWIZZLING             (1 << 13)
+#define ARB_CTL_TLB_REQUEST_IN_FLIGHT_LIMIT_SHIFT   16
+#define ARB_CTL_TLB_REQUEST_IN_FLIGHT_LIMIT_MASK    0x7
+#define ARB_CTL_TLB_REQUEST_LIMIT_SHIFT             20
+#define ARB_CTL_TLB_REQUEST_LIMIT_MASK              0x7
+#define ARB_CTL_LP_WRITE_REQUEST_LIMIT_SHIFT        24
+#define ARB_CTL_LP_WRITE_REQUEST_LIMIT_MASK         0x3
+#define ARB_CTL_HP_QUEUE_WATERMARK_SHIFT            26
+#define ARB_CTL_HP_QUEUE_WATERMARK_MASK             0x7
 
 // ------------------------------------------------------------------------------------------------
 // 4.1.1 Horizontal Total
@@ -507,20 +436,6 @@ typedef union RegArbCtl
 #define PRI_TILEOFF_A                   0x701a4     // R/W
 #define PRI_TILEOFF_B                   0x711a4     // R/W
 #define PRI_TILEOFF_C                   0x721a4     // R/W
-
-// ------------------------------------------------------------------------------------------------
-// Vol 3. Part 4. South Display Engine Registers
-// ------------------------------------------------------------------------------------------------
-
-// ------------------------------------------------------------------------------------------------
-// 3.6.1 HDMI Port Control
-
-#define HDMI_CTL_B                      0xe1140     // R/W
-#define HDMI_CTL_C                      0xe1150     // R/W
-#define HDMI_CTL_D                      0xe1160     // R/W
-
-#define PORT_DETECTED                   (1 << 2)    // RO
-
 
 // ------------------------------------------------------------------------------------------------
 // Vol 3. Part 4. South Display Engine Registers
@@ -655,24 +570,19 @@ typedef struct OpRegionMailbox3ASLE
 #define MAD_DIMM_CH0			        0x5004
 #define MAD_DIMM_CH1			        0x5008
 
-typedef union RegMadDIMM
-{
-    struct RegMadDIMM_Bits
-    {
-        u32 dimmASize           : 8;
-        u32 dimmBSize           : 8;
-        u32 dimmASelect         : 1;
-        u32 dimmANumRanks       : 1;
-        u32 dimmBNumRanks       : 1;
-        u32 dimmAWidth          : 1;
-        u32 dimmBWidth          : 1;
-        u32 rankInterleave      : 1;
-        u32 enhInterleave       : 1;
-        u32 reserved            : 1;
-        u32 eccActive           : 2;
-    } bits;
-    u32 dword;
-} RegMadDIMM;
+#define MAD_DIMM_A_SIZE_SHIFT           0
+#define MAD_DIMM_A_SIZE_MASK            0xff
+#define MAD_DIMM_B_SIZE_SHIFT           8
+#define MAD_DIMM_B_SIZE_MASK            0xff
+#define MAD_DIMM_AB_SIZE_MASK           0xffff
+#define MAD_DIMM_A_SELECT               (1 << 16)
+#define MAD_DIMM_A_DUAL_RANK            (1 << 17)
+#define MAD_DIMM_B_DUAL_RANK            (1 << 18)
+#define MAD_DIMM_A_X16                  (1 << 19)
+#define MAD_DIMM_B_X16                  (1 << 20)
+#define MAD_DIMM_RANK_INTERLEAVE        (1 << 21)
+#define MAD_DIMM_ENH_INTERLEAVE         (1 << 22)
+#define MAD_DIMM_ECC_MODE               (3 << 24) 
 
 // ------------------------------------------------------------------------------------------------
 // Registers not in the Spec (Found in Linux Driver)
@@ -690,10 +600,12 @@ typedef union RegMadDIMM
 
 // ------------------------------------------------------------------------------------------------
 // Fence registers.  Mentioned lots of times
-// and the base address is in Vol2 Part3: MFX, but the defintion is not
+// and the base address is in Vol2 Part3: MFX, but the definition is not
 
 #define FENCE_BASE                      0x100000
 #define FENCE_COUNT                     16
+
+/*
 typedef union RegFence
 {
     struct RegFence_Bits
@@ -707,11 +619,18 @@ typedef union RegFence
     } bits;
     u64 qword;
 } RegFence;
+*/
 
 // ------------------------------------------------------------------------------------------------
 // Tile Ctrl - control register for cpu gtt access
 
 #define TILE_CTL                         0x101000     // R/W
+
+#define TILE_CTL_SWIZZLE                (1 << 0)
+#define TILE_CTL_TLB_PREFETCH_DISABLE   (1 << 2)
+#define TILE_CTL_BACKSNOOP_DISABLE      (1 << 3)
+
+/*
 typedef union RegTileCtl
 {
     struct RegTileCtl_Bits
@@ -723,3 +642,4 @@ typedef union RegTileCtl
     } bits;
     u32 dword;
 } RegTileCtl;
+*/

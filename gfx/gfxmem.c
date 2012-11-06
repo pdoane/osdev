@@ -23,7 +23,7 @@ void GfxInitMemManager(GfxMemManager *memMgr, const GfxGTT *gtt, GfxPci *pci)
     // Clear all fence registers (provide linear access to mem to cpu)
     for (u8 fenceNum = 0; fenceNum < FENCE_COUNT; ++fenceNum)
     {
-        GfxWrite64(pci, FENCE_BASE + sizeof(RegFence) * fenceNum, 0);
+        GfxWrite64(pci, FENCE_BASE + sizeof(u64) * fenceNum, 0);
     }
 
     // TEMP
@@ -35,36 +35,25 @@ void GfxInitMemManager(GfxMemManager *memMgr, const GfxGTT *gtt, GfxPci *pci)
 void GfxMemEnableSwizzle(GfxPci *pci)
 {
     // Only enable swizzling when DIMMs are the same size.
-    RegMadDIMM dimmCh0;
-    RegMadDIMM dimmCh1;
-
-    dimmCh0.dword = GfxRead32(pci, GFX_MCHBAR + MAD_DIMM_CH0);
-    dimmCh1.dword = GfxRead32(pci, GFX_MCHBAR + MAD_DIMM_CH1);
+    u32 dimmCh0 = GfxRead32(pci, GFX_MCHBAR + MAD_DIMM_CH0);
+    u32 dimmCh1 = GfxRead32(pci, GFX_MCHBAR + MAD_DIMM_CH1);
     RlogPrint("dimmCh0: 0x%08X\n", dimmCh0);
     RlogPrint("dimmCh1: 0x%08X\n", dimmCh1);
-    if (dimmCh0.bits.dimmASize != dimmCh1.bits.dimmASize ||
-        dimmCh0.bits.dimmBSize != dimmCh1.bits.dimmBSize)
+    if ((dimmCh0 & MAD_DIMM_AB_SIZE_MASK) != (dimmCh1 & MAD_DIMM_AB_SIZE_MASK))
     {
         return;
     }
 
     // Enable Bit 6 Swizzling
-    RegArbCtl  arbCtrl;
-    RegTileCtl tileCtrl;
-    RegArbMode arbMode; 
+    u32 arbCtl = GfxRead32(pci, ARB_CTL);
+    arbCtl |= ARB_CTL_TILED_ADDRESS_SWIZZLING;
+    GfxWrite32(pci, ARB_CTL, arbCtl);
 
-    arbCtrl.dword = GfxRead32(pci, ARB_CTL);
-    arbCtrl.bits.tiledAddressSwizzling = 1;
-    GfxWrite32(pci, ARB_CTL, arbCtrl.dword);
+    u32 tileCtl = GfxRead32(pci, TILE_CTL);
+    tileCtl |= TILE_CTL_SWIZZLE;
+    GfxWrite32(pci, TILE_CTL, tileCtl);
 
-    tileCtrl.dword = GfxRead32(pci, TILE_CTL);
-    tileCtrl.bits.swzctl = 1;
-    GfxWrite32(pci, TILE_CTL, tileCtrl.dword);
-
-    arbMode.dword = 0;
-    arbMode.bits.data.as4ts = 1;
-    arbMode.bits.mask.as4ts = 1;
-    GfxWrite32(pci, ARB_MODE, arbMode.dword);
+    GfxWrite32(pci, ARB_MODE, MASKED_ENABLE(ARB_MODE_AS4TS));
 
     RlogPrint("ARB_CTL: 0x%08X\n", GfxRead32(pci, ARB_CTL));
     RlogPrint("TILE_CTL: 0x%08X\n", GfxRead32(pci, TILE_CTL));

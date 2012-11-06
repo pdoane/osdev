@@ -55,7 +55,7 @@ void EnterForceWake()
 
     RlogPrint("  ACK cleared...\n");
 
-    GfxWrite32(&s_gfxDevice.pci, FORCE_WAKE_MT, (1 << 16) | 1);
+    GfxWrite32(&s_gfxDevice.pci, FORCE_WAKE_MT, MASKED_ENABLE(1));
     GfxRead32(&s_gfxDevice.pci, ECOBUS);
 
     RlogPrint("Wake written...\n");
@@ -71,7 +71,7 @@ void EnterForceWake()
 // ------------------------------------------------------------------------------------------------
 void ExitForceWake()
 {
-    GfxWrite32(&s_gfxDevice.pci, FORCE_WAKE_MT, (1 << 16) | 0);
+    GfxWrite32(&s_gfxDevice.pci, FORCE_WAKE_MT, MASKED_DISABLE(1));
     GfxRead32(&s_gfxDevice.pci, ECOBUS);
 }
 
@@ -267,42 +267,47 @@ void GfxStart()
 
     // Write MI_STORE_DATA_INDEX
     {
-        CmdMiStoreDataIndex *cmd = (CmdMiStoreDataIndex *)GfxAllocCmd(&s_gfxDevice.render, sizeof(*cmd));
-        cmd->bits.opcode = MI_STORE_DATA_INDEX;
-        cmd->bits.offset = 0;
-        cmd->bits.data0 = 0x12345678;
-        GfxWriteCmd(&s_gfxDevice.pci, &s_gfxDevice.render, sizeof(*cmd));
+        u32* cmd = GfxBeginCmd(&s_gfxDevice.render, 4);
+        *cmd++ = MI_STORE_DATA_INDEX;
+        *cmd++ = 0; // offset
+        *cmd++ = 0x12345678;
+        *cmd++ = 0;
+        GfxEndCmd(&s_gfxDevice.pci, &s_gfxDevice.render, cmd);
     }
 
     // Write PIPE_CONTROL with CS_STALL
     {
-        CmdPipeControl *cmd = (CmdPipeControl *)GfxAllocCmd(&s_gfxDevice.render, sizeof(*cmd));
-        cmd->bits.opcode = PIPE_CONTROL;
-        cmd->bits.stallAtPixelScoreboard = 1;
-        cmd->bits.csStall = 1;
-        GfxWriteCmd(&s_gfxDevice.pci, &s_gfxDevice.render, sizeof(*cmd));
+        u32 *cmd = GfxBeginCmd(&s_gfxDevice.render, 6);
+        *cmd++ = PIPE_CONTROL;
+        *cmd++ = PIPE_CONTROL_SCOREBOARD_STALL
+            | PIPE_CONTROL_CS_STALL;
+        *cmd++ = 0; // address
+        *cmd++ = 0; // immediate data (low)
+        *cmd++ = 0; // immediate data (high)
+        *cmd++ = MI_NOOP;
+        GfxEndCmd(&s_gfxDevice.pci, &s_gfxDevice.render, cmd);
     }
 
     // Write PIPE_CONTROL for flush
     {
-        CmdPipeControl *cmd = (CmdPipeControl *)GfxAllocCmd(&s_gfxDevice.render, sizeof(*cmd));
-        cmd->bits.opcode = PIPE_CONTROL;
-        cmd->bits.depthCacheFlushEnable = 1;
-        cmd->bits.stateCacheInvalidationEnable = 1;
-        cmd->bits.constantCacheInvalidationEnable = 1;
-        cmd->bits.vfCacheInvalidationEnable = 1;
-        cmd->bits.textureCacheInvalidationEnable = 1;
-        cmd->bits.instructionCacheInvalidateEnable = 1;
-        cmd->bits.renderTargetCacheFlushEnable = 1;
-        cmd->bits.postSyncOperation = 1;
-        cmd->bits.tlbInvalidate = 1;
-        cmd->bits.csStall = 1;
-        cmd->bits.destinationAddressType = 1;
-
-        cmd->bits.address = GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.render.statusPage);
-        cmd->bits.data = 2;
-
-        GfxWriteCmd(&s_gfxDevice.pci, &s_gfxDevice.render, sizeof(*cmd));
+        u32 *cmd = GfxBeginCmd(&s_gfxDevice.render, 6);
+        *cmd++ = PIPE_CONTROL;
+        *cmd++ = PIPE_CONTROL_DEPTH_CACHE_FLUSH
+            | PIPE_CONTROL_STATE_CACHE_INVALIDATE
+            | PIPE_CONTROL_CONST_CACHE_INVALIDATE
+            | PIPE_CONTROL_VF_CACHE_INVALIDATE
+            | PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE
+            | PIPE_CONTROL_INSTR_CACHE_INVALIDATE
+            | PIPE_CONTROL_RENDER_TARGET_CACHE_FLUSH
+            | PIPE_CONTROL_WRITE_IMM
+            | PIPE_CONTROL_TLB_INVALIDATE
+            | PIPE_CONTROL_CS_STALL
+            | PIPE_CONTROL_USE_GGTT;
+        *cmd++ = GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.render.statusPage);
+        *cmd++ = 2; // immediate data (low)
+        *cmd++ = 0; // immediate data (high)
+        *cmd++ = MI_NOOP;
+        GfxEndCmd(&s_gfxDevice.pci, &s_gfxDevice.render, cmd);
     }
 
     GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.render);

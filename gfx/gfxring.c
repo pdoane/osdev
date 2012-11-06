@@ -41,22 +41,22 @@ void GfxInitRing(GfxRing *ring, GfxMemManager *memMgr)
 }
 
 // ------------------------------------------------------------------------------------------------
-void *GfxAllocCmd(GfxRing *ring, uint cmdSize)
+u32 *GfxBeginCmd(GfxRing *ring, uint dwordCount)
 {
-    void *result = ring->tail;
-    memset(result, 0, cmdSize);
+    u32 *result = (u32 *)ring->tail;
+    // TODO - check for wrap
     return result;
 }
 
 // ------------------------------------------------------------------------------------------------
-void GfxWriteCmd(GfxPci *pci, GfxRing *ring, uint cmdSize)
+void GfxEndCmd(GfxPci *pci, GfxRing *ring, u32* tail)
 {
-    ring->tail += cmdSize;
-    u32 tail = ring->tail - ring->cmdStream;
+    ring->tail = (u8 *)tail;
+    u32 tailIndex = ring->tail - ring->cmdStream;
 
     EnterForceWake();
     {
-        GfxWrite32(pci, RCS_RING_BUFFER_TAIL, tail);
+        GfxWrite32(pci, RCS_RING_BUFFER_TAIL, tailIndex);
         RlogPrint("...tail updated\n");
     }
     ExitForceWake();

@@ -18,7 +18,7 @@ typedef struct GfxGTT
     u32 numTotalEntries;     // How many entries in the GTT
     u32 numMappableEntries;  // How many can be mapped at once
 
-    GttEntry *gtt;
+    u32 *entries;
 } GfxGTT;
 
 // ------------------------------------------------------------------------------------------------
