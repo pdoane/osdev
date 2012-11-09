@@ -77,6 +77,7 @@ bool GfxAlloc(GfxMemManager *memMgr, GfxObject *obj, uint size, uint align)
         cpuAddr += align - offset;
     }
 
+    memMgr->gfxMemNext = cpuAddr + size;
     obj->cpuAddr = cpuAddr;
     obj->gfxAddr = cpuAddr - memMgr->gfxMemBase;
     return true;
