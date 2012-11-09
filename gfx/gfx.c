@@ -37,6 +37,8 @@ typedef struct GfxDevice
 
     GfxRing         renderRing;
     GfxObject       renderContext;
+
+    GfxObject       batchBuffer;
 } GfxDevice;
 
 GfxDevice s_gfxDevice;
@@ -232,6 +234,9 @@ void GfxStart()
     // Allocate Render Context
     GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.renderContext, 4 * KB, 4 * KB);
 
+    // Allocate Batch Buffer
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.batchBuffer, 4 * KB, 4 * KB);
+
     // Setup Primary Plane
     uint width = 720;                       // TODO: mode support
     //uint height = 400;
@@ -255,9 +260,17 @@ void GfxStart()
     GfxSetRing(&s_gfxDevice.pci, &s_gfxDevice.renderRing);
     GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.renderRing);
 
+    // Write batch buffer
+    u32 *cmd = (u32 *)s_gfxDevice.batchBuffer.cpuAddr;
+    *cmd++ = MI_STORE_DATA_INDEX;
+    *cmd++ = 0; // offset
+    *cmd++ = 0xabcd0123;
+    *cmd++ = 0;
+    *cmd++ = MI_BATCH_BUFFER_END;
+
+
     // Write test buffer stream
     GfxRing *ring = &s_gfxDevice.renderRing;
-    u32 *cmd;
 
     // MI_STORE_DATA_INDEX (test memory is being written)
     cmd = GfxBeginCmd(ring, 4);
@@ -312,6 +325,12 @@ void GfxStart()
         | MI_EXT_STATE_SAVE
         | MI_EXT_STATE_RESTORE
         | MI_RESTORE_INHIBIT;
+    GfxEndCmd(&s_gfxDevice.pci, ring, cmd);
+
+    // MI_BATCH_BUFFER_START
+    cmd = GfxBeginCmd(ring, 2);
+    *cmd++ = MI_BATCH_BUFFER_START;
+    *cmd++ = s_gfxDevice.batchBuffer.gfxAddr;
     GfxEndCmd(&s_gfxDevice.pci, ring, cmd);
 
     GfxPrintRingState(&s_gfxDevice.pci, ring);

@@ -130,6 +130,18 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 #define BCS_RING_BUFFER_CTL             0x2203c     // R/W
 
 // ------------------------------------------------------------------------------------------------
+// 1.2.5 MI_BATCH_BUFFER_END
+
+#define MI_BATCH_BUFFER_END             MAKE_MI_INSTR(0x0a, 0)
+
+// ------------------------------------------------------------------------------------------------
+// 1.2.7 MI_BATCH_BUFFER_START
+
+#define MI_BATCH_BUFFER_START           MAKE_MI_INSTR(0x31, 0)
+
+// DWORD1 = batch buffer start address
+
+// ------------------------------------------------------------------------------------------------
 // 1.2.12 MI_NOOP
 
 #define MI_NOOP                         MAKE_MI_INSTR(0x00, 0)
