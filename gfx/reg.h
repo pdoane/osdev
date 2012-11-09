@@ -9,10 +9,10 @@
 // ------------------------------------------------------------------------------------------------
 // Common macros
 
-#define MAKE_MI_INSTR(opcode, flags) \
+#define MI_INSTR(opcode, flags) \
     (((opcode) << 23) | (flags))
-#define MAKE_3D_INSTR(opcode, subOpcode, flags) \
-    ((0x3 << 29) | (0x3 << 27) | ((opcode) << 24) | ((subOpcode) << 16) | (flags))
+#define GFX_INSTR(subType, opcode, subOpcode, flags) \
+    ((0x3 << 29) | (subType << 27) | ((opcode) << 24) | ((subOpcode) << 16) | (flags))
 
 #define MASKED_ENABLE(x)                (((x) << 16) | (x))
 #define MASKED_DISABLE(x)               ((x) << 16)
@@ -22,9 +22,26 @@
 // ------------------------------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------------------------------
+// 3.5.1 STATE_BASE_ADDRESS
+
+#define STATE_BASE_ADDRESS              GFX_INSTR(0, 0x1, 0x1, 8)
+
+#define BASE_ADDRESS_MODIFY             (1 << 0)
+
+// DWORD 1 - General State Base Address
+// DWORD 2 - Surface State Base Address
+// DWORD 3 - Dynamic State Base Address
+// DWORD 4 - Indirect State Base Address
+// DWORD 5 - Instruction Base Address
+// DWORD 6 - General State Access Upper Bound
+// DWORD 7 - Dynamic State Access Upper Bound
+// DWORD 8 - Indirect State Access Upper Bound
+// DWORD 9 - Instruction Access Upper Bound
+
+// ------------------------------------------------------------------------------------------------
 // 3.8.1 PIPELINE_SELECT
 
-#define PIPELINE_SELECT(x)              ((0x3 << 29) | (0x1 << 27) | (0x1 << 24) | (0x4 << 16) | (x))
+#define PIPELINE_SELECT(x)              GFX_INSTR(1, 0x1, 0x4, x)
 
 #define PIPELINE_3D                     0x0
 #define PIPELINE_MEDIA                  0x1
@@ -132,24 +149,24 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 // 1.2.5 MI_BATCH_BUFFER_END
 
-#define MI_BATCH_BUFFER_END             MAKE_MI_INSTR(0x0a, 0)
+#define MI_BATCH_BUFFER_END             MI_INSTR(0x0a, 0)
 
 // ------------------------------------------------------------------------------------------------
 // 1.2.7 MI_BATCH_BUFFER_START
 
-#define MI_BATCH_BUFFER_START           MAKE_MI_INSTR(0x31, 0)
+#define MI_BATCH_BUFFER_START           MI_INSTR(0x31, 0)
 
 // DWORD1 = batch buffer start address
 
 // ------------------------------------------------------------------------------------------------
 // 1.2.12 MI_NOOP
 
-#define MI_NOOP                         MAKE_MI_INSTR(0x00, 0)
+#define MI_NOOP                         MI_INSTR(0x00, 0)
 
 // ------------------------------------------------------------------------------------------------
 // 1.2.16 MI_SET_CONTEXT
 
-#define MI_SET_CONTEXT                  MAKE_MI_INSTR(0x18, 0)
+#define MI_SET_CONTEXT                  MI_INSTR(0x18, 0)
 
 // DWORD 1 = logical context address (4KB aligned)
 #define MI_GTT_ADDR                     (1 << 8)
@@ -161,7 +178,7 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 // 1.2.18 MI_STORE_DATA_INDEX
 
-#define MI_STORE_DATA_INDEX             MAKE_MI_INSTR(0x21, 1)
+#define MI_STORE_DATA_INDEX             MI_INSTR(0x21, 1)
 
 // DWORD 1 = offset
 // DWORD 2 = data 0
@@ -234,7 +251,7 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 // 1.10.4 PIPE_CONTROL Command
 
-#define PIPE_CONTROL                                MAKE_3D_INSTR(0x2, 0x0, 3)
+#define PIPE_CONTROL                                GFX_INSTR(0x3, 0x2, 0x0, 3)
 
 // DWORD 1 - flags
 #define PIPE_CONTROL_DEPTH_CACHE_FLUSH              (1 << 0)

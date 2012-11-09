@@ -260,14 +260,33 @@ void GfxStart()
     GfxSetRing(&s_gfxDevice.pci, &s_gfxDevice.renderRing);
     GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.renderRing);
 
-    // Write batch buffer
+    // Start Batch Buffer
     u32 *cmd = (u32 *)s_gfxDevice.batchBuffer.cpuAddr;
+
+    // Switch to 3D pipeline
+    *cmd++ = PIPELINE_SELECT(PIPELINE_3D);
+
+    // Update base addresses - just use 0 for everything with no caching or upper bounds
+    *cmd++ = STATE_BASE_ADDRESS;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+
+    // Debug
     *cmd++ = MI_STORE_DATA_INDEX;
     *cmd++ = 0; // offset
     *cmd++ = 0xabcd0123;
     *cmd++ = 0;
-    *cmd++ = MI_BATCH_BUFFER_END;
 
+    // End Batch Buffer
+    *cmd++ = MI_BATCH_BUFFER_END;
 
     // Write test buffer stream
     GfxRing *ring = &s_gfxDevice.renderRing;
@@ -308,12 +327,6 @@ void GfxStart()
     *cmd++ = s_gfxDevice.renderRing.statusPage.gfxAddr;
     *cmd++ = 2; // immediate data (low)
     *cmd++ = 0; // immediate data (high)
-    *cmd++ = MI_NOOP;
-    GfxEndCmd(&s_gfxDevice.pci, ring, cmd);
-
-    // PIPELINE_SELECT
-    cmd = GfxBeginCmd(ring, 2);
-    *cmd++ = PIPELINE_SELECT(PIPELINE_3D);
     *cmd++ = MI_NOOP;
     GfxEndCmd(&s_gfxDevice.pci, ring, cmd);
 
