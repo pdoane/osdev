@@ -280,39 +280,30 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // DWORD 1 - Pointer to DepthStencilState (relative to Dynamic State Base Address)
 
 // ------------------------------------------------------------------------------------------------
-// 1.4.5.1 3DSTATE_BINDING_TABLE_POINTERS_VS
+// 1.4.5 3DSTATE_BINDING_TABLE_POINTERS
+
+#define BINDING_TABLE_SIZE                          256
 
 #define _3DSTATE_BINDING_TABLE_POINTERS_VS          GFX_INSTR(0x3, 0x0, 0x26, 0)
-
-// DWORD 1 - Pointer to BindingTableState (relative to Surface State Base Address)
-
-// ------------------------------------------------------------------------------------------------
-// 1.4.5.2 3DSTATE_BINDING_TABLE_POINTERS_HS
-
 #define _3DSTATE_BINDING_TABLE_POINTERS_HS          GFX_INSTR(0x3, 0x0, 0x27, 0)
-
-// DWORD 1 - Pointer to BindingTableState (relative to Surface State Base Address)
-
-// ------------------------------------------------------------------------------------------------
-// 1.4.5.3 3DSTATE_BINDING_TABLE_POINTERS_DS
-
 #define _3DSTATE_BINDING_TABLE_POINTERS_DS          GFX_INSTR(0x3, 0x0, 0x28, 0)
-
-// DWORD 1 - Pointer to BindingTableState (relative to Surface State Base Address)
-
-// ------------------------------------------------------------------------------------------------
-// 1.4.5.4 3DSTATE_BINDING_TABLE_POINTERS_GS
-
 #define _3DSTATE_BINDING_TABLE_POINTERS_GS          GFX_INSTR(0x3, 0x0, 0x29, 0)
-
-// DWORD 1 - Pointer to BindingTableState (relative to Surface State Base Address)
-
-// ------------------------------------------------------------------------------------------------
-// 1.4.5.5 3DSTATE_BINDING_TABLE_POINTERS_PS
-
 #define _3DSTATE_BINDING_TABLE_POINTERS_PS          GFX_INSTR(0x3, 0x0, 0x2a, 0)
 
 // DWORD 1 - Pointer to BindingTableState (relative to Surface State Base Address)
+
+// ------------------------------------------------------------------------------------------------
+// 1.5 3DSTATE_SAMPLER_STATE_POINTERS
+
+#define SAMPLER_TABLE_SIZE                          16
+
+#define _3DSTATE_SAMPLER_STATE_POINTERS_VS          GFX_INSTR(0x3, 0x0, 0x2b, 0)
+#define _3DSTATE_SAMPLER_STATE_POINTERS_HS          GFX_INSTR(0x3, 0x0, 0x2c, 0)
+#define _3DSTATE_SAMPLER_STATE_POINTERS_DS          GFX_INSTR(0x3, 0x0, 0x2d, 0)
+#define _3DSTATE_SAMPLER_STATE_POINTERS_GS          GFX_INSTR(0x3, 0x0, 0x2e, 0)
+#define _3DSTATE_SAMPLER_STATE_POINTERS_PS          GFX_INSTR(0x3, 0x0, 0x2f, 0)
+
+// DWORD 1 - Pointer to SamplerState table (relative to Dynamic State Base Address)
 
 // ------------------------------------------------------------------------------------------------
 // 1.10.4 PIPE_CONTROL Command
@@ -351,7 +342,7 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 // 12.2 Pixel Pipeline State
 
-// Compare Func (used by BlendState and DepthStencilState)
+// COMPARE_FUNC
 #define COMPARE_FUNC_ALWAYS             0x0
 #define COMPARE_FUNC_NEVER              0x1
 #define COMPARE_FUNC_LT                 0x2
@@ -365,9 +356,9 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // 12.2.1 COLOR_CALC_STATE
 
 // Flags
-#define CC_STENCIL_REF_MASK             0xff
 #define CC_FRONT_FACE_STENCIL_REF_SHIFT 24
 #define CC_BACK_FACE_STENCIL_REF_SHIFT  16
+#define CC_STENCIL_REF_MASK             0xff
 #define CC_ROUND_DISABLE                (1 << 15)
 #define CC_ALPHA_REF_FLOAT              (1 << 0)
 
@@ -388,7 +379,7 @@ typedef struct ColorCalcState
 // ------------------------------------------------------------------------------------------------
 // 12.2.2 DEPTH_STENCIL_STATE
 
-// Stencil Op
+// STENCIL_OP
 #define STENCIL_OP_KEEP                     0x0
 #define STENCIL_OP_ZERO                     0x1
 #define STENCIL_OP_REPLACE                  0x2
@@ -401,15 +392,15 @@ typedef struct ColorCalcState
 // Stencil Flags
 #define STENCIL_ENABLE                      (1 << 31)
 #define STENCIL_FUNC_SHIFT                  28          // COMPARE_FUNC
-#define STENCIL_FAIL_OP_SHIFT               25
-#define STENCIL_DEPTH_FAIL_OP_SHIFT         22
-#define STENCIL_PASS_OP_SHIFT               19
+#define STENCIL_FAIL_OP_SHIFT               25          // STENCIL_OP
+#define STENCIL_DEPTH_FAIL_OP_SHIFT         22          // STENCIL_OP
+#define STENCIL_PASS_OP_SHIFT               19          // STENCIL_OP
 #define STENCIL_BUFFER_WRITE                (1 << 18)
 #define STENCIL_DOUBLE_SIDED                (1 << 15)
-#define STENCIL_BACK_FUNC_SHIFT             12
-#define STENCIL_BACK_FAIL_OP_SHIFT          9
-#define STENCIL_BACK_DEPTH_FAIL_OP_SHIFT    6
-#define STENCIL_BACK_PASS_OP_SHIFT          3
+#define STENCIL_BACK_FUNC_SHIFT             12          // COMPARE_FUNC
+#define STENCIL_BACK_FAIL_OP_SHIFT          9           // STENCIL_OP
+#define STENCIL_BACK_DEPTH_FAIL_OP_SHIFT    6           // STENCIL_OP
+#define STENCIL_BACK_PASS_OP_SHIFT          3           // STENCIL_OP
 
 // Stencil Masks
 #define STENCIL_TEST_MASK_SHIFT             24
@@ -432,7 +423,7 @@ typedef struct DepthStencilState
 // ------------------------------------------------------------------------------------------------
 // 12.2.3 BLEND_STATE
 
-// Blend Function
+// BLEND_FUNC
 #define BLEND_FUNC_ADD                  0
 #define BLEND_FUNC_SUB                  1
 #define BLEND_FUNC_REV_SUB              2
@@ -440,7 +431,7 @@ typedef struct DepthStencilState
 #define BLEND_FUNC_MAX                  4
 #define BLEND_FUNC_MASK                 0x7
 
-// Blend Factor
+// BLEND_FACTOR
 #define BLEND_FACTOR_ONE                0x01
 #define BLEND_FACTOR_SRC_COLOR          0x02
 #define BLEND_FACTOR_SRC_ALPHA          0x03
@@ -462,7 +453,7 @@ typedef struct DepthStencilState
 #define BLEND_FACTOR_INV_SRC1_ALPHA     0x1a
 #define BLEND_FACTOR_MASK               0x1f
 
-// Logic Op
+// LOGIC_OP
 #define LOGIC_OP_CLEAR                  0x0
 #define LOGIC_OP_NOR                    0x1
 #define LOGIC_OP_AND_INV                0x2
@@ -481,23 +472,23 @@ typedef struct DepthStencilState
 #define LOGIC_OP_SET                    0xf
 #define LOGIC_OP_MASK                   0xf
 
-// Color Clamp
+// COLOR_CLAMP
 #define COLOR_CLAMP_UNORM               0x0
 #define COLOR_CLAMP_SNORM               0x1
 #define COLOR_CLAMP_RTFORMAT            0x2
 #define COLOR_CLAMP_MASK                0x3
 
-// DWORD 0
+// Flags 0
 #define BLEND_COLOR                     (1 << 31)   // Only BLEND_COLOR or BLEND_LOGIC can be enabled
 #define BLEND_INDEPENDENT_ALPHA         (1 << 30)
-#define BLEND_FUNC_ALPHA_SHIFT          26
-#define BLEND_SRC_ALPHA_SHIFT           20
-#define BLEND_DST_ALPHA_SHIFT           15
-#define BLEND_FUNC_COLOR_SHIFT          11
-#define BLEND_SRC_COLOR_SHIFT           5
-#define BLEND_DST_COLOR_SHIFT           0
+#define BLEND_FUNC_ALPHA_SHIFT          26          // BLEND_FUNC
+#define BLEND_SRC_ALPHA_SHIFT           20          // BLEND_FACTOR
+#define BLEND_DST_ALPHA_SHIFT           15          // BLEND_FACTOR
+#define BLEND_FUNC_COLOR_SHIFT          11          // BLEND_FUNC
+#define BLEND_SRC_COLOR_SHIFT           5           // BLEND_FACTOR
+#define BLEND_DST_COLOR_SHIFT           0           // BLEND_FACTOR
 
-// DWORD 1
+// Flags 1
 #define BLEND_ALPHA_TO_COVERAGE         (1 << 31)
 #define BLEND_ALPHA_TO_ONE              (1 << 30)   // Errata - must be disabled
 #define BLEND_ALPHA_TO_COVERAGE_DITHER  (1 << 29)
@@ -506,7 +497,7 @@ typedef struct DepthStencilState
 #define BLEND_DISABLE_GREEN             (1 << 25)   // Errata - must be set to 0 if not present in the render target
 #define BLEND_DISABLE_BLUE              (1 << 24)   // Errata - must be set to 0 if not present in the render target
 #define BLEND_LOGIC                     (1 << 22)   // Only BLEND_COLOR or BLEND_LOGIC can be enabled
-#define BLEND_LOGIC_FUNC_SHIFT          18
+#define BLEND_LOGIC_OP_SHIFT            18          // LOGIC_OP
 #define BLEND_ALPHA_TEST                (1 << 16)
 #define BLEND_ALPHA_FUNC                (1 << 13)   // COMPARE_FUNC
 #define BLEND_COLOR_DITHER              (1 << 12)
@@ -752,6 +743,428 @@ typedef struct BlendState
 #define HDMI_CTL_D                      0xe1160     // R/W
 
 #define PORT_DETECTED                   (1 << 2)    // RO
+
+// ------------------------------------------------------------------------------------------------
+// Vol 4. Part 1. Subsystems ad Cores - Shared Functions
+// ------------------------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------
+// 2.12.2 Surface State
+
+// SURFTYPE
+#define SURFTYPE_1D                     0x0
+#define SURFTYPE_2D                     0x1
+#define SURFTYPE_3D                     0x2
+#define SURFTYPE_CUBE                   0x3
+#define SURFTYPE_BUFFER                 0x4
+#define SURFTYPE_STRBUF                 0x5
+#define SURFTYPE_NULL                   0x7
+#define SURFTYPE_MASK                   0x7
+
+// FMT (SURFACE_FORMAT)
+#define FMT_R32G32B32A32_FLOAT          0x000
+#define FMT_R32G32B32A32_SINT           0x001
+#define FMT_R32G32B32A32_UINT           0x002
+#define FMT_R32G32B32A32_UNORM          0x003
+#define FMT_R32G32B32A32_SNORM          0x004
+#define FMT_R64G64_FLOAT                0x005
+#define FMT_R32G32B32X32_FLOAT          0x006
+#define FMT_R32G32B32A32_SSCALED        0x007
+#define FMT_R32G32B32A32_USCALED        0x008
+#define FMT_R32G32B32A32_SFIXED         0x020
+#define FMT_R64G64_PASSTHRU             0x021
+#define FMT_R32G32B32_FLOAT             0x040
+#define FMT_R32G32B32_SINT              0x041
+#define FMT_R32G32B32_UINT              0x042
+#define FMT_R32G32B32_UNORM             0x043
+#define FMT_R32G32B32_SNORM             0x044
+#define FMT_R32G32B32_SSCALED           0x045
+#define FMT_R32G32B32_USCALED           0x046
+#define FMT_R32G32B32_SFIXED            0x050
+#define FMT_R16G16B16A16_UNORM          0x080
+#define FMT_R16G16B16A16_SNORM          0x081
+#define FMT_R16G16B16A16_SINT           0x082
+#define FMT_R16G16B16A16_UINT           0x083
+#define FMT_R16G16B16A16_FLOAT          0x084
+#define FMT_R32G32_FLOAT                0x085
+#define FMT_R32G32_SINT                 0x086
+#define FMT_R32G32_UINT                 0x087
+#define FMT_R32_FLOAT_X8X24_TYPELESS    0x088
+#define FMT_X32_TYPELESS_G8X24_UINT     0x089
+#define FMT_L32A32_FLOAT                0x08A
+#define FMT_R32G32_UNORM                0x08B
+#define FMT_R32G32_SNORM                0x08C
+#define FMT_R64_FLOAT                   0x08D
+#define FMT_R16G16B16X16_UNORM          0x08E
+#define FMT_R16G16B16X16_FLOAT          0x08F
+#define FMT_A32X32_FLOAT                0x090
+#define FMT_L32X32_FLOAT                0x091
+#define FMT_I32X32_FLOAT                0x092
+#define FMT_R16G16B16A16_SSCALED        0x093
+#define FMT_R16G16B16A16_USCALED        0x094
+#define FMT_R32G32_SSCALED              0x095
+#define FMT_R32G32_USCALED              0x096
+#define FMT_R32G32_SFIXED               0x0A0
+#define FMT_R64_PASSTHRU                0x0A1
+#define FMT_B8G8R8A8_UNORM              0x0C0
+#define FMT_B8G8R8A8_UNORM_SRGB         0x0C1
+#define FMT_R10G10B10A2_UNORM           0x0C2
+#define FMT_R10G10B10A2_UNORM_SRGB      0x0C3
+#define FMT_R10G10B10A2_UINT            0x0C4
+#define FMT_R10G10B10_SNORM_A2_UNORM    0x0C5
+#define FMT_R8G8B8A8_UNORM              0x0C7
+#define FMT_R8G8B8A8_UNORM_SRGB         0x0C8
+#define FMT_R8G8B8A8_SNORM              0x0C9
+#define FMT_R8G8B8A8_SINT               0x0CA
+#define FMT_R8G8B8A8_UINT               0x0CB
+#define FMT_R16G16_UNORM                0x0CC
+#define FMT_R16G16_SNORM                0x0CD
+#define FMT_R16G16_SINT                 0x0CE
+#define FMT_R16G16_UINT                 0x0CF
+#define FMT_R16G16_FLOAT                0x0D0
+#define FMT_B10G10R10A2_UNORM           0x0D1
+#define FMT_B10G10R10A2_UNORM_SRGB      0x0D2
+#define FMT_R11G11B10_FLOAT             0x0D3
+#define FMT_R32_SINT                    0x0D6
+#define FMT_R32_UINT                    0x0D7
+#define FMT_R32_FLOAT                   0x0D8
+#define FMT_R24_UNORM_X8_TYPELESS       0x0D9
+#define FMT_X24_TYPELESS_G8_UINT        0x0DA
+#define FMT_L32_UNORM                   0x0DD
+#define FMT_A32_UNORM                   0x0DE
+#define FMT_L16A16_UNORM                0x0DF
+#define FMT_I24X8_UNORM                 0x0E0
+#define FMT_L24X8_UNORM                 0x0E1
+#define FMT_A24X8_UNORM                 0x0E2
+#define FMT_I32_FLOAT                   0x0E3
+#define FMT_L32_FLOAT                   0x0E4
+#define FMT_A32_FLOAT                   0x0E5
+#define FMT_X8B8_UNORM_G8R8_SNORM       0x0E6
+#define FMT_A8X8_UNORM_G8R8_SNORM       0x0E7
+#define FMT_B8X8_UNORM_G8R8_SNORM       0x0E8
+#define FMT_B8G8R8X8_UNORM              0x0E9
+#define FMT_B8G8R8X8_UNORM_SRGB         0x0EA
+#define FMT_R8G8B8X8_UNORM              0x0EB
+#define FMT_R8G8B8X8_UNORM_SRGB         0x0EC
+#define FMT_R9G9B9E5_SHAREDEXP          0x0ED
+#define FMT_B10G10R10X2_UNORM           0x0EE
+#define FMT_L16A16_FLOAT                0x0F0
+#define FMT_R32_UNORM                   0x0F1
+#define FMT_R32_SNORM                   0x0F2
+#define FMT_R10G10B10X2_USCALED         0x0F3
+#define FMT_R8G8B8A8_SSCALED            0x0F4
+#define FMT_R8G8B8A8_USCALED            0x0F5
+#define FMT_R16G16_SSCALED              0x0F6
+#define FMT_R16G16_USCALED              0x0F7
+#define FMT_R32_SSCALED                 0x0F8
+#define FMT_R32_USCALED                 0x0F9
+#define FMT_B5G6R5_UNORM                0x100
+#define FMT_B5G6R5_UNORM_SRGB           0x101
+#define FMT_B5G5R5A1_UNORM              0x102
+#define FMT_B5G5R5A1_UNORM_SRGB         0x103
+#define FMT_B4G4R4A4_UNORM              0x104
+#define FMT_B4G4R4A4_UNORM_SRGB         0x105
+#define FMT_R8G8_UNORM                  0x106
+#define FMT_R8G8_SNORM                  0x107
+#define FMT_R8G8_SINT                   0x108
+#define FMT_R8G8_UINT                   0x109
+#define FMT_R16_UNORM                   0x10A
+#define FMT_R16_SNORM                   0x10B
+#define FMT_R16_SINT                    0x10C
+#define FMT_R16_UINT                    0x10D
+#define FMT_R16_FLOAT                   0x10E
+#define FMT_A8P8_UNORM_PALETTE0         0x10F
+#define FMT_A8P8_UNORM_PALETTE1         0x110
+#define FMT_I16_UNORM                   0x111
+#define FMT_L16_UNORM                   0x112
+#define FMT_A16_UNORM                   0x113
+#define FMT_L8A8_UNORM                  0x114
+#define FMT_I16_FLOAT                   0x115
+#define FMT_L16_FLOAT                   0x116
+#define FMT_A16_FLOAT                   0x117
+#define FMT_L8A8_UNORM_SRGB             0x118
+#define FMT_R5G5_SNORM_B6_UNORM         0x119
+#define FMT_B5G5R5X1_UNORM              0x11A
+#define FMT_B5G5R5X1_UNORM_SRGB         0x11B
+#define FMT_R8G8_SSCALED                0x11C
+#define FMT_R8G8_USCALED                0x11D
+#define FMT_R16_SSCALED                 0x11E
+#define FMT_R16_USCALED                 0x11F
+#define FMT_P8A8_UNORM_PALETTE0         0x122
+#define FMT_P8A8_UNORM_PALETTE1         0x123
+#define FMT_A1B5G5R5_UNORM              0x124
+#define FMT_A4B4G4R4_UNORM              0x125
+#define FMT_L8A8_UINT                   0x126
+#define FMT_L8A8_SINT                   0x127
+#define FMT_R8_UNORM                    0x140
+#define FMT_R8_SNORM                    0x141
+#define FMT_R8_SINT                     0x142
+#define FMT_R8_UINT                     0x143
+#define FMT_A8_UNORM                    0x144
+#define FMT_I8_UNORM                    0x145
+#define FMT_L8_UNORM                    0x146
+#define FMT_P4A4_UNORM_PALETTE0         0x147
+#define FMT_A4P4_UNORM_PALETTE0         0x148
+#define FMT_R8_SSCALED                  0x149
+#define FMT_R8_USCALED                  0x14A
+#define FMT_P8_UNORM_PALETTE0           0x14B
+#define FMT_L8_UNORM_SRGB               0x14C
+#define FMT_P8_UNORM_PALETTE1           0x14D
+#define FMT_P4A4_UNORM_PALETTE1         0x14E
+#define FMT_A4P4_UNORM_PALETTE1         0x14F
+#define FMT_Y8_UNORM                    0x150
+#define FMT_L8_UINT                     0x152
+#define FMT_L8_SINT                     0x153
+#define FMT_I8_UINT                     0x154
+#define FMT_I8_SINT                     0x155
+#define FMT_DXT1_RGB_SRGB               0x180
+#define FMT_R1_UNORM                    0x181
+#define FMT_YCRCB_NORMAL                0x182
+#define FMT_YCRCB_SWAPUVY               0x183
+#define FMT_P2_UNORM_PALETTE0           0x184
+#define FMT_P2_UNORM_PALETTE1           0x185
+#define FMT_BC1_UNORM                   0x186
+#define FMT_BC2_UNORM                   0x187
+#define FMT_BC3_UNORM                   0x188
+#define FMT_BC4_UNORM                   0x189
+#define FMT_BC5_UNORM                   0x18A
+#define FMT_BC1_UNORM_SRGB              0x18B
+#define FMT_BC2_UNORM_SRGB              0x18C
+#define FMT_BC3_UNORM_SRGB              0x18D
+#define FMT_MONO8                       0x18E
+#define FMT_YCRCB_SWAPUV                0x18F
+#define FMT_YCRCB_SWAPY                 0x190
+#define FMT_DXT1_RGB                    0x191
+#define FMT_FXT1                        0x192
+#define FMT_R8G8B8_UNORM                0x193
+#define FMT_R8G8B8_SNORM                0x194
+#define FMT_R8G8B8_SSCALED              0x195
+#define FMT_R8G8B8_USCALED              0x196
+#define FMT_R64G64B64A64_FLOAT          0x197
+#define FMT_R64G64B64_FLOAT             0x198
+#define FMT_BC4_SNORM                   0x199
+#define FMT_BC5_SNORM                   0x19A
+#define FMT_R16G16B16_FLOAT             0x19B
+#define FMT_R16G16B16_UNORM             0x19C
+#define FMT_R16G16B16_SNORM             0x19D
+#define FMT_R16G16B16_SSCALED           0x19E
+#define FMT_R16G16B16_USCALED           0x19F
+#define FMT_BC6H_SF16                   0x1A1
+#define FMT_BC7_UNORM                   0x1A2
+#define FMT_BC7_UNORM_SRGB              0x1A3
+#define FMT_BC6H_UF16                   0x1A4
+#define FMT_PLANAR_420_8                0x1A5
+#define FMT_R8G8B8_UNORM_SRGB           0x1A8
+#define FMT_ETC1_RGB8                   0x1A9
+#define FMT_ETC2_RGB8                   0x1AA
+#define FMT_EAC_R11                     0x1AB
+#define FMT_EAC_RG11                    0x1AC
+#define FMT_EAC_SIGNED_R11              0x1AD
+#define FMT_EAC_SIGNED_RG11             0x1AE
+#define FMT_ETC2_SRGB8                  0x1AF
+#define FMT_R16G16B16_UINT              0x1B0
+#define FMT_R16G16B16_SINT              0x1B1
+#define FMT_R32_SFIXED                  0x1B2
+#define FMT_R10G10B10A2_SNORM           0x1B3
+#define FMT_R10G10B10A2_USCALED         0x1B4
+#define FMT_R10G10B10A2_SSCALED         0x1B5
+#define FMT_R10G10B10A2_SINT            0x1B6
+#define FMT_B10G10R10A2_SNORM           0x1B7
+#define FMT_B10G10R10A2_USCALED         0x1B8
+#define FMT_B10G10R10A2_SSCALED         0x1B9
+#define FMT_B10G10R10A2_UINT            0x1BA
+#define FMT_B10G10R10A2_SINT            0x1BB
+#define FMT_R64G64B64A64_PASSTHRU       0x1BC
+#define FMT_R64G64B64_PASSTHRU          0x1BD
+#define FMT_ETC2_RGB8_PTA               0x1C0
+#define FMT_ETC2_SRGB8_PTA              0x1C1
+#define FMT_ETC2_EAC_RGBA8              0x1C2
+#define FMT_ETC2_EAC_SRGB8_A8           0x1C3
+#define FMT_R8G8B8_UINT                 0x1C8
+#define FMT_R8G8B8_SINT                 0x1C9
+#define FMT_RAW                         0x1FF
+
+// MEDIA_BOUNDARY
+#define MEDIA_BOUNDARY_NORMAL           0x0
+#define MEDIA_BOUNDARY_PROGRESSIVE      0x2
+#define MEDIA_BOUNDARY_INTERLACED       0x3
+#define MEDIA_BOUNDARY_MASK             0x3
+
+// RTROTATE
+#define RTROTATE_0                      0x0
+#define RTROTATE_90                     0x1
+#define RTROTATE_270                    0x3
+#define RTROTATE_MASK                   0x3
+
+// MULTISAMPLECOUNT
+#define MULTISAMPLECOUNT_1              0x0
+#define MULTISAMPLECOUNT_4              0x2
+#define MULTISAMPLECOUNT_8              0x3
+#define MULTISAMPLECOUNT_MASK           0x7
+
+// Flags 0
+#define SURFACE_TYPE_SHIFT              (1 << 29)   // SURFTYPE
+#define SURFACE_ARRAY                   (1 << 28)
+#define SURFACE_FORMAT_SHIFT            18          // SURFACE_FORMAT
+#define SURFACE_VERT_ALIGN_SHIFT        16          // Values not doucmented
+#define SURFACE_HALIGN_8                (1 << 15)
+#define SURFACE_TILED                   (1 << 14)
+#define SURFACE_TILE_YMAJOR             (1 << 13)
+#define SURFACE_VERT_LINE_STRIDE        (1 << 12)
+#define SURFACE_VERT_LINE_STRIDE_OFFSET (1 << 11)
+#define SURFACE_ARRAY_LOD0              (1 << 10)
+#define SURFACE_RENDER_CACHE_RW         (1 << 8)
+#define SURFACE_MEDIA_BOUNDARY_SHIFT    6           // MEDIA_BOUNDARY
+#define SURFACE_CUBE_NEG_X              (1 << 5)
+#define SURFACE_CUBE_POS_X              (1 << 4)
+#define SURFACE_CUBE_NEG_Y              (1 << 3)
+#define SURFACE_CUBE_POS_Y              (1 << 2)
+#define SURFACE_CUBE_NEG_Z              (1 << 1)
+#define SURFACE_CUBE_POS_Z              (1 << 0)
+
+// Pitch/Depth
+#define SURFACE_DEPTH_SHIFT             21
+#define SURFACE_DEPTH_MASK              0x3ff
+#define SURFACE_PITCH_SHIFT             0
+#define SURFACE_PITCH_MASK              0x3ffff
+
+// Flags 1 - minimum array element for SURFTYPE_STRBUF
+#define SURFACE_ROTATION_SHIFT          29          // RTROTATE
+#define SURFACE_MIN_ELEMENT_SHIFT       18
+#define SURFACE_MIN_ELEMENT_MASK        0x7ff
+#define SURFACE_RT_VIEW_EXTENT_SHIFT    7
+#define SURFACE_RT_VIEW_EXTENT_MASK     0x7ff
+#define SURFACE_MS_DEPTH                (1 << 6)
+#define SURFACE_MS_COUNT_SHIFT          3           // MULTISAMPLECOUNT
+#define SURFACE_MS_PALETTE_INDEX_SHIFT  0
+#define SURFACE_MS_PALETTE_INDEX_MASK   0x7
+
+// Flags 2
+#define SURFACE_X_OFFSET_SHIFT          25
+#define SURFACE_X_OFFSET_MASK           0x7f
+#define SURFACE_Y_OFFSET_SHIFT          20
+#define SURFACE_Y_OFFSET_MASK           0xf
+#define SURFACE_OBJ_CONTROL_STATE_SHIFT 16          // MEMORY_OBJECT_CONTROL_STATE
+#define SURFACE_MIN_LOD_SHIFT           4
+#define SURFACE_MIN_LOD_MASK            0xf
+#define SURFACE_MIP_COUNT_SHIFT         0
+#define SURFACE_MIP_COUNT_MASK          0xf
+
+// Flags 3 - Surface Format == PLANAR
+#define SURFACE_X_OFFSET_UV_SHIFT       16
+#define SURFACE_X_OFFSET_UV_MASK        0x3fff
+#define SURFACE_Y_OFFSET_UV_SHIFT       0
+#define SURFACE_Y_OFFSET_UV_MASK        0x3fff
+
+// Flags 3 - Surface Format != PLANAR && SURFACE_MCS
+// MCS Base Address (4KB aligned)
+#define SURFACE_MCS_PITCH_SHIFT         3
+#define SUFFACE_MCS_PITCH_MASK          0x1ff
+#define SURFACE_MCS                     (1 << 0)
+
+// Flags 3 - Surface Format != PLANAR && !SURFACE_MCS
+// Surface Append Counter Address
+#define SURFACE_APPEND_COUNTER          (1 << 1)
+
+// Flags 4
+#define SURFACE_RED_CLEAR_COLOR         (1 << 31)
+#define SURFACE_GREEN_CLEAR_COLOR       (1 << 30)
+#define SURFACE_BLUE_CLEAR_COLOR        (1 << 29)
+#define SURFACE_ALPHA_CLEAR_COLOR       (1 << 28)
+#define SURFACE_RSRC_MIN_LOD_SHIFT      0
+#define SURFACE_RSRC_MIN_LOD_MASK       0xfff
+
+typedef struct SurfaceState
+{
+    u32 flags0;
+    u32 baseAddr;
+    u16 height;
+    u16 width;
+    u32 pitchDepth;
+    u32 flags1;
+    u32 flags2;
+    u32 flags3;
+    u32 flags4;
+} SurfaceState;
+
+// ------------------------------------------------------------------------------------------------
+// 2.12.3 Sampler State
+
+// MIP_FILTER
+#define MIP_FILTER_NONE                 0x0
+#define MIP_FILTER_NEAREST              0x1
+#define MIP_FILTER_LINEAR               0x3
+#define MIP_FILTER_MASK                 0x3
+
+// MAP_FILTER
+#define MAP_FILTER_NONE                 0x0
+#define MAP_FILTER_LINEAR               0x1
+#define MAP_FILTER_ANISO                0x2
+#define MAP_FILTER_MONO                 0x6
+#define MAP_FILTER_MASK                 0x7
+
+// ANISO_RATIO
+#define ANISO_RATIO_2                   0x0
+#define ANISO_RATIO_4                   0x1
+#define ANISO_RATIO_6                   0x2
+#define ANISO_RATIO_8                   0x3
+#define ANISO_RATIO_10                  0x4
+#define ANISO_RATIO_12                  0x5
+#define ANISO_RATIO_14                  0x6
+#define ANISO_RATIO_16                  0x7
+#define ANISO_RATIO_MASK                0x7
+
+// TRIQUAL
+#define TRIQUAL_FULL                    0x0
+#define TRIQUAL_MED                     0x2
+#define TRIQUAL_LOW                     0x3
+#define TRIQUAL_MASK                    0x3
+
+// TEXTURE_ADDRESS
+#define TEXTURE_ADDRESS_WRAP            0x0
+#define TEXTURE_ADDRESS_MIRROR          0x1
+#define TEXTURE_ADDRESS_CLAMP           0x2
+#define TEXTURE_ADDRESS_CUBE            0x3
+#define TEXTURE_ADDRESS_CLAMP_BORDER    0x4
+#define TEXTURE_ADDRESS_MIRROR_ONCE     0x5
+#define TEXTURE_ADDRESS_MASK            0x7
+
+// Flags 0
+#define SAMPLER_DISABLE                 (1 << 31)
+#define SAMPLER_BORDER_COLOR_DX9        (1 << 29)   // Must be set for P4A4_UNORM or A4P4_UNORM
+#define SAMPLER_LOD_PRECLAMP_OGL        (1 << 28)
+#define SAMPLER_BASE_MIP_SHIFT          22          // Unsigned 4.1 [0.0, 14.0]
+#define SAMPLER_MIP_FILTER_SHIFT        20          // MIP_FILTER
+#define SAMPLER_MAG_FILTER_SHIFT        17          // MAP_FILTER
+#define SAMPLER_MIN_FILTER_SHIFT        14          // MAP_FILTER
+#define SAMPLER_LOD_BIAS_SHIFT          1           // Signed 4.8 [-16.0, 16.0)
+#define SAMPLER_ANISO_EWA               (1 << 0)
+
+// Flags 1
+#define SAMPLER_MIN_LOD_SHIFT           20          // Unsigned 4.8 [0.0, 14.0]
+#define SAMPLER_MAX_LOD_SHIFT           8           // Unsigned 4.8 [0.0, 14.0]
+#define SAMPLER_COMPARISON_FUNC_SHIFT   1           // COMPARE_FUNC
+#define SAMPLER_CUBE_MODE_OVERRIDE      (1 << 0)    // Must not be set
+
+// Flags 2
+#define SAMPLER_CHROMA_KEY              (1 << 25)
+#define SAMPLER_CHROMA_KEY_INDEX_SHIFT  23
+#define SAMPLER_CHROMA_KEY_MODE         (1 << 22)
+#define SAMPLER_MAX_ANISO_SHIFT         19          // ANISO_RATIO
+#define SAMPLER_ADDRESS_ROUND_SHIFT     13
+#define SAMPLER_TRILINEAR_SHIFT         11          // TRIQUAL
+#define SAMPLER_NON_NORMALIZED          (1 << 10)
+#define SAMPLER_ADDRESS_U_SHIFT         6
+#define SAMPLER_ADDRESS_V_SHIFT         3
+#define SAMPLER_ADDRESS_W_SHIFT         0
+
+typedef struct SamplerState
+{
+    u32 flags0;
+    u32 flags1;
+    u32 borderColorAddr;                // SAMPLER_BORDER_COLOR_STATE relative to Dynamic State Base Address
+    u32 flags2;
+} SamplerState;
 
 // ------------------------------------------------------------------------------------------------
 // IGD OpRegion Specification

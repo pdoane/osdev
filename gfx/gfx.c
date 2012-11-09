@@ -44,6 +44,7 @@ typedef struct GfxDevice
     GfxObject       blendStates;
     GfxObject       depthStencilStates;
     GfxObject       bindingTables[SHADER_COUNT];
+    GfxObject       samplerTables[SHADER_COUNT];
 } GfxDevice;
 
 GfxDevice s_gfxDevice;
@@ -204,7 +205,8 @@ static void CreateStates()
     GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.depthStencilStates, sizeof(DepthStencilState), 64);
     for (uint i = 0; i < SHADER_COUNT; ++i)
     {
-        GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.bindingTables[i], 256 * sizeof(u32), 32);
+        GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.bindingTables[i], BINDING_TABLE_SIZE * sizeof(u32), 32);
+        GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.samplerTables[i], SAMPLER_TABLE_SIZE * sizeof(SamplerState), 32);
     }
 
     ColorCalcState *ccState = (ColorCalcState *)s_gfxDevice.colorCalcStates.cpuAddr;
@@ -227,7 +229,10 @@ static void CreateStates()
     for (uint i = 0; i < SHADER_COUNT; ++i)
     {
         u32* bindingTable = (u32 *)s_gfxDevice.bindingTables[i].cpuAddr;
-        memset(bindingTable, 0, 256 * sizeof(u32));
+        memset(bindingTable, 0, BINDING_TABLE_SIZE * sizeof(u32));
+
+        SamplerState* samplerTable = (SamplerState *)s_gfxDevice.samplerTables[i].cpuAddr;
+        memset(samplerTable, 0, SAMPLER_TABLE_SIZE * sizeof(SamplerState));
     }
 }
 
@@ -280,6 +285,23 @@ static void CreateTestBatchBuffer()
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_PS;
     *cmd++ = s_gfxDevice.bindingTables[SHADER_PS].gfxAddr;
+
+    // Sampler Tables
+    *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_VS;
+    *cmd++ = s_gfxDevice.samplerTables[SHADER_VS].gfxAddr;
+
+    *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_HS;
+    *cmd++ = s_gfxDevice.samplerTables[SHADER_HS].gfxAddr;
+
+    *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_DS;
+    *cmd++ = s_gfxDevice.samplerTables[SHADER_DS].gfxAddr;
+
+    *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_GS;
+    *cmd++ = s_gfxDevice.samplerTables[SHADER_GS].gfxAddr;
+
+    *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_PS;
+    *cmd++ = s_gfxDevice.samplerTables[SHADER_PS].gfxAddr;
+
 
     // Debug
     *cmd++ = MI_STORE_DATA_INDEX;
