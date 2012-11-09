@@ -10,8 +10,8 @@
 // ------------------------------------------------------------------------------------------------
 typedef struct GfxRing
 {
-    u8 *cmdStream;
-    u8 *statusPage;
+    GfxObject cmdStream;
+    GfxObject statusPage;
     u8 *tail;
 } GfxRing;
 

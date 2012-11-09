@@ -67,16 +67,17 @@ u32 GfxAddr(GfxMemManager *memMgr, void *phyAddr)
 }
 
 // ------------------------------------------------------------------------------------------------
-void *GfxAlloc(GfxMemManager *memMgr, uint size, uint align)
+bool GfxAlloc(GfxMemManager *memMgr, GfxObject *obj, uint size, uint align)
 {
     // Align memory request
-    u8 *result = memMgr->gfxMemNext;
-    uintptr_t offset = (uintptr_t)result & (align - 1);
+    u8 *cpuAddr = memMgr->gfxMemNext;
+    uintptr_t offset = (uintptr_t)cpuAddr & (align - 1);
     if (offset)
     {
-        result += align - offset;
+        cpuAddr += align - offset;
     }
 
-    memMgr->gfxMemNext = result + size;
-    return result;
+    obj->cpuAddr = cpuAddr;
+    obj->gfxAddr = cpuAddr - memMgr->gfxMemBase;
+    return true;
 }

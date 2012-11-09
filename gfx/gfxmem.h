@@ -8,6 +8,13 @@
 #include "gfx/gtt.h"
 
 // ------------------------------------------------------------------------------------------------
+typedef struct GfxObject
+{
+    u8         *cpuAddr;
+    GfxAddress  gfxAddr;
+} GfxObject;
+
+// ------------------------------------------------------------------------------------------------
 typedef struct GfxMemRange
 {
     GfxAddress base;
@@ -31,5 +38,4 @@ typedef struct GfxMemManager
 void GfxInitMemManager(GfxMemManager *memMgr, const GfxGTT *gtt, GfxPci *pci);
 void GfxMemEnableSwizzle(GfxPci *pci);
 
-u32 GfxAddr(GfxMemManager *memMgr, void *phyAddr);
-void *GfxAlloc(GfxMemManager *memMgr, uint size, uint align);
+bool GfxAlloc(GfxMemManager *memMgr, GfxObject *obj, uint size, uint align);

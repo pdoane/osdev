@@ -18,6 +18,19 @@
 #define MASKED_DISABLE(x)               ((x) << 16)
 
 // ------------------------------------------------------------------------------------------------
+// Vol 1. Part 1. Graphics Core
+// ------------------------------------------------------------------------------------------------
+
+// ------------------------------------------------------------------------------------------------
+// 3.8.1 PIPELINE_SELECT
+
+#define PIPELINE_SELECT(x)              ((0x3 << 29) | (0x1 << 27) | (0x1 << 24) | (0x4 << 16) | (x))
+
+#define PIPELINE_3D                     0x0
+#define PIPELINE_MEDIA                  0x1
+#define PIPELINE_GPGPU                  0x2
+
+// ------------------------------------------------------------------------------------------------
 // Vol 1. Part 2. MMIO, Media Registers, and Programming Environment
 // ------------------------------------------------------------------------------------------------
 
@@ -117,9 +130,21 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 #define BCS_RING_BUFFER_CTL             0x2203c     // R/W
 
 // ------------------------------------------------------------------------------------------------
-// 1.2.18 MI_NOOP
+// 1.2.12 MI_NOOP
 
 #define MI_NOOP                         MAKE_MI_INSTR(0x00, 0)
+
+// ------------------------------------------------------------------------------------------------
+// 1.2.16 MI_SET_CONTEXT
+
+#define MI_SET_CONTEXT                  MAKE_MI_INSTR(0x18, 0)
+
+// DWORD 1 = logical context address (4KB aligned)
+#define MI_GTT_ADDR                     (1 << 8)
+#define MI_EXT_STATE_SAVE               (1 << 3)
+#define MI_EXT_STATE_RESTORE            (1 << 2)
+#define MI_FORCE_RESTORE                (1 << 1)
+#define MI_RESTORE_INHIBIT              (1 << 0)
 
 // ------------------------------------------------------------------------------------------------
 // 1.2.18 MI_STORE_DATA_INDEX
@@ -629,17 +654,3 @@ typedef union RegFence
 #define TILE_CTL_SWIZZLE                (1 << 0)
 #define TILE_CTL_TLB_PREFETCH_DISABLE   (1 << 2)
 #define TILE_CTL_BACKSNOOP_DISABLE      (1 << 3)
-
-/*
-typedef union RegTileCtl
-{
-    struct RegTileCtl_Bits
-    {
-        u32 swzctl              : 2;
-        u32 tlbPrefetchDis      : 1;
-        u32 backSnoopDis        : 1;
-        u32 unknown             : 28;
-    } bits;
-    u32 dword;
-} RegTileCtl;
-*/

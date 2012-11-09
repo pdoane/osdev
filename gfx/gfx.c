@@ -25,17 +25,18 @@
 // ------------------------------------------------------------------------------------------------
 typedef struct GfxDevice
 {
-    bool    active;
+    bool            active;
 
-    GfxPci        pci;
-    GfxGTT        gtt;
-    GfxMemManager memManager;
-    GfxDisplay    display;
+    GfxPci          pci;
+    GfxGTT          gtt;
+    GfxMemManager   memManager;
+    GfxDisplay      display;
 
-    u8     *surface;
-    u8     *cursor;
+    GfxObject       surface;
+    GfxObject       cursor;
 
-    GfxRing render;
+    GfxRing         renderRing;
+    GfxObject       renderContext;
 } GfxDevice;
 
 GfxDevice s_gfxDevice;
@@ -217,13 +218,19 @@ void GfxStart()
 
     // Allocate Surface - 256KB aligned, +512 PTEs
     uint surfaceMemSize = 16 * MB;         // TODO: compute appropriate surface size
-    s_gfxDevice.surface = GfxAlloc(&s_gfxDevice.memManager, surfaceMemSize, 256 * KB);
-    memset(s_gfxDevice.surface, 0x77, 720 * 400 * 4);
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.surface, surfaceMemSize, 256 * KB);
+    memset(s_gfxDevice.surface.cpuAddr, 0x77, 720 * 400 * 4);
 
     // Allocate Cursor - 64KB aligned, +2 PTEs
     uint cursorMemSize = 64 * 64 * sizeof(u32) + 8 * KB;
-    s_gfxDevice.cursor = GfxAlloc(&s_gfxDevice.memManager, cursorMemSize, 64 * KB);
-    memcpy(s_gfxDevice.cursor, cursor_image.pixel_data, 64 * 64 * sizeof(u32));
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.cursor, cursorMemSize, 64 * KB);
+    memcpy(s_gfxDevice.cursor.cpuAddr, cursor_image.pixel_data, 64 * 64 * sizeof(u32));
+
+    // Allocate Render Ring
+    GfxInitRing(&s_gfxDevice.renderRing, &s_gfxDevice.memManager);
+
+    // Allocate Render Context
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.renderContext, 4 * KB, 4 * KB);
 
     // Setup Primary Plane
     uint width = 720;                       // TODO: mode support
@@ -233,14 +240,11 @@ void GfxStart()
     GfxWrite32(&s_gfxDevice.pci, PRI_CTL_A, PRI_PLANE_ENABLE | PRI_PLANE_32BPP);
     GfxWrite32(&s_gfxDevice.pci, PRI_LINOFF_A, 0);
     GfxWrite32(&s_gfxDevice.pci, PRI_STRIDE_A, stride);
-    GfxWrite32(&s_gfxDevice.pci, PRI_SURF_A, GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.surface));
+    GfxWrite32(&s_gfxDevice.pci, PRI_SURF_A, s_gfxDevice.surface.gfxAddr);
 
     // Setup Cursor Plane
     GfxWrite32(&s_gfxDevice.pci, CUR_CTL_A, CUR_MODE_ARGB | CUR_MODE_64_32BPP);
-    GfxWrite32(&s_gfxDevice.pci, CUR_BASE_A, GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.cursor));
-
-    // Allocate Render Ring
-    GfxInitRing(&s_gfxDevice.render, &s_gfxDevice.memManager);
+    GfxWrite32(&s_gfxDevice.pci, CUR_BASE_A, s_gfxDevice.cursor.gfxAddr);
 
     // Log initial port state
     GfxPrintPortState();
@@ -252,10 +256,10 @@ void GfxStart()
         RlogPrint("Setting Ring...\n");
 
         // Setup Render Ring Buffer
-        GfxWrite32(&s_gfxDevice.pci, RCS_HWS_PGA, GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.render.statusPage));
+        GfxWrite32(&s_gfxDevice.pci, RCS_HWS_PGA, s_gfxDevice.renderRing.statusPage.gfxAddr);
         GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_TAIL, 0);
         GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_HEAD, 0);
-        GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_START, GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.render.cmdStream));
+        GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_START, s_gfxDevice.renderRing.cmdStream.gfxAddr);
         GfxWrite32(&s_gfxDevice.pci, RCS_RING_BUFFER_CTL,
               (0 << 12)         // # of pages - 1
             | 1                 // Ring Buffer Enable
@@ -265,52 +269,67 @@ void GfxStart()
     }
     ExitForceWake();
 
-    // Write MI_STORE_DATA_INDEX
-    {
-        u32* cmd = GfxBeginCmd(&s_gfxDevice.render, 4);
-        *cmd++ = MI_STORE_DATA_INDEX;
-        *cmd++ = 0; // offset
-        *cmd++ = 0x12345678;
-        *cmd++ = 0;
-        GfxEndCmd(&s_gfxDevice.pci, &s_gfxDevice.render, cmd);
-    }
+    GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.renderRing);
 
-    // Write PIPE_CONTROL with CS_STALL
-    {
-        u32 *cmd = GfxBeginCmd(&s_gfxDevice.render, 6);
-        *cmd++ = PIPE_CONTROL;
-        *cmd++ = PIPE_CONTROL_SCOREBOARD_STALL
-            | PIPE_CONTROL_CS_STALL;
-        *cmd++ = 0; // address
-        *cmd++ = 0; // immediate data (low)
-        *cmd++ = 0; // immediate data (high)
-        *cmd++ = MI_NOOP;
-        GfxEndCmd(&s_gfxDevice.pci, &s_gfxDevice.render, cmd);
-    }
+    // Write test buffer stream
+    u32 *cmd;
 
-    // Write PIPE_CONTROL for flush
-    {
-        u32 *cmd = GfxBeginCmd(&s_gfxDevice.render, 6);
-        *cmd++ = PIPE_CONTROL;
-        *cmd++ = PIPE_CONTROL_DEPTH_CACHE_FLUSH
-            | PIPE_CONTROL_STATE_CACHE_INVALIDATE
-            | PIPE_CONTROL_CONST_CACHE_INVALIDATE
-            | PIPE_CONTROL_VF_CACHE_INVALIDATE
-            | PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE
-            | PIPE_CONTROL_INSTR_CACHE_INVALIDATE
-            | PIPE_CONTROL_RENDER_TARGET_CACHE_FLUSH
-            | PIPE_CONTROL_WRITE_IMM
-            | PIPE_CONTROL_TLB_INVALIDATE
-            | PIPE_CONTROL_CS_STALL
-            | PIPE_CONTROL_USE_GGTT;
-        *cmd++ = GfxAddr(&s_gfxDevice.memManager, s_gfxDevice.render.statusPage);
-        *cmd++ = 2; // immediate data (low)
-        *cmd++ = 0; // immediate data (high)
-        *cmd++ = MI_NOOP;
-        GfxEndCmd(&s_gfxDevice.pci, &s_gfxDevice.render, cmd);
-    }
+    // MI_STORE_DATA_INDEX (test memory is being written)
+    cmd = GfxBeginCmd(&s_gfxDevice.renderRing, 4);
+    *cmd++ = MI_STORE_DATA_INDEX;
+    *cmd++ = 0; // offset
+    *cmd++ = 0x12345678;
+    *cmd++ = 0;
+    GfxEndCmd(&s_gfxDevice.pci, &s_gfxDevice.renderRing, cmd);
 
-    GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.render);
+    // PIPE_CONTROL with CS_STALL
+    cmd = GfxBeginCmd(&s_gfxDevice.renderRing, 6);
+    *cmd++ = PIPE_CONTROL;
+    *cmd++ = PIPE_CONTROL_SCOREBOARD_STALL
+        | PIPE_CONTROL_CS_STALL;
+    *cmd++ = 0; // address
+    *cmd++ = 0; // immediate data (low)
+    *cmd++ = 0; // immediate data (high)
+    *cmd++ = MI_NOOP;
+    GfxEndCmd(&s_gfxDevice.pci, &s_gfxDevice.renderRing, cmd);
+
+    // PIPE_CONTROL for flush
+    cmd = GfxBeginCmd(&s_gfxDevice.renderRing, 6);
+    *cmd++ = PIPE_CONTROL;
+    *cmd++ = PIPE_CONTROL_DEPTH_CACHE_FLUSH
+        | PIPE_CONTROL_STATE_CACHE_INVALIDATE
+        | PIPE_CONTROL_CONST_CACHE_INVALIDATE
+        | PIPE_CONTROL_VF_CACHE_INVALIDATE
+        | PIPE_CONTROL_TEXTURE_CACHE_INVALIDATE
+        | PIPE_CONTROL_INSTR_CACHE_INVALIDATE
+        | PIPE_CONTROL_RENDER_TARGET_CACHE_FLUSH
+        | PIPE_CONTROL_WRITE_IMM
+        | PIPE_CONTROL_TLB_INVALIDATE
+        | PIPE_CONTROL_CS_STALL
+        | PIPE_CONTROL_USE_GGTT;
+    *cmd++ = s_gfxDevice.renderRing.statusPage.gfxAddr;
+    *cmd++ = 2; // immediate data (low)
+    *cmd++ = 0; // immediate data (high)
+    *cmd++ = MI_NOOP;
+    GfxEndCmd(&s_gfxDevice.pci, &s_gfxDevice.renderRing, cmd);
+
+    // PIPELINE_SELECT
+    cmd = GfxBeginCmd(&s_gfxDevice.renderRing, 2);
+    *cmd++ = PIPELINE_SELECT(PIPELINE_3D);
+    *cmd++ = MI_NOOP;
+    GfxEndCmd(&s_gfxDevice.pci, &s_gfxDevice.renderRing, cmd);
+
+    // MI_SET_CONTEXT
+    cmd = GfxBeginCmd(&s_gfxDevice.renderRing, 2);
+    *cmd++ = MI_SET_CONTEXT;
+    *cmd++ = s_gfxDevice.renderContext.gfxAddr
+        | MI_GTT_ADDR
+        | MI_EXT_STATE_SAVE
+        | MI_EXT_STATE_RESTORE
+        | MI_RESTORE_INHIBIT;
+    GfxEndCmd(&s_gfxDevice.pci, &s_gfxDevice.renderRing, cmd);
+
+    GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.renderRing);
 
     s_gfxDevice.active = true;
 }
@@ -331,6 +350,6 @@ void GfxPoll()
     {
         lastCursorPos = cursorPos;
         GfxWrite32(&s_gfxDevice.pci, CUR_POS_A, cursorPos);
-        GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.render);
+        GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.renderRing);
     }
 }

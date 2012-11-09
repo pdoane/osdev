@@ -24,7 +24,7 @@ void GfxPrintRingState(GfxPci *pci, GfxRing *ring)
         RlogPrint("  RCS_RING_BUFFER_START: 0x%08X\n", GfxRead32(pci, RCS_RING_BUFFER_START));
         RlogPrint("  RCS_RING_BUFFER_CTL: 0x%08X\n", GfxRead32(pci, RCS_RING_BUFFER_CTL));
 
-        RlogPrint("  %08x\n", *(u32 *)ring->statusPage);
+        RlogPrint("  %08x\n", *(u32 *)ring->statusPage.cpuAddr);
     }
     ExitForceWake();
 }
@@ -33,11 +33,11 @@ void GfxPrintRingState(GfxPci *pci, GfxRing *ring)
 void GfxInitRing(GfxRing *ring, GfxMemManager *memMgr)
 {
     uint csMemSize = 4 * KB;
-    ring->cmdStream = GfxAlloc(memMgr, csMemSize, 4 * KB);
-    ring->tail = ring->cmdStream;
+    GfxAlloc(memMgr, &ring->cmdStream, csMemSize, 4 * KB);
+    ring->tail = ring->cmdStream.cpuAddr;
 
-    ring->statusPage = GfxAlloc(memMgr, 4 * KB, 4 * KB);
-    memset(ring->statusPage, 0, 4 * KB);
+    GfxAlloc(memMgr, &ring->statusPage, 4 * KB, 4 * KB);
+    memset(ring->statusPage.cpuAddr, 0, 4 * KB);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ u32 *GfxBeginCmd(GfxRing *ring, uint dwordCount)
 void GfxEndCmd(GfxPci *pci, GfxRing *ring, u32* tail)
 {
     ring->tail = (u8 *)tail;
-    u32 tailIndex = ring->tail - ring->cmdStream;
+    u32 tailIndex = ring->tail - ring->cmdStream.cpuAddr;
 
     EnterForceWake();
     {
