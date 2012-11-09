@@ -7,6 +7,16 @@
 #include "stdlib/types.h"
 
 // ------------------------------------------------------------------------------------------------
+// Shader Types
+
+#define SHADER_VS                       0
+#define SHADER_HS                       1
+#define SHADER_DS                       2
+#define SHADER_GS                       3
+#define SHADER_PS                       4
+#define SHADER_COUNT                    5
+
+// ------------------------------------------------------------------------------------------------
 // Common macros
 
 #define MI_INSTR(opcode, flags) \
@@ -265,9 +275,44 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 // 1.4.4 3DSTATE_DEPTH_STENCIL_STATE_POINTERS
 
-#define _3DSTATE_DEPTH_STENCIL_STATE_POINTERS   GFX_INSTR(0x3, 0x0, 0x24, 0)
+#define _3DSTATE_DEPTH_STENCIL_STATE_POINTERS       GFX_INSTR(0x3, 0x0, 0x24, 0)
 
 // DWORD 1 - Pointer to DepthStencilState (relative to Dynamic State Base Address)
+
+// ------------------------------------------------------------------------------------------------
+// 1.4.5.1 3DSTATE_BINDING_TABLE_POINTERS_VS
+
+#define _3DSTATE_BINDING_TABLE_POINTERS_VS          GFX_INSTR(0x3, 0x0, 0x26, 0)
+
+// DWORD 1 - Pointer to BindingTableState (relative to Surface State Base Address)
+
+// ------------------------------------------------------------------------------------------------
+// 1.4.5.2 3DSTATE_BINDING_TABLE_POINTERS_HS
+
+#define _3DSTATE_BINDING_TABLE_POINTERS_HS          GFX_INSTR(0x3, 0x0, 0x27, 0)
+
+// DWORD 1 - Pointer to BindingTableState (relative to Surface State Base Address)
+
+// ------------------------------------------------------------------------------------------------
+// 1.4.5.3 3DSTATE_BINDING_TABLE_POINTERS_DS
+
+#define _3DSTATE_BINDING_TABLE_POINTERS_DS          GFX_INSTR(0x3, 0x0, 0x28, 0)
+
+// DWORD 1 - Pointer to BindingTableState (relative to Surface State Base Address)
+
+// ------------------------------------------------------------------------------------------------
+// 1.4.5.4 3DSTATE_BINDING_TABLE_POINTERS_GS
+
+#define _3DSTATE_BINDING_TABLE_POINTERS_GS          GFX_INSTR(0x3, 0x0, 0x29, 0)
+
+// DWORD 1 - Pointer to BindingTableState (relative to Surface State Base Address)
+
+// ------------------------------------------------------------------------------------------------
+// 1.4.5.5 3DSTATE_BINDING_TABLE_POINTERS_PS
+
+#define _3DSTATE_BINDING_TABLE_POINTERS_PS          GFX_INSTR(0x3, 0x0, 0x2a, 0)
+
+// DWORD 1 - Pointer to BindingTableState (relative to Surface State Base Address)
 
 // ------------------------------------------------------------------------------------------------
 // 1.10.4 PIPE_CONTROL Command

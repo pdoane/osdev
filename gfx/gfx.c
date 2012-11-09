@@ -43,6 +43,7 @@ typedef struct GfxDevice
     GfxObject       colorCalcStates;
     GfxObject       blendStates;
     GfxObject       depthStencilStates;
+    GfxObject       bindingTables[SHADER_COUNT];
 } GfxDevice;
 
 GfxDevice s_gfxDevice;
@@ -201,6 +202,10 @@ static void CreateStates()
     GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.colorCalcStates, sizeof(ColorCalcState), 64);
     GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.blendStates, sizeof(BlendState), 64);
     GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.depthStencilStates, sizeof(DepthStencilState), 64);
+    for (uint i = 0; i < SHADER_COUNT; ++i)
+    {
+        GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.bindingTables[i], 256 * sizeof(u32), 32);
+    }
 
     ColorCalcState *ccState = (ColorCalcState *)s_gfxDevice.colorCalcStates.cpuAddr;
     ccState->flags = 0;
@@ -218,6 +223,12 @@ static void CreateStates()
     depthStencilState->stencilFlags = 0;
     depthStencilState->stencilMasks = 0;
     depthStencilState->depthFlags = 0;
+
+    for (uint i = 0; i < SHADER_COUNT; ++i)
+    {
+        u32* bindingTable = (u32 *)s_gfxDevice.bindingTables[i].cpuAddr;
+        memset(bindingTable, 0, 256 * sizeof(u32));
+    }
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -253,6 +264,22 @@ static void CreateTestBatchBuffer()
     // Depth/Stencil State
     *cmd++ = _3DSTATE_DEPTH_STENCIL_STATE_POINTERS;
     *cmd++ = s_gfxDevice.depthStencilStates.gfxAddr;
+
+    // Binding Tables
+    *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_VS;
+    *cmd++ = s_gfxDevice.bindingTables[SHADER_VS].gfxAddr;
+
+    *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_HS;
+    *cmd++ = s_gfxDevice.bindingTables[SHADER_HS].gfxAddr;
+
+    *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_DS;
+    *cmd++ = s_gfxDevice.bindingTables[SHADER_DS].gfxAddr;
+
+    *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_GS;
+    *cmd++ = s_gfxDevice.bindingTables[SHADER_GS].gfxAddr;
+
+    *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_PS;
+    *cmd++ = s_gfxDevice.bindingTables[SHADER_PS].gfxAddr;
 
     // Debug
     *cmd++ = MI_STORE_DATA_INDEX;
