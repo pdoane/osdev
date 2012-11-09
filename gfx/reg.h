@@ -249,6 +249,27 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 
 // ------------------------------------------------------------------------------------------------
+// 1.4.2 3DSTATE_CC_STATE_POINTERS
+
+#define _3DSTATE_CC_STATE_POINTERS      GFX_INSTR(0x3, 0x0, 0xe, 0)
+
+// DWORD 1 - Pointer to ColorCalcState (relative to Dynamic State Base Address)
+
+// ------------------------------------------------------------------------------------------------
+// 1.4.3 3DSTATE_BLEND_STATE_POINTERS
+
+#define _3DSTATE_BLEND_STATE_POINTERS   GFX_INSTR(0x3, 0x0, 0x24, 0)
+
+// DWORD 1 - Pointer to BlendState (relative to Dynamic State Base Address)
+
+// ------------------------------------------------------------------------------------------------
+// 1.4.4 3DSTATE_DEPTH_STENCIL_STATE_POINTERS
+
+#define _3DSTATE_DEPTH_STENCIL_STATE_POINTERS   GFX_INSTR(0x3, 0x0, 0x24, 0)
+
+// DWORD 1 - Pointer to DepthStencilState (relative to Dynamic State Base Address)
+
+// ------------------------------------------------------------------------------------------------
 // 1.10.4 PIPE_CONTROL Command
 
 #define PIPE_CONTROL                                GFX_INSTR(0x3, 0x2, 0x0, 3)
@@ -281,6 +302,180 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // DWORD 2 - address
 // DWORD 3 - immediate data (low)
 // DWORD 4 - immediate data (high)
+
+// ------------------------------------------------------------------------------------------------
+// 12.2 Pixel Pipeline State
+
+// Compare Func (used by BlendState and DepthStencilState)
+#define COMPARE_FUNC_ALWAYS             0x0
+#define COMPARE_FUNC_NEVER              0x1
+#define COMPARE_FUNC_LT                 0x2
+#define COMPARE_FUNC_EQ                 0x3
+#define COMPARE_FUNC_LE                 0x4
+#define COMPARE_FUNC_GT                 0x5
+#define COMPARE_FUNC_NE                 0x6
+#define COMPARE_FUNC_GE                 0x7
+
+// ------------------------------------------------------------------------------------------------
+// 12.2.1 COLOR_CALC_STATE
+
+// Flags
+#define CC_STENCIL_REF_MASK             0xff
+#define CC_FRONT_FACE_STENCIL_REF_SHIFT 24
+#define CC_BACK_FACE_STENCIL_REF_SHIFT  16
+#define CC_ROUND_DISABLE                (1 << 15)
+#define CC_ALPHA_REF_FLOAT              (1 << 0)
+
+typedef struct ColorCalcState
+{
+    u32 flags;
+    union ColorCalcState_AlphaRef
+    {
+        float floatVal;
+        u32 intVal;         // ref value stored in high byte
+    } alphaRef;
+    float constR;
+    float constG;
+    float constB;
+    float constA;
+} ColorCalcState;
+
+// ------------------------------------------------------------------------------------------------
+// 12.2.2 DEPTH_STENCIL_STATE
+
+// Stencil Op
+#define STENCIL_OP_KEEP                     0x0
+#define STENCIL_OP_ZERO                     0x1
+#define STENCIL_OP_REPLACE                  0x2
+#define STENCIL_OP_INC_SAT                  0x3
+#define STENCIL_OP_DEC_SAT                  0x4
+#define STENCIL_OP_INC                      0x5
+#define STENCIL_OP_DEC                      0x6
+#define STENCIL_OP_INV                      0x7
+
+// Stencil Flags
+#define STENCIL_ENABLE                      (1 << 31)
+#define STENCIL_FUNC_SHIFT                  28          // COMPARE_FUNC
+#define STENCIL_FAIL_OP_SHIFT               25
+#define STENCIL_DEPTH_FAIL_OP_SHIFT         22
+#define STENCIL_PASS_OP_SHIFT               19
+#define STENCIL_BUFFER_WRITE                (1 << 18)
+#define STENCIL_DOUBLE_SIDED                (1 << 15)
+#define STENCIL_BACK_FUNC_SHIFT             12
+#define STENCIL_BACK_FAIL_OP_SHIFT          9
+#define STENCIL_BACK_DEPTH_FAIL_OP_SHIFT    6
+#define STENCIL_BACK_PASS_OP_SHIFT          3
+
+// Stencil Masks
+#define STENCIL_TEST_MASK_SHIFT             24
+#define STENCIL_WRITE_MASK_SHIFT            16
+#define STENCIL_BACK_TEST_MASK_SHIFT        8
+#define STENCIL_BACK_WRITE_MASK_SHIFT       0
+
+// Depth Flags
+#define DEPTH_TEST_ENABLE                   (1 << 31)
+#define DEPTH_FUNC_SHIFT                    27          // COMPARE_FUNC
+#define DEPTH_WRITE_ENABLE                  (1 << 26)
+
+typedef struct DepthStencilState
+{
+    u32 stencilFlags;
+    u32 stencilMasks;
+    u32 depthFlags;
+} DepthStencilState;
+
+// ------------------------------------------------------------------------------------------------
+// 12.2.3 BLEND_STATE
+
+// Blend Function
+#define BLEND_FUNC_ADD                  0
+#define BLEND_FUNC_SUB                  1
+#define BLEND_FUNC_REV_SUB              2
+#define BLEND_FUNC_MIN                  3
+#define BLEND_FUNC_MAX                  4
+#define BLEND_FUNC_MASK                 0x7
+
+// Blend Factor
+#define BLEND_FACTOR_ONE                0x01
+#define BLEND_FACTOR_SRC_COLOR          0x02
+#define BLEND_FACTOR_SRC_ALPHA          0x03
+#define BLEND_FACTOR_DST_ALPHA          0x04
+#define BLEND_FACTOR_DST_COLOR          0x05
+#define BLEND_FACTOR_SRC_ALPHA_SAT      0x06
+#define BLEND_FACTOR_CONST_COLOR        0x07
+#define BLEND_FACTOR_CONST_ALPHA        0x08
+#define BLEND_FACTOR_SRC1_COLOR         0x09
+#define BLEND_FACTOR_SRC1_ALPHA         0x0a
+#define BLEND_FACTOR_ZERO               0x11
+#define BLEND_FACTOR_INV_SRC_COLOR      0x12
+#define BLEND_FACTOR_INV_SRC_ALPHA      0x13
+#define BLEND_FACTOR_INV_DST_ALPHA      0x14
+#define BLEND_FACTOR_INV_DST_COLOR      0x15
+#define BLEND_FACTOR_INV_CONST_COLOR    0x17
+#define BLEND_FACTOR_INV_CONST_ALPHA    0x18
+#define BLEND_FACTOR_INV_SRC1_COLOR     0x19
+#define BLEND_FACTOR_INV_SRC1_ALPHA     0x1a
+#define BLEND_FACTOR_MASK               0x1f
+
+// Logic Op
+#define LOGIC_OP_CLEAR                  0x0
+#define LOGIC_OP_NOR                    0x1
+#define LOGIC_OP_AND_INV                0x2
+#define LOGIC_OP_COPY_INV               0x3
+#define LOGIC_OP_AND_REV                0x4
+#define LOGIC_OP_INV                    0x5
+#define LOGIC_OP_XOR                    0x6
+#define LOGIC_OP_NAND                   0x7
+#define LOGIC_OP_AND                    0x8
+#define LOGIC_OP_EQUIV                  0x9
+#define LOGIC_OP_NOOP                   0xa
+#define LOGIC_OP_OR_INV                 0xb
+#define LOGIC_OP_COPY                   0xc
+#define LOGIC_OP_OR_REV                 0xd
+#define LOGIC_OP_OR                     0xe
+#define LOGIC_OP_SET                    0xf
+#define LOGIC_OP_MASK                   0xf
+
+// Color Clamp
+#define COLOR_CLAMP_UNORM               0x0
+#define COLOR_CLAMP_SNORM               0x1
+#define COLOR_CLAMP_RTFORMAT            0x2
+#define COLOR_CLAMP_MASK                0x3
+
+// DWORD 0
+#define BLEND_COLOR                     (1 << 31)   // Only BLEND_COLOR or BLEND_LOGIC can be enabled
+#define BLEND_INDEPENDENT_ALPHA         (1 << 30)
+#define BLEND_FUNC_ALPHA_SHIFT          26
+#define BLEND_SRC_ALPHA_SHIFT           20
+#define BLEND_DST_ALPHA_SHIFT           15
+#define BLEND_FUNC_COLOR_SHIFT          11
+#define BLEND_SRC_COLOR_SHIFT           5
+#define BLEND_DST_COLOR_SHIFT           0
+
+// DWORD 1
+#define BLEND_ALPHA_TO_COVERAGE         (1 << 31)
+#define BLEND_ALPHA_TO_ONE              (1 << 30)   // Errata - must be disabled
+#define BLEND_ALPHA_TO_COVERAGE_DITHER  (1 << 29)
+#define BLEND_DISABLE_ALPHA             (1 << 27)   // Errata - must be set to 0 if not present in the render target
+#define BLEND_DISABLE_RED               (1 << 26)   // Errata - must be set to 0 if not present in the render target
+#define BLEND_DISABLE_GREEN             (1 << 25)   // Errata - must be set to 0 if not present in the render target
+#define BLEND_DISABLE_BLUE              (1 << 24)   // Errata - must be set to 0 if not present in the render target
+#define BLEND_LOGIC                     (1 << 22)   // Only BLEND_COLOR or BLEND_LOGIC can be enabled
+#define BLEND_LOGIC_FUNC_SHIFT          18
+#define BLEND_ALPHA_TEST                (1 << 16)
+#define BLEND_ALPHA_FUNC                (1 << 13)   // COMPARE_FUNC
+#define BLEND_COLOR_DITHER              (1 << 12)
+#define BLEND_DITHER_X_SHIFT            10
+#define BLEND_DITHER_Y_SHIFT            8
+#define BLEND_COLOR_CLAMP_RANGE_SHIFT   2
+#define BLEND_PRE_COLOR_CLAMP           (1 << 1)
+#define BLEND_POST_COLOR_CLAMP          (1 << 0)
+
+typedef struct BlendState
+{
+    u32 flags0;
+    u32 flags1;
+} BlendState;
 
 // ------------------------------------------------------------------------------------------------
 // Vol 3. Part 1. VGA and Extended VGA Registers

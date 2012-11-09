@@ -39,6 +39,10 @@ typedef struct GfxDevice
     GfxObject       renderContext;
 
     GfxObject       batchBuffer;
+
+    GfxObject       colorCalcStates;
+    GfxObject       blendStates;
+    GfxObject       depthStencilStates;
 } GfxDevice;
 
 GfxDevice s_gfxDevice;
@@ -192,6 +196,75 @@ static bool ValidateChipset()
 }
 
 // ------------------------------------------------------------------------------------------------
+static void CreateStates()
+{
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.colorCalcStates, sizeof(ColorCalcState), 64);
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.blendStates, sizeof(BlendState), 64);
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.depthStencilStates, sizeof(DepthStencilState), 64);
+
+    ColorCalcState *ccState = (ColorCalcState *)s_gfxDevice.colorCalcStates.cpuAddr;
+    ccState->flags = 0;
+    ccState->alphaRef.intVal = 0;
+    ccState->constR = 1.0f;
+    ccState->constG = 1.0f;
+    ccState->constB = 1.0f;
+    ccState->constA = 1.0f;
+
+    BlendState *blendState = (BlendState *)s_gfxDevice.blendStates.cpuAddr;
+    blendState->flags0 = 0;
+    blendState->flags1 = 0;
+
+    DepthStencilState *depthStencilState = (DepthStencilState *)s_gfxDevice.depthStencilStates.cpuAddr;
+    depthStencilState->stencilFlags = 0;
+    depthStencilState->stencilMasks = 0;
+    depthStencilState->depthFlags = 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+static void CreateTestBatchBuffer()
+{
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.batchBuffer, 4 * KB, 4 * KB);
+    u32 *cmd = (u32 *)s_gfxDevice.batchBuffer.cpuAddr;
+
+    // Switch to 3D pipeline
+    *cmd++ = PIPELINE_SELECT(PIPELINE_3D);
+
+    // Update base addresses - just use 0 for everything with no caching or upper bounds
+    *cmd++ = STATE_BASE_ADDRESS;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = BASE_ADDRESS_MODIFY;
+
+    // Color Calc State
+    *cmd++ = _3DSTATE_CC_STATE_POINTERS;
+    *cmd++ = s_gfxDevice.colorCalcStates.gfxAddr;
+
+    // Blend State
+    *cmd++ = _3DSTATE_BLEND_STATE_POINTERS;
+    *cmd++ = s_gfxDevice.blendStates.gfxAddr;
+
+    // Depth/Stencil State
+    *cmd++ = _3DSTATE_DEPTH_STENCIL_STATE_POINTERS;
+    *cmd++ = s_gfxDevice.depthStencilStates.gfxAddr;
+
+    // Debug
+    *cmd++ = MI_STORE_DATA_INDEX;
+    *cmd++ = 0; // offset
+    *cmd++ = 0xabcd0123;
+    *cmd++ = 0;
+
+    // End Batch Buffer
+    *cmd++ = MI_BATCH_BUFFER_END;
+}
+
+// ------------------------------------------------------------------------------------------------
 void GfxStart()
 {
     if (!s_gfxDevice.pci.id)
@@ -234,8 +307,11 @@ void GfxStart()
     // Allocate Render Context
     GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.renderContext, 4 * KB, 4 * KB);
 
+    // Allocate States
+    CreateStates();
+
     // Allocate Batch Buffer
-    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.batchBuffer, 4 * KB, 4 * KB);
+    CreateTestBatchBuffer();
 
     // Setup Primary Plane
     uint width = 720;                       // TODO: mode support
@@ -260,36 +336,9 @@ void GfxStart()
     GfxSetRing(&s_gfxDevice.pci, &s_gfxDevice.renderRing);
     GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.renderRing);
 
-    // Start Batch Buffer
-    u32 *cmd = (u32 *)s_gfxDevice.batchBuffer.cpuAddr;
-
-    // Switch to 3D pipeline
-    *cmd++ = PIPELINE_SELECT(PIPELINE_3D);
-
-    // Update base addresses - just use 0 for everything with no caching or upper bounds
-    *cmd++ = STATE_BASE_ADDRESS;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-
-    // Debug
-    *cmd++ = MI_STORE_DATA_INDEX;
-    *cmd++ = 0; // offset
-    *cmd++ = 0xabcd0123;
-    *cmd++ = 0;
-
-    // End Batch Buffer
-    *cmd++ = MI_BATCH_BUFFER_END;
-
     // Write test buffer stream
     GfxRing *ring = &s_gfxDevice.renderRing;
+    u32 *cmd;
 
     // MI_STORE_DATA_INDEX (test memory is being written)
     cmd = GfxBeginCmd(ring, 4);
