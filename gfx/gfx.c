@@ -371,6 +371,14 @@ static void CreateTestBatchBuffer()
         | (VFCOMP_STORE_SRC << VE_COMP2_SHIFT)
         | (VFCOMP_STORE_1_FP << VE_COMP3_SHIFT);
 
+    // Vertex Shader
+    *cmd++ = _3DSTATE_VS;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
     // Dummy Draw (needed after MI_SET_CONTEXT or PIPELINE_SELECT)
     *cmd++ = _3DPRIMITIVE;
     *cmd++ = 0;
@@ -527,6 +535,9 @@ void GfxStart()
         | MI_EXT_STATE_RESTORE
         | MI_RESTORE_INHIBIT;
     GfxEndCmd(&s_gfxDevice.pci, ring, cmd);
+
+    // TODO - a PIPE_CONTROL with Post-Sync Operation set and a depth stall
+    // needs to be sent just prior to updating most of the state operations.
 
     // MI_BATCH_BUFFER_START
     cmd = GfxBeginCmd(ring, 2);

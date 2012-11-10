@@ -487,6 +487,82 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // DWORD 6 - Base Vertex Location
 
 // ------------------------------------------------------------------------------------------------
+// Common Shader Defs
+
+// SAMPLER_USAGE
+#define SAMPLER_USAGE_NONE              0x0
+#define SAMPLER_USAGE_1_4               0x1
+#define SAMPLER_USAGE_5_8               0x2
+#define SAMPLER_USAGE_9_12              0x3
+#define SAMPLER_USAGE_13_16             0x4
+#define SAMPLER_USAGE_MASK              0x7
+
+// 3DSTATE_CONSTANT(Body)
+typedef struct ConstantBufferBody
+{
+    u16 bufLen[4];
+    u32 buffers[4];
+} ConstantBufferBody;
+
+// CONST_ALLOC
+#define CONST_ALLOC_OFFSET_SHIFT        16
+#define CONST_ALLOC_OFFSET_MASK         0xf
+#define CONST_ALLOC_SIZE_SHIFT          0
+#define CONST_ALLOC_SIZE_MASK           03f
+
+// ------------------------------------------------------------------------------------------------
+// 3.2.1.2 3DSTATE_VS
+
+#define _3DSTATE_VS                     GFX_INSTR(0x03, 0x0, 0x10, 4)
+
+// DWORD 1 - Kernel Start Pointer (relative to Instruction Base Address)
+
+// DWORD 2
+#define VS_SINGLE_VERTEX_DISPATCH       (1 << 31)
+#define VS_VECTOR_MASK                  (1 << 30)
+#define VS_SAMPLER_COUNT_SHIFT          27          // SAMPLER_USAGE
+#define VS_BINDING_COUNT_SHIFT          18
+#define VS_BINDING_COUNT_MASK           0xff
+#define VS_FLOATING_POINT_ALT           (1 << 16)
+#define VS_ILLEGAL_OPCODE_EX            (1 << 13)
+#define VS_SOFTWARE_EX                  (1 << 7)
+
+// DWORD 3
+#define VS_SCRATCH_SPACE_BASE_SHIFT     (1 << 10)
+#define VS_SCRATCH_SPACE_BASE_MASK      0x3fffff
+#define VS_PER_THREAD_SPACE_SHIFT       0           // Power of 2 bytes + 1KB
+#define VS_PER_THREAD_SPACE_MASK        0xf
+
+// DWORD 4
+#define VS_DISPATCH_GRF_SHIFT           20
+#define VS_DISPATCH_GRF_MASK            0x1f
+#define VS_URB_READ_LENGTH_SHIFT        11
+#define VS_URB_READ_LENGTH_MASK         0x3f
+#define VS_URB_READ_OFFSET_SHIFT        4
+#define VS_URB_READ_OFFSET_MASK         0x3f
+
+// DWORD 5
+#define VS_MAX_THREAD_SHIFT             25
+#define VS_MAX_THREAD_MASK              0x7f
+#define VS_STATISTICS                   (1 << 10)
+#define VS_CACHE_DISABLE                (1 << 1)
+#define VS_ENABLE                       (1 << 0)
+
+// ------------------------------------------------------------------------------------------------
+// 3.2.1.3 3DSTATE_CONSTANT_VS
+
+#define _3DSTATE_CONSTANT_VS            GfxInstr(0x3, 0x0, 0x15, 5)
+
+// DWORD 1..6 - ConstantBufferBody
+
+// ------------------------------------------------------------------------------------------------
+// 3.2.1.4 3DSTATE_PUSH_CONSTANT_ALLOC_VS
+
+#define _3DSTATE_PUSH_CONSTANT_ALLOC_VS GfxInstr(0x3, 0x1, 0x12, 0)
+
+// DWORD 1 - CONST_ALLOC
+
+// ------------------------------------------------------------------------------------------------
 // 10.3.15 SF_CLIP_VIEWPORT
 
 typedef struct SFClipViewport
