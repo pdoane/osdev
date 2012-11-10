@@ -306,6 +306,29 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // DWORD 1 - Pointer to SamplerState table (relative to Dynamic State Base Address)
 
 // ------------------------------------------------------------------------------------------------
+// 1.6.1 3DSTATE_VIEWPORT_STATE_POINTERS_CC
+
+#define VIEWPORT_TABLE_SIZE                         16
+
+#define _3DSTATE_VIEWPORT_STATE_POINTERS_CC         GFX_INSTR(0x3, 0x0, 0x23, 0)
+
+// DWORD 1 - Pointer to CCViewport table (relative to Dynamic State Base Address)
+
+// ------------------------------------------------------------------------------------------------
+// 1.6.2 3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP
+
+#define _3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP    GFX_INSTR(0x3, 0x0, 0x21, 0)
+
+// DWORD 1 - Pointer to SFClipViewport table (relative to Dynamic State Base Address)
+
+// ------------------------------------------------------------------------------------------------
+// 1.6.3 3DSTATE_SCISSOR_STATE_POINTERS
+
+#define _3DSTATE_SCISSOR_STATE_POINTERS             GFX_INSTR(0x3, 0x0, 0x0f, 0)
+
+// DWORD 1 - Pointer to ScissorRect table (relative to Dynamic State Base Address)
+
+// ------------------------------------------------------------------------------------------------
 // 1.10.4 PIPE_CONTROL Command
 
 #define PIPE_CONTROL                                GFX_INSTR(0x3, 0x2, 0x0, 3)
@@ -338,6 +361,36 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // DWORD 2 - address
 // DWORD 3 - immediate data (low)
 // DWORD 4 - immediate data (high)
+
+// ------------------------------------------------------------------------------------------------
+// 10.3.15 SF_CLIP_VIEWPORT
+
+typedef struct SFClipViewport
+{
+    float scaleX;
+    float scaleY;
+    float scaleZ;
+    float transX;
+    float transY;
+    float transZ;
+    float pad0[2];
+    float guardbandMinX;
+    float guardbandMaxX;
+    float guardbandMinY;
+    float guardbandMaxY;
+    float pad1[4];
+} SFClipViewport;
+
+// ------------------------------------------------------------------------------------------------
+// 10.3.16 SCISSOR_RECT
+
+typedef struct ScissorRect
+{
+    u16 minX;
+    u16 minY;
+    u16 maxX;
+    u16 maxY;
+} ScissorRect;
 
 // ------------------------------------------------------------------------------------------------
 // 12.2 Pixel Pipeline State
@@ -512,6 +565,15 @@ typedef struct BlendState
     u32 flags0;
     u32 flags1;
 } BlendState;
+
+// ------------------------------------------------------------------------------------------------
+// 12.2.4 CC_VIEWPORT
+
+typedef struct CCViewport
+{
+    float minDepth;
+    float maxDepth;
+} CCViewport;
 
 // ------------------------------------------------------------------------------------------------
 // Vol 3. Part 1. VGA and Extended VGA Registers

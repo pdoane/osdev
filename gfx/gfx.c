@@ -45,6 +45,7 @@ typedef struct GfxDevice
     GfxObject       depthStencilStates;
     GfxObject       bindingTables[SHADER_COUNT];
     GfxObject       samplerTables[SHADER_COUNT];
+    GfxObject       ccViewportTable;
 } GfxDevice;
 
 GfxDevice s_gfxDevice;
@@ -200,15 +201,8 @@ static bool ValidateChipset()
 // ------------------------------------------------------------------------------------------------
 static void CreateStates()
 {
+    // Color Calc State
     GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.colorCalcStates, sizeof(ColorCalcState), 64);
-    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.blendStates, sizeof(BlendState), 64);
-    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.depthStencilStates, sizeof(DepthStencilState), 64);
-    for (uint i = 0; i < SHADER_COUNT; ++i)
-    {
-        GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.bindingTables[i], BINDING_TABLE_SIZE * sizeof(u32), 32);
-        GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.samplerTables[i], SAMPLER_TABLE_SIZE * sizeof(SamplerState), 32);
-    }
-
     ColorCalcState *ccState = (ColorCalcState *)s_gfxDevice.colorCalcStates.cpuAddr;
     ccState->flags = 0;
     ccState->alphaRef.intVal = 0;
@@ -217,23 +211,38 @@ static void CreateStates()
     ccState->constB = 1.0f;
     ccState->constA = 1.0f;
 
+    // Blend State
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.blendStates, sizeof(BlendState), 64);
     BlendState *blendState = (BlendState *)s_gfxDevice.blendStates.cpuAddr;
     blendState->flags0 = 0;
     blendState->flags1 = 0;
 
+    // Depth Stencil State
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.depthStencilStates, sizeof(DepthStencilState), 64);
     DepthStencilState *depthStencilState = (DepthStencilState *)s_gfxDevice.depthStencilStates.cpuAddr;
     depthStencilState->stencilFlags = 0;
     depthStencilState->stencilMasks = 0;
     depthStencilState->depthFlags = 0;
 
+    // Shader State Tables
     for (uint i = 0; i < SHADER_COUNT; ++i)
     {
+        // Binding Tables
+        GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.bindingTables[i], BINDING_TABLE_SIZE * sizeof(u32), 32);
         u32* bindingTable = (u32 *)s_gfxDevice.bindingTables[i].cpuAddr;
         memset(bindingTable, 0, BINDING_TABLE_SIZE * sizeof(u32));
 
+        // Sampler Tables
+        GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.samplerTables[i], SAMPLER_TABLE_SIZE * sizeof(SamplerState), 32);
         SamplerState* samplerTable = (SamplerState *)s_gfxDevice.samplerTables[i].cpuAddr;
         memset(samplerTable, 0, SAMPLER_TABLE_SIZE * sizeof(SamplerState));
     }
+
+    // Viewport State (SFClipViewport and ScissorRect can be disabled in the SF state, so ignore for now)
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.ccViewportTable, VIEWPORT_TABLE_SIZE * sizeof(CCViewport), 32);
+    CCViewport *ccViewport = (CCViewport *)s_gfxDevice.ccViewportTable.cpuAddr;
+    ccViewport->minDepth = -F32_MAX;
+    ccViewport->maxDepth = F32_MAX;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -302,6 +311,15 @@ static void CreateTestBatchBuffer()
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_PS;
     *cmd++ = s_gfxDevice.samplerTables[SHADER_PS].gfxAddr;
 
+    // Viewport State
+    *cmd++ = _3DSTATE_VIEWPORT_STATE_POINTERS_CC;
+    *cmd++ = s_gfxDevice.ccViewportTable.gfxAddr;
+
+    *cmd++ = _3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP;
+    *cmd++ = 0;     // can be disabled in the 3DSTATE_SF
+
+    *cmd++ = _3DSTATE_SCISSOR_STATE_POINTERS;
+    *cmd++ = 0;     // can be disabled in the 3DSTATE_SF
 
     // Debug
     *cmd++ = MI_STORE_DATA_INDEX;
