@@ -608,6 +608,39 @@ typedef struct ConstantBufferBody
 // DWORD 6 - Semaphore Handle
 
 // ------------------------------------------------------------------------------------------------
+// 5.1 3DSTATE_TE
+
+#define _3DSTATE_TE                     GFX_INSTR(0x3, 0x0, 0x1c, 2)
+
+// TE_PARTITIONING
+#define TE_PARTITIONING_INT             0x0
+#define TE_PARTITIONING_ODD_FRAC        0x1
+#define TE_PARTITIONING_EVEN_FRAC       0x2
+#define TE_PARTITIONING_MASK            0x3
+
+// TE_OUTPUT
+#define TE_OUTPUT_POINT                 0x0
+#define TE_OUTPUT_LINE                  0x1
+#define TE_OUTPUT_TRI_CW                0x2
+#define TE_OUTPUT_TRI_CCW               0x3
+
+// TE_DOMAIN
+#define TE_DOMAIN_QUAD                  0x0
+#define TE_DOMAIN_TRI                   0x1
+#define TE_DOMAIN_ISOLINE               0x2
+#define TE_DOMAIN_MASK                  0x3
+
+// DWORD 1
+#define TE_PARTITIONING_SHIFT           12          // TE_PARTITIONING
+#define TE_OUTPUT_SHIFT                 8           // TE_OUTPUT
+#define TE_DOMAIN_SHIFT                 4
+#define TE_SW_TESS                      (1 << 1)
+#define TE_ENABLE                       (1 << 0)
+
+// DWORD 2 - Max TessFactor Odd (float)
+// DWORD 3 - Max TessFactor Not Odd (float)
+
+// ------------------------------------------------------------------------------------------------
 // 10.3.15 SF_CLIP_VIEWPORT
 
 typedef struct SFClipViewport

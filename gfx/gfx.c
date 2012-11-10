@@ -388,6 +388,12 @@ static void CreateTestBatchBuffer()
     *cmd++ = 0;
     *cmd++ = 0;
 
+    // Tesselation Engine
+    *cmd++ = _3DSTATE_TE;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
     // Dummy Draw (needed after MI_SET_CONTEXT or PIPELINE_SELECT)
     *cmd++ = _3DPRIMITIVE;
     *cmd++ = 0;
@@ -415,6 +421,8 @@ static void CreateTestBatchBuffer()
 
     // End Batch Buffer
     *cmd++ = MI_BATCH_BUFFER_END;
+
+    RlogPrint("Batch Buffer Size = %08x\n", (u8 *)cmd - s_gfxDevice.batchBuffer.cpuAddr);
 }
 
 // ------------------------------------------------------------------------------------------------
