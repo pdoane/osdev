@@ -487,7 +487,7 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // DWORD 6 - Base Vertex Location
 
 // ------------------------------------------------------------------------------------------------
-// Common Shader Defs
+// 3/4 Vertex/Hull Shader Stages
 
 // SAMPLER_USAGE
 #define SAMPLER_USAGE_NONE              0x0
@@ -509,6 +509,22 @@ typedef struct ConstantBufferBody
 #define CONST_ALLOC_OFFSET_MASK         0xf
 #define CONST_ALLOC_SIZE_SHIFT          0
 #define CONST_ALLOC_SIZE_MASK           03f
+
+// ------------------------------------------------------------------------------------------------
+// 3DSTATE_CONSTANT_*S
+
+#define _3DSTATE_CONSTANT_VS            GfxInstr(0x3, 0x0, 0x15, 5)
+#define _3DSTATE_CONSTANT_HS            GfxInstr(0x3, 0x0, 0x19, 5)
+
+// DWORD 1..6 - ConstantBufferBody
+
+// ------------------------------------------------------------------------------------------------
+// 3.2.1.4 3DSTATE_PUSH_CONSTANT_ALLOC_*S
+
+#define _3DSTATE_PUSH_CONSTANT_ALLOC_VS GfxInstr(0x3, 0x1, 0x12, 0)
+#define _3DSTATE_PUSH_CONSTANT_ALLOC_HS GfxInstr(0x3, 0x1, 0x13, 0)
+
+// DWORD 1 - CONST_ALLOC
 
 // ------------------------------------------------------------------------------------------------
 // 3.2.1.2 3DSTATE_VS
@@ -549,18 +565,47 @@ typedef struct ConstantBufferBody
 #define VS_ENABLE                       (1 << 0)
 
 // ------------------------------------------------------------------------------------------------
-// 3.2.1.3 3DSTATE_CONSTANT_VS
+// 4.4 3DSTATE_HS
 
-#define _3DSTATE_CONSTANT_VS            GfxInstr(0x3, 0x0, 0x15, 5)
+#define _3DSTATE_HS                     GFX_INSTR(0x03, 0x0, 0x1b, 5)
 
-// DWORD 1..6 - ConstantBufferBody
+// DWORD 1
+#define HS_SAMPLER_COUNT_SHIFT          27          // SAMPLER_USAGE
+#define HS_BINDING_COUNT_SHIFT          18
+#define HS_BINDING_COUNT_MASK           0xff
+#define HS_FLOATING_POINT_ALT           (1 << 16)
+#define HS_FLOATING_POINT_ALT           (1 << 16)
+#define HS_ILLEGAL_OPCODE_EX            (1 << 13)
+#define HS_SOFTWARE_EX                  (1 << 7)
+#define HS_MAX_THREAD_SHIFT             0
+#define HS_MAX_THREAD_MASK              0x7f
 
-// ------------------------------------------------------------------------------------------------
-// 3.2.1.4 3DSTATE_PUSH_CONSTANT_ALLOC_VS
+// DWORD 2
+#define HS_ENABLE                       (1 << 31)
+#define HS_STATISTICS                   (1 << 29)
+#define HS_INSTANCE_COUNT_SHIFT         0
+#define HS_INSTANCE_COUNT_MASK          0xf
 
-#define _3DSTATE_PUSH_CONSTANT_ALLOC_VS GfxInstr(0x3, 0x1, 0x12, 0)
+// DWORD 3 - Kernel Start Pointer (relative to Instruction Base Address)
 
-// DWORD 1 - CONST_ALLOC
+// DWORD 4
+#define HS_SCRATCH_SPACE_BASE_SHIFT     (1 << 10)
+#define HS_SCRATCH_SPACE_BASE_MASK      0x3fffff
+#define HS_PER_THREAD_SPACE_SHIFT       0           // Power of 2 bytes + 1KB
+#define HS_PER_THREAD_SPACE_MASK        0xf
+
+// DWORD 5
+#define HS_SINGLE_PROGRAM_FLOW          (1 << 27)
+#define HS_VECTOR_MASK                  (1 << 26)
+#define HS_INCLUDE_VERTEX_HANDLES       (1 << 24)
+#define HS_DISPATCH_GRF_SHIFT           19
+#define HS_DISPATCH_GRF_MASK            0x1f
+#define HS_URB_READ_LENGTH_SHIFT        11
+#define HS_URB_READ_LENGTH_MASK         0x3f
+#define HS_URB_READ_OFFSET_SHIFT        4
+#define HS_URB_READ_OFFSET_MASK         0x3f
+
+// DWORD 6 - Semaphore Handle
 
 // ------------------------------------------------------------------------------------------------
 // 10.3.15 SF_CLIP_VIEWPORT
