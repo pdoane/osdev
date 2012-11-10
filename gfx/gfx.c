@@ -14,6 +14,7 @@
 #include "mem/vm.h"
 #include "net/rlog.h"
 #include "pci/registry.h"
+#include "stdlib/limits.h"
 #include "stdlib/string.h"
 #include "time/pit.h"
 
@@ -46,6 +47,8 @@ typedef struct GfxDevice
     GfxObject       bindingTables[SHADER_COUNT];
     GfxObject       samplerTables[SHADER_COUNT];
     GfxObject       ccViewportTable;
+
+    GfxObject       triangleVB;
 } GfxDevice;
 
 GfxDevice s_gfxDevice;
@@ -246,6 +249,25 @@ static void CreateStates()
 }
 
 // ------------------------------------------------------------------------------------------------
+static void CreateTriangle()
+{
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.triangleVB, sizeof(float) * 9, sizeof(float));
+    float* p = (float *)s_gfxDevice.triangleVB.cpuAddr;
+
+    *p++ = 0.0f;
+    *p++ = 0.5f;
+    *p++ = 0.5f;
+
+    *p++ = 0.5f;
+    *p++ = -0.5f;
+    *p++ = 0.5f;
+
+    *p++ = -0.5f;
+    *p++ = -0.5f;
+    *p++ = 0.5f;
+}
+
+// ------------------------------------------------------------------------------------------------
 static void CreateTestBatchBuffer()
 {
     GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.batchBuffer, 4 * KB, 4 * KB);
@@ -321,6 +343,53 @@ static void CreateTestBatchBuffer()
     *cmd++ = _3DSTATE_SCISSOR_STATE_POINTERS;
     *cmd++ = 0;     // can be disabled in the 3DSTATE_SF
 
+    // Index Buffer
+    *cmd++ = _3DSTATE_INDEX_BUFFER;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
+    // Vertex Buffer
+    *cmd++ = _3DSTATE_VERTEX_BUFFERS(1);
+    *cmd++ =
+          (0 << VB_INDEX_SHIFT)
+        | VB_ADDRESS_MODIFY
+        | ((sizeof(float) * 3) << VB_PITCH_SHIFT);
+    *cmd++ = s_gfxDevice.triangleVB.gfxAddr;
+    *cmd++ = s_gfxDevice.triangleVB.gfxAddr + sizeof(float) * 9 - 1;
+    *cmd++ = 0;
+
+    // Vertex Elements
+    *cmd++ = _3DSTATE_VERTEX_ELEMENTS(1);
+    *cmd++ =
+          (0 << VE_INDEX_SHIFT)
+        | VE_VALID
+        | (FMT_R32G32B32_FLOAT << VE_FORMAT_SHIFT)
+        | (0 << VE_OFFSET_SHIFT);
+    *cmd++ =
+          (VFCOMP_STORE_SRC << VE_COMP0_SHIFT)
+        | (VFCOMP_STORE_SRC << VE_COMP1_SHIFT)
+        | (VFCOMP_STORE_SRC << VE_COMP2_SHIFT)
+        | (VFCOMP_STORE_1_FP << VE_COMP3_SHIFT);
+
+    // Dummy Draw (needed after MI_SET_CONTEXT or PIPELINE_SELECT)
+    *cmd++ = _3DPRIMITIVE;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
+    /*
+    // Triangle Draw
+    *cmd++ = _3DPRIMITIVE;
+    *cmd++ = (_3DPRIM_TRILIST << PRIM_TOPOLOGY_SHIFT);
+    *cmd++ = 3;
+    *cmd++ = 0;
+    *cmd++ = 1;
+    *cmd++ = 0;
+    *cmd++ = 0;*/
+
     // Debug
     *cmd++ = MI_STORE_DATA_INDEX;
     *cmd++ = 0; // offset
@@ -376,6 +445,9 @@ void GfxStart()
 
     // Allocate States
     CreateStates();
+
+    // Allocate Gfx Buffers
+    CreateTriangle();
 
     // Allocate Batch Buffer
     CreateTestBatchBuffer();

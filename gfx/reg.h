@@ -363,6 +363,130 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // DWORD 4 - immediate data (high)
 
 // ------------------------------------------------------------------------------------------------
+// 2.2.1 3DSTATE_INDEX_BUFFER
+
+#define _3DSTATE_INDEX_BUFFER           GFX_INSTR(0x3, 0x0, 0x0a, 1)
+
+// INDEX_FMT
+#define INDEX_FMT_BYTE                  0x0
+#define INDEX_FMT_WORD                  0x1
+#define INDEX_FMT_DWORD                 0x2
+#define INDEX_FMT_MASK                  0x3
+
+// DWORD 0
+#define IB_OBJ_CONTROL_STATE_SHIFT      12          // MEMORY_OBJECT_CONTROL_STATE
+#define IB_CUT_INDEX                    (1 << 10)
+#define IB_FORMAT_SHIFT                 8           // INDEX_FMT
+
+// DWORD 1 - Buffer Starting Address (must be in linear memory)
+// DWORD 2 - Buffer Ending Address
+
+// ------------------------------------------------------------------------------------------------
+// 2.3.1 3DSTATE_VERTEX_BUFFERS
+
+#define _3DSTATE_VERTEX_BUFFERS(n)      GFX_INSTR(0x3, 0x0, 0x08, 4*(n) - 1)
+
+// DWORD 1..n - VERTEX_BUFFER_STATE
+
+// ------------------------------------------------------------------------------------------------
+// 2.3.2 VERTEX_BUFFER_STATE
+
+// DWORD 0
+#define VB_INDEX_SHIFT                  26
+#define VB_INDEX_MASK                   0x3f
+#define VB_INSTANCE_DATA                (1 << 20)
+#define VB_OBJ_CONTROL_STATE_SHIFT      16          // MEMORY_OBJECT_CONTROL_STATE
+#define VB_ADDRESS_MODIFY               (1 << 14)
+#define VB_NULL                         (1 << 13)
+#define VB_FETCH_INVALIDATE             (1 << 12)
+#define VB_PITCH_SHIFT                  0
+#define VB_PITCH_MASK                   0xfff
+
+// DWORD 1 - Start Address
+// DWORD 2 - End Address (inclusive)
+// DWORD 3 - Instance Step Rate
+
+// ------------------------------------------------------------------------------------------------
+// 2.4.1 3DSTATE_VERTEX_ELEMENTS
+
+#define _3DSTATE_VERTEX_ELEMENTS(n)     GFX_INSTR(0x3, 0x0, 0x09, 2*(n) - 1)
+
+// DWORD 1..n - VERTEX_ELEMENT_STATE
+
+// ------------------------------------------------------------------------------------------------
+// 2.4.2 VERTEX_ELEMENT_STATE
+
+// VFCOMP_CONTROL
+#define VFCOMP_NOSTORE                  0x0
+#define VFCOMP_STORE_SRC                0x1
+#define VFCOMP_STORE_0                  0x2
+#define VFCOMP_STORE_1_FP               0x3
+#define VFCOMP_STORE_1_INT              0x4
+#define VFCOMP_STORE_VID                0x5
+#define VFCOMP_STORE_IID                0x6
+#define VFCOMP_MASK                     0x7
+
+// DWORD 0
+#define VE_INDEX_SHIFT                  26
+#define VE_INDEX_MASK                   0x3f
+#define VE_VALID                        (1 << 25)
+#define VE_FORMAT_SHIFT                 16          // SURFACE_FORMAT
+#define VE_EDGE_FLAG                    (1 << 15)
+#define VE_OFFSET_SHIFT                 0
+#define VE_OFFSET_MASK                  0x7ff
+
+// DWORD 1
+#define VE_COMP0_SHIFT                  28          // VFCOMP_CONTROL
+#define VE_COMP1_SHIFT                  24          // VFCOMP_CONTROL
+#define VE_COMP2_SHIFT                  20          // VFCOMP_CONTROL
+#define VE_COMP3_SHIFT                  16          // VFCOMP_CONTROL
+
+// ------------------------------------------------------------------------------------------------
+// 2.5.1 3DPRIMITIVE
+
+#define _3DPRIMITIVE                    GFX_INSTR(0x3, 0x3, 0x00, 5)
+
+// 3DPRIM_TOPOLOGY (not defined in documentation, cut index table in 2.2.1 seems to correspond to ordering)
+#define _3DPRIM_POINTLIST               0x01
+#define _3DPRIM_LINELIST                0x02
+#define _3DPRIM_LINESTRIP               0x03
+#define _3DPRIM_TRILIST                 0x04
+#define _3DPRIM_TRISTRIP                0x05
+#define _3DPRIM_TRIFAN                  0x06
+#define _3DPRIM_QUADLIST                0x07
+#define _3DPRIM_QUADSTRIP               0x08
+#define _3DPRIM_LINELIST_ADJ            0x09
+#define _3DPRIM_LINESTRIP_ADJ           0x0a
+#define _3DPRIM_TRILIST_ADJ             0x0b
+#define _3DPRIM_TRISTRIP_ADJ            0x0c
+#define _3DPRIM_TRISTRIP_REVERSE        0x0d
+#define _3DPRIM_POLYGON                 0x0e
+#define _3DPRIM_RECTLIST                0x0f
+#define _3DPRIM_LINELOOP                0x10
+#define _3DPRIM_POINTLIST_BF            0x11
+#define _3DPRIM_LINESTRIP_CONT          0x12
+#define _3DPRIM_LINESTRIP_BF            0x13
+#define _3DPRIM_LINESTRIP_CONT_BF       0x14
+#define _3DPRIM_TRIFAN_NOSTIPPLE        0x15
+#define _3DPRIM_PATCHLIST_n             // ???
+#define _3DPRIM_MASK                    0x3f
+
+// DWORD 0
+#define PRIM_INDIRECT_PARAMETER         (1 << 10)
+#define PRIM_PREDICATE                  (1 << 8)
+
+// DWORD 1
+#define PRIM_END_OFFSET                 (1 << 9)
+#define PRIM_RANDOM                     (1 << 8)
+#define PRIM_TOPOLOGY_SHIFT             0           // 3DPRIM_TOPOLOGY
+
+// DWORD 2 - Vertex Count Per Instance
+// DWORD 3 - Start Vertex Location
+// DWORD 4 - Instance Count
+// DWORD 5 - Start Instance Location
+// DWORD 6 - Base Vertex Location
+
+// ------------------------------------------------------------------------------------------------
 // 10.3.15 SF_CLIP_VIEWPORT
 
 typedef struct SFClipViewport
@@ -824,72 +948,73 @@ typedef struct CCViewport
 #define SURFTYPE_MASK                   0x7
 
 // FMT (SURFACE_FORMAT)
-#define FMT_R32G32B32A32_FLOAT          0x000
-#define FMT_R32G32B32A32_SINT           0x001
-#define FMT_R32G32B32A32_UINT           0x002
-#define FMT_R32G32B32A32_UNORM          0x003
-#define FMT_R32G32B32A32_SNORM          0x004
-#define FMT_R64G64_FLOAT                0x005
+// VF = can be used by VF Unit
+#define FMT_R32G32B32A32_FLOAT          0x000       // VF
+#define FMT_R32G32B32A32_SINT           0x001       // VF
+#define FMT_R32G32B32A32_UINT           0x002       // VF
+#define FMT_R32G32B32A32_UNORM          0x003       // VF
+#define FMT_R32G32B32A32_SNORM          0x004       // VF
+#define FMT_R64G64_FLOAT                0x005       // VF
 #define FMT_R32G32B32X32_FLOAT          0x006
-#define FMT_R32G32B32A32_SSCALED        0x007
-#define FMT_R32G32B32A32_USCALED        0x008
+#define FMT_R32G32B32A32_SSCALED        0x007       // VF
+#define FMT_R32G32B32A32_USCALED        0x008       // VF
 #define FMT_R32G32B32A32_SFIXED         0x020
 #define FMT_R64G64_PASSTHRU             0x021
-#define FMT_R32G32B32_FLOAT             0x040
-#define FMT_R32G32B32_SINT              0x041
-#define FMT_R32G32B32_UINT              0x042
-#define FMT_R32G32B32_UNORM             0x043
-#define FMT_R32G32B32_SNORM             0x044
-#define FMT_R32G32B32_SSCALED           0x045
-#define FMT_R32G32B32_USCALED           0x046
+#define FMT_R32G32B32_FLOAT             0x040       // VF
+#define FMT_R32G32B32_SINT              0x041       // VF
+#define FMT_R32G32B32_UINT              0x042       // VF
+#define FMT_R32G32B32_UNORM             0x043       // VF
+#define FMT_R32G32B32_SNORM             0x044       // VF
+#define FMT_R32G32B32_SSCALED           0x045       // VF
+#define FMT_R32G32B32_USCALED           0x046       // VF
 #define FMT_R32G32B32_SFIXED            0x050
-#define FMT_R16G16B16A16_UNORM          0x080
-#define FMT_R16G16B16A16_SNORM          0x081
-#define FMT_R16G16B16A16_SINT           0x082
-#define FMT_R16G16B16A16_UINT           0x083
-#define FMT_R16G16B16A16_FLOAT          0x084
-#define FMT_R32G32_FLOAT                0x085
-#define FMT_R32G32_SINT                 0x086
-#define FMT_R32G32_UINT                 0x087
+#define FMT_R16G16B16A16_UNORM          0x080       // VF
+#define FMT_R16G16B16A16_SNORM          0x081       // VF
+#define FMT_R16G16B16A16_SINT           0x082       // VF
+#define FMT_R16G16B16A16_UINT           0x083       // VF
+#define FMT_R16G16B16A16_FLOAT          0x084       // VF
+#define FMT_R32G32_FLOAT                0x085       // VF
+#define FMT_R32G32_SINT                 0x086       // VF
+#define FMT_R32G32_UINT                 0x087       // VF
 #define FMT_R32_FLOAT_X8X24_TYPELESS    0x088
 #define FMT_X32_TYPELESS_G8X24_UINT     0x089
 #define FMT_L32A32_FLOAT                0x08A
-#define FMT_R32G32_UNORM                0x08B
-#define FMT_R32G32_SNORM                0x08C
-#define FMT_R64_FLOAT                   0x08D
+#define FMT_R32G32_UNORM                0x08B       // VF
+#define FMT_R32G32_SNORM                0x08C       // VF
+#define FMT_R64_FLOAT                   0x08D       // VF
 #define FMT_R16G16B16X16_UNORM          0x08E
 #define FMT_R16G16B16X16_FLOAT          0x08F
 #define FMT_A32X32_FLOAT                0x090
 #define FMT_L32X32_FLOAT                0x091
 #define FMT_I32X32_FLOAT                0x092
-#define FMT_R16G16B16A16_SSCALED        0x093
-#define FMT_R16G16B16A16_USCALED        0x094
-#define FMT_R32G32_SSCALED              0x095
-#define FMT_R32G32_USCALED              0x096
+#define FMT_R16G16B16A16_SSCALED        0x093       // VF
+#define FMT_R16G16B16A16_USCALED        0x094       // VF
+#define FMT_R32G32_SSCALED              0x095       // VF
+#define FMT_R32G32_USCALED              0x096       // VF
 #define FMT_R32G32_SFIXED               0x0A0
 #define FMT_R64_PASSTHRU                0x0A1
-#define FMT_B8G8R8A8_UNORM              0x0C0
+#define FMT_B8G8R8A8_UNORM              0x0C0       // VF
 #define FMT_B8G8R8A8_UNORM_SRGB         0x0C1
-#define FMT_R10G10B10A2_UNORM           0x0C2
+#define FMT_R10G10B10A2_UNORM           0x0C2       // VF
 #define FMT_R10G10B10A2_UNORM_SRGB      0x0C3
-#define FMT_R10G10B10A2_UINT            0x0C4
-#define FMT_R10G10B10_SNORM_A2_UNORM    0x0C5
-#define FMT_R8G8B8A8_UNORM              0x0C7
+#define FMT_R10G10B10A2_UINT            0x0C4       // VF
+#define FMT_R10G10B10_SNORM_A2_UNORM    0x0C5       // VF
+#define FMT_R8G8B8A8_UNORM              0x0C7       // VF
 #define FMT_R8G8B8A8_UNORM_SRGB         0x0C8
-#define FMT_R8G8B8A8_SNORM              0x0C9
-#define FMT_R8G8B8A8_SINT               0x0CA
-#define FMT_R8G8B8A8_UINT               0x0CB
-#define FMT_R16G16_UNORM                0x0CC
-#define FMT_R16G16_SNORM                0x0CD
-#define FMT_R16G16_SINT                 0x0CE
-#define FMT_R16G16_UINT                 0x0CF
-#define FMT_R16G16_FLOAT                0x0D0
+#define FMT_R8G8B8A8_SNORM              0x0C9       // VF
+#define FMT_R8G8B8A8_SINT               0x0CA       // VF
+#define FMT_R8G8B8A8_UINT               0x0CB       // VF
+#define FMT_R16G16_UNORM                0x0CC       // VF
+#define FMT_R16G16_SNORM                0x0CD       // VF
+#define FMT_R16G16_SINT                 0x0CE       // VF
+#define FMT_R16G16_UINT                 0x0CF       // VF
+#define FMT_R16G16_FLOAT                0x0D0       // VF
 #define FMT_B10G10R10A2_UNORM           0x0D1
 #define FMT_B10G10R10A2_UNORM_SRGB      0x0D2
-#define FMT_R11G11B10_FLOAT             0x0D3
-#define FMT_R32_SINT                    0x0D6
-#define FMT_R32_UINT                    0x0D7
-#define FMT_R32_FLOAT                   0x0D8
+#define FMT_R11G11B10_FLOAT             0x0D3       // VF
+#define FMT_R32_SINT                    0x0D6       // VF
+#define FMT_R32_UINT                    0x0D7       // VF
+#define FMT_R32_FLOAT                   0x0D8       // VF
 #define FMT_R24_UNORM_X8_TYPELESS       0x0D9
 #define FMT_X24_TYPELESS_G8_UINT        0x0DA
 #define FMT_L32_UNORM                   0x0DD
@@ -911,30 +1036,30 @@ typedef struct CCViewport
 #define FMT_R9G9B9E5_SHAREDEXP          0x0ED
 #define FMT_B10G10R10X2_UNORM           0x0EE
 #define FMT_L16A16_FLOAT                0x0F0
-#define FMT_R32_UNORM                   0x0F1
-#define FMT_R32_SNORM                   0x0F2
-#define FMT_R10G10B10X2_USCALED         0x0F3
-#define FMT_R8G8B8A8_SSCALED            0x0F4
-#define FMT_R8G8B8A8_USCALED            0x0F5
-#define FMT_R16G16_SSCALED              0x0F6
-#define FMT_R16G16_USCALED              0x0F7
-#define FMT_R32_SSCALED                 0x0F8
-#define FMT_R32_USCALED                 0x0F9
+#define FMT_R32_UNORM                   0x0F1       // VF
+#define FMT_R32_SNORM                   0x0F2       // VF
+#define FMT_R10G10B10X2_USCALED         0x0F3       // VF
+#define FMT_R8G8B8A8_SSCALED            0x0F4       // VF
+#define FMT_R8G8B8A8_USCALED            0x0F5       // VF
+#define FMT_R16G16_SSCALED              0x0F6       // VF
+#define FMT_R16G16_USCALED              0x0F7       // VF
+#define FMT_R32_SSCALED                 0x0F8       // VF
+#define FMT_R32_USCALED                 0x0F9       // VF
 #define FMT_B5G6R5_UNORM                0x100
 #define FMT_B5G6R5_UNORM_SRGB           0x101
 #define FMT_B5G5R5A1_UNORM              0x102
 #define FMT_B5G5R5A1_UNORM_SRGB         0x103
 #define FMT_B4G4R4A4_UNORM              0x104
 #define FMT_B4G4R4A4_UNORM_SRGB         0x105
-#define FMT_R8G8_UNORM                  0x106
-#define FMT_R8G8_SNORM                  0x107
-#define FMT_R8G8_SINT                   0x108
-#define FMT_R8G8_UINT                   0x109
-#define FMT_R16_UNORM                   0x10A
-#define FMT_R16_SNORM                   0x10B
-#define FMT_R16_SINT                    0x10C
-#define FMT_R16_UINT                    0x10D
-#define FMT_R16_FLOAT                   0x10E
+#define FMT_R8G8_UNORM                  0x106       // VF
+#define FMT_R8G8_SNORM                  0x107       // VF
+#define FMT_R8G8_SINT                   0x108       // VF
+#define FMT_R8G8_UINT                   0x109       // VF
+#define FMT_R16_UNORM                   0x10A       // VF
+#define FMT_R16_SNORM                   0x10B       // VF
+#define FMT_R16_SINT                    0x10C       // VF
+#define FMT_R16_UINT                    0x10D       // VF
+#define FMT_R16_FLOAT                   0x10E       // VF
 #define FMT_A8P8_UNORM_PALETTE0         0x10F
 #define FMT_A8P8_UNORM_PALETTE1         0x110
 #define FMT_I16_UNORM                   0x111
@@ -948,18 +1073,18 @@ typedef struct CCViewport
 #define FMT_R5G5_SNORM_B6_UNORM         0x119
 #define FMT_B5G5R5X1_UNORM              0x11A
 #define FMT_B5G5R5X1_UNORM_SRGB         0x11B
-#define FMT_R8G8_SSCALED                0x11C
-#define FMT_R8G8_USCALED                0x11D
-#define FMT_R16_SSCALED                 0x11E
-#define FMT_R16_USCALED                 0x11F
+#define FMT_R8G8_SSCALED                0x11C       // VF
+#define FMT_R8G8_USCALED                0x11D       // VF
+#define FMT_R16_SSCALED                 0x11E       // VF
+#define FMT_R16_USCALED                 0x11F       // VF
 #define FMT_P8A8_UNORM_PALETTE0         0x122
 #define FMT_P8A8_UNORM_PALETTE1         0x123
 #define FMT_A1B5G5R5_UNORM              0x124
 #define FMT_A4B4G4R4_UNORM              0x125
 #define FMT_L8A8_UINT                   0x126
 #define FMT_L8A8_SINT                   0x127
-#define FMT_R8_UNORM                    0x140
-#define FMT_R8_SNORM                    0x141
+#define FMT_R8_UNORM                    0x140       // VF
+#define FMT_R8_SNORM                    0x141       // VF
 #define FMT_R8_SINT                     0x142
 #define FMT_R8_UINT                     0x143
 #define FMT_A8_UNORM                    0x144
@@ -967,8 +1092,8 @@ typedef struct CCViewport
 #define FMT_L8_UNORM                    0x146
 #define FMT_P4A4_UNORM_PALETTE0         0x147
 #define FMT_A4P4_UNORM_PALETTE0         0x148
-#define FMT_R8_SSCALED                  0x149
-#define FMT_R8_USCALED                  0x14A
+#define FMT_R8_SSCALED                  0x149       // VF
+#define FMT_R8_USCALED                  0x14A       // VF
 #define FMT_P8_UNORM_PALETTE0           0x14B
 #define FMT_L8_UNORM_SRGB               0x14C
 #define FMT_P8_UNORM_PALETTE1           0x14D
@@ -998,19 +1123,19 @@ typedef struct CCViewport
 #define FMT_YCRCB_SWAPY                 0x190
 #define FMT_DXT1_RGB                    0x191
 #define FMT_FXT1                        0x192
-#define FMT_R8G8B8_UNORM                0x193
-#define FMT_R8G8B8_SNORM                0x194
-#define FMT_R8G8B8_SSCALED              0x195
-#define FMT_R8G8B8_USCALED              0x196
-#define FMT_R64G64B64A64_FLOAT          0x197
-#define FMT_R64G64B64_FLOAT             0x198
+#define FMT_R8G8B8_UNORM                0x193       // VF
+#define FMT_R8G8B8_SNORM                0x194       // VF
+#define FMT_R8G8B8_SSCALED              0x195       // VF
+#define FMT_R8G8B8_USCALED              0x196       // VF
+#define FMT_R64G64B64A64_FLOAT          0x197       // VF
+#define FMT_R64G64B64_FLOAT             0x198       // VF
 #define FMT_BC4_SNORM                   0x199
 #define FMT_BC5_SNORM                   0x19A
-#define FMT_R16G16B16_FLOAT             0x19B
-#define FMT_R16G16B16_UNORM             0x19C
-#define FMT_R16G16B16_SNORM             0x19D
-#define FMT_R16G16B16_SSCALED           0x19E
-#define FMT_R16G16B16_USCALED           0x19F
+#define FMT_R16G16B16_FLOAT             0x19B       // VF
+#define FMT_R16G16B16_UNORM             0x19C       // VF
+#define FMT_R16G16B16_SNORM             0x19D       // VF
+#define FMT_R16G16B16_SSCALED           0x19E       // VF
+#define FMT_R16G16B16_USCALED           0x19F       // VF
 #define FMT_BC6H_SF16                   0x1A1
 #define FMT_BC7_UNORM                   0x1A2
 #define FMT_BC7_UNORM_SRGB              0x1A3
