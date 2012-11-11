@@ -394,6 +394,23 @@ static void CreateTestBatchBuffer()
     *cmd++ = 0;
     *cmd++ = 0;
 
+    // Domain Shader
+    *cmd++ = _3DSTATE_DS;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
+    // Geometry Shader
+    *cmd++ = _3DSTATE_GS;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
     // Dummy Draw (needed after MI_SET_CONTEXT or PIPELINE_SELECT)
     *cmd++ = _3DPRIMITIVE;
     *cmd++ = 0;

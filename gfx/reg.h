@@ -513,16 +513,20 @@ typedef struct ConstantBufferBody
 // ------------------------------------------------------------------------------------------------
 // 3DSTATE_CONSTANT_*S
 
-#define _3DSTATE_CONSTANT_VS            GfxInstr(0x3, 0x0, 0x15, 5)
-#define _3DSTATE_CONSTANT_HS            GfxInstr(0x3, 0x0, 0x19, 5)
+#define _3DSTATE_CONSTANT_VS            GFX_INSTR(0x3, 0x0, 0x15, 5)
+#define _3DSTATE_CONSTANT_HS            GFX_INSTR(0x3, 0x0, 0x19, 5)
+#define _3DSTATE_CONSTANT_DS            GFX_INSTR(0x3, 0x0, 0x1a, 5)
+#define _3DSTATE_CONSTANT_GS            GFX_INSTR(0x3, 0x0, 0x16, 5)
 
 // DWORD 1..6 - ConstantBufferBody
 
 // ------------------------------------------------------------------------------------------------
 // 3.2.1.4 3DSTATE_PUSH_CONSTANT_ALLOC_*S
 
-#define _3DSTATE_PUSH_CONSTANT_ALLOC_VS GfxInstr(0x3, 0x1, 0x12, 0)
-#define _3DSTATE_PUSH_CONSTANT_ALLOC_HS GfxInstr(0x3, 0x1, 0x13, 0)
+#define _3DSTATE_PUSH_CONSTANT_ALLOC_VS GFX_INSTR(0x3, 0x1, 0x12, 0)
+#define _3DSTATE_PUSH_CONSTANT_ALLOC_HS GFX_INSTR(0x3, 0x1, 0x13, 0)
+#define _3DSTATE_PUSH_CONSTANT_ALLOC_DS GFX_INSTR(0x3, 0x1, 0x14, 0)
+#define _3DSTATE_PUSH_CONSTANT_ALLOC_GS GFX_INSTR(0x3, 0x1, 0x15, 0)
 
 // DWORD 1 - CONST_ALLOC
 
@@ -639,6 +643,105 @@ typedef struct ConstantBufferBody
 
 // DWORD 2 - Max TessFactor Odd (float)
 // DWORD 3 - Max TessFactor Not Odd (float)
+
+// ------------------------------------------------------------------------------------------------
+// 6.1 3DSTATE_DS
+
+#define _3DSTATE_DS                     GFX_INSTR(0x3, 0x0, 0x1d, 4)
+
+// DWORD 1 - Kernel Start Pointer (relative teo Instruction Base Address)
+
+// DWORD 2
+#define DS_SINGLE_POINT_DISPATCH        (1 << 31)
+#define DS_VECTOR_MASK                  (1 << 30)
+#define DS_SAMPLER_COUNT_SHIFT          27          // SAMPLER_USAGE
+#define DS_BINDING_COUNT_SHIFT          18
+#define DS_BINDING_COUNT_MASK           0xff
+#define DS_FLOATING_POINT_ALT           (1 << 16)
+#define DS_ILLEGAL_OPCODE_EX            (1 << 13)
+#define DS_SOFTWARE_EX                  (1 << 7)
+
+// DWORD 3
+#define DS_SCRATCH_SPACE_BASE_SHIFT     (1 << 10)
+#define DS_SCRATCH_SPACE_BASE_MASK      0x3fffff
+#define DS_PER_THREAD_SPACE_SHIFT       0           // Power of 2 bytes + 1KB
+#define DS_PER_THREAD_SPACE_MASK        0xf
+
+// DWORD 4
+#define DS_DISPATCH_GRF_SHIFT           20
+#define DS_DISPATCH_GRF_MASK            0x1f
+#define DS_URB_READ_LENGTH_SHIFT        11
+#define DS_URB_READ_LENGTH_MASK         0x3f
+#define DS_URB_READ_OFFSET_SHIFT        4
+#define DS_URB_READ_OFFSET_MASK         0x3f
+
+// DWORD 5
+#define DS_MAX_THREAD_SHIFT             25
+#define DS_MAX_THREAD_MASK              0x7f
+#define DS_STATISTICS                   (1 << 10)
+#define DS_COMPUTE_W                    (1 << 2)
+#define DS_CACHE_DISABLE                (1 << 1)
+#define DS_ENABLE                       (1 << 0)
+
+// ------------------------------------------------------------------------------------------------
+// 7.2.1.1 3DSTATE_GS
+
+#define _3DSTATE_GS                     GFX_INSTR(0x3, 0x0, 0x11, 5)
+
+// DWORD 1 - Kernel Start Pointer (relative teo Instruction Base Address)
+
+// DWORD 2
+#define GS_SINGLE_PROGRAM_FLOW          (1 << 31)
+#define GS_VECTOR_MASK                  (1 << 30)
+#define GS_SAMPLER_COUNT_SHIFT          27          // SAMPLER_USAGE
+#define GS_BINDING_COUNT_SHIFT          18
+#define GS_BINDING_COUNT_MASK           0xff
+#define GS_THREAD_HIGH_PRIORITY         (1 << 17)
+#define GS_FLOATING_POINT_ALT           (1 << 16)
+#define GS_ILLEGAL_OPCODE_EX            (1 << 13)
+#define GS_MASK_STACK_EX                (1 << 11)
+#define GS_SOFTWARE_EX                  (1 << 7)
+
+// DWORD 3
+#define GS_SCRATCH_SPACE_BASE_SHIFT     (1 << 10)
+#define GS_SCRATCH_SPACE_BASE_MASK      0x3fffff
+#define GS_PER_THREAD_SPACE_SHIFT       0           // Power of 2 bytes + 1KB
+#define GS_PER_THREAD_SPACE_MASK        0xf
+
+// DWORD 4
+#define GS_OUTPUT_VTX_SIZE_SHIFT        23          // multiples of 32B - 1
+#define GS_OUTPUT_VTX_SIZE_MASK         0x3f
+#define GS_OUTPUT_TOPOLOGY_SHIFT        17          // 3DPRIM_TOPOLOGY
+#define GS_URB_READ_LENGTH_SHIFT        11
+#define GS_URB_READ_LENGTH_MASK         0x3f
+#define GS_URB_INCLUDE_VTX_HANDLES      (1 << 10)
+#define GS_URB_READ_OFFSET_SHIFT        4
+#define GS_URB_READ_OFFSET_MASK         0x3f
+#define GS_DISPATCH_GRF_SHIFT           0
+#define GS_DISPATCH_GRF_MASK            0xf
+
+// DWORD 5
+#define GS_MAX_THREAD_SHIFT             25
+#define GS_MAX_THREAD_MASK              0x7f
+#define GS_CONTROL_STREAM_ID            (1 << 24)
+#define GS_CONTROL_HEADER_SIZE_SHIFT    20
+#define GS_CONTROL_HEADER_SIZE_MASK     0xf
+#define GS_INSTANCE_CONTROL_SHIFT       15
+#define GS_INSTANCE_CONTROL_MASK        0x1f
+#define GS_DEFAULT_STREAM_ID_SHIFT      13
+#define GS_DEFAULT_STREAM_ID_MASK       0x3
+#define GS_DISPATCH_DUAL_OBJECT         (1 << 12)
+#define GS_DISPATCH_DUAL_INSTANCE       (1 << 11)
+#define GS_STATISTICS                   (1 << 10)
+#define GS_INVOCATIONS_INC_SHIFT        5
+#define GS_INVOCATIONS_INC_MASK         0x1f
+#define GS_INCLUDE_PID                  (1 << 4)
+#define GS_HINT                         (1 << 3)
+#define GS_REORDE                       (1 << 2)
+#define GS_DISCARD_ADJACENCY            (1 << 1)
+#define GS_ENABLE                       (1 << 0)
+
+// DWORD 6 - Semaphore Handle
 
 // ------------------------------------------------------------------------------------------------
 // 10.3.15 SF_CLIP_VIEWPORT
