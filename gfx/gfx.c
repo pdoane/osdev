@@ -422,6 +422,35 @@ static void CreateTestBatchBuffer()
     *cmd++ = 0;
     *cmd++ = 0;
 
+    // Setup
+    *cmd++ = _3DSTATE_DRAWING_RECTANGLE;
+    *cmd++ = 0;
+    *cmd++ = (480 << DRAWING_RECT_Y_MAX_SHIFT) | (720 << DRAWING_RECT_X_MAX_SHIFT);
+    *cmd++ = 0;
+
+    *cmd++ = _3DSTATE_SF;
+    *cmd++ = 0;
+    *cmd++ = CULL_NONE << SF_CULL_SHIFT;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
+    *cmd++ = _3DSTATE_SBE;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
     // Dummy Draw (needed after MI_SET_CONTEXT or PIPELINE_SELECT)
     *cmd++ = _3DPRIMITIVE;
     *cmd++ = 0;

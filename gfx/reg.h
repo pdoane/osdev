@@ -871,6 +871,133 @@ typedef struct ConstantBufferBody
 #define CLIP_MAX_VP_INDE_MASK           0xf
 
 // ------------------------------------------------------------------------------------------------
+// 10.3.5.1 3DSTATE_DRAWING_RECTANGLE
+
+#define _3DSTATE_DRAWING_RECTANGLE      GFX_INSTR(0x3, 0x1, 0x00, 2)
+
+// DWORD 1
+#define DRAWING_RECT_Y_MIN_SHIFT        16
+#define DRAWING_RECT_Y_MIN_MASK         0xffff
+#define DRAWING_RECT_X_MIN_SHIFT        0
+#define DRAWING_RECT_X_MIN_MASK         0xffff
+
+// DWORD 2
+#define DRAWING_RECT_Y_MAX_SHIFT        16
+#define DRAWING_RECT_Y_MAX_MASK         0xffff
+#define DRAWING_RECT_X_MAX_SHIFT        0
+#define DRAWING_RECT_X_MAX_MASK         0xffff
+
+// DWORD 3
+#define DRAWING_RECT_Y_ORIGIN_SHIFT     16
+#define DRAWING_RECT_Y_ORIGIN_MASK      0xffff
+#define DRAWING_RECT_X_ORIGIN_SHIFT     0
+#define DRAWING_RECT_X_ORIGIN_MASK      0xffff
+
+// ------------------------------------------------------------------------------------------------
+// 10.3.13 3DSTATE_SF
+
+#define _3DSTATE_SF                     GFX_INSTR(0x3, 0x0, 0x13, 5)
+
+// DEPTH_FORMAT
+#define DFMT_D32_FLOAT_S8X24_UINT       0x0
+#define DFMT_D32_FLOAT                  0x1
+#define DFMT_D24_UNORM_S8_UINT          0x2
+#define DFMT_D24_UNORM_X8_UINT          0x3
+#define DFMT_D16_UNORM                  0x5
+#define DFMT_MASK                       0x7
+
+// FILL_MODE
+#define FILL_SOLID                      0x0
+#define FILL_WIREFRAME                  0x1
+#define FILL_POINT                      0x2
+#define FILL_MASK                       0x3
+
+// DWORD 1
+#define SF_FORMAT_SHIFT                 12          // DEPTH_FORMAT
+#define SF_LEGACY_GLOBAL_DEPTH_BIAS     (1 << 11)
+#define SF_STATISTICS                   (1 << 10)
+#define SF_GLOBAL_DEPTH_OFFSET_SOLID    (1 << 9)
+#define SF_GLOBAL_DEPTH_OFFSET_WF       (1 << 8)
+#define SF_GLOBAL_DEPTH_OFFSET_POINT    (1 << 7)
+#define SF_FRONT_FACE_FILL_SHIFT        5           // FILL_MODE
+#define SF_BACK_FACE_FILL_SHIFT         3           // FILL_MODE
+#define SF_VIEW_TRANSFORM               (1 << 1)
+#define SF_FRONT_WINDING                (1 << 0)
+
+// DWORD 2
+#define SF_ANTI_ALIAS                   (1 << 31)
+#define SF_CULL_SHIFT                   29          // CULL_MODE
+#define SF_LINE_WIDTH_SHIFT             18          // Unsigned 3.7
+#define SF_LINE_WIDTH_MASK              0x3ff
+#define SF_LINE_END_AA_WIDTH_SHIFT      16
+#define SF_SCISSOR                      (1 << 11)
+#define SF_MULTISAMPLE_SHIFT            (1 << 8)
+
+// DWORD 3
+#define SF_LAST_PIXEL                   (1 << 31)
+#define SF_TRI_STRIP_LIST_PVTX_SHIFT    29
+#define SF_TRI_STRIP_LIST_PVTX_MASK     0x3
+#define SF_LINE_STRIP_LIST_PVTX_SHIFT   27
+#define SF_LINE_STRIP_LIST_PVTX_MASK    0x3
+#define SF_TRI_FAN_PVTX_SHIFT           25
+#define SF_TRI_FAN_PVTX_MASK            0x3
+#define SS_AA_LINE_DISTANCE             (1 << 14)
+#define SF_SUBPIXEL_4_BITS              (1 << 12)
+#define SF_USE_POINT_WIDTH_STATE        (1 << 11)
+#define SF_POINT_WIDTH_SHIFT            0           // Unsigned 8.3
+#define SF_POINT_WIDTH_MASK             0x7ff
+
+// DWORD 4 - Global Depth Offset Constant (float)
+// DWORD 5 - Global Depth Offset Scale (float)
+// DWORD 6 - Global Depth Offset Clamp (float)
+
+// ------------------------------------------------------------------------------------------------
+// 10.3.14 3DSTATE_SBE
+
+#define _3DSTATE_SBE                    GFX_INSTR(0x3, 0x0, 0x1f, 0xc)
+
+// ATTR_CONST
+#define ATTR_CONST_0000                 0x0
+#define ATTR_CONST_0001_FLOAT           0x1
+#define ATTR_CONST_1111_FLOAT           0x2
+#define ATTR_PRIM_ID                    0x3
+#define ATTR_CONST_MASK                 0x3
+
+// ATTR_INPUT
+#define ATTR_INPUT                      0x0
+#define ATTR_INPUT_FACING               0x1
+#define ATTR_INPUT_W                    0x2
+#define ATTR_INPUT_FACING_W             0x3
+#define ATTR_INPUT_MASK                 0x3
+
+// SBE_ATTR
+#define SBE_ATTR_OVERRIDE_W             (1 << 15)
+#define SBE_ATTR_OVERRIDE_Z             (1 << 14)
+#define SBE_ATTR_OVERRIDE_Y             (1 << 13)
+#define SBE_ATTR_OVERRIDE_X             (1 << 12)
+#define SBE_ATTR_CONST_SOUCE_SHIFT      9           // ATTR_CONST
+#define SBE_ATTR_INPUT_SHIFT            6           // ATTR_INPUT
+#define SBE_ATTR_SOURCE_INDEX_SHIFT     0
+#define SBE_ATTR_SOURCE_INDEX_MASK      0x1f
+
+// DWORD 1
+#define SBE_ATTR_SWIZZLE_HIGH_BANK      (1 << 28)
+#define SBE_SF_OUTPUT_COUNT_SHIFT       22
+#define SBE_SF_OUTPUT_COUNT_MASK        0x3f
+#define SBE_ATTR_SWIZZLE                (1 << 21)
+#define SBE_POINT_SPRITE_ORIGIN_LL      (1 << 20)
+#define SBE_URB_READ_LENGTH_SHIFT       11
+#define SBE_URB_READ_LENGTH_MASK        0x3f
+#define SBE_URB_READ_OFFSET_SHIFT       4
+#define SBE_URB_READ_OFFSET_MASK        0x3f
+
+// DWORD 2-9 - 16 SBE_ATTR elements
+// DWORD 10 - Point sprite Texture Coordinate Enable
+// DWORD 11 - Constant Interpolation Enable
+// DWORD 12 - WrapShortest Enables Attributes 0-7
+// DWORD 13 - WrapShortest Enables Attributes 8-15
+
+// ------------------------------------------------------------------------------------------------
 // 10.3.15 SF_CLIP_VIEWPORT
 
 typedef struct SFClipViewport
