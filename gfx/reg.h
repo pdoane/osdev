@@ -533,6 +533,7 @@ typedef struct ConstantBufferBody
 #define _3DSTATE_CONSTANT_HS            GFX_INSTR(0x3, 0x0, 0x19, 5)
 #define _3DSTATE_CONSTANT_DS            GFX_INSTR(0x3, 0x0, 0x1a, 5)
 #define _3DSTATE_CONSTANT_GS            GFX_INSTR(0x3, 0x0, 0x16, 5)
+#define _3DSTATE_CONSTANT_PS            GFX_INSTR(0x3, 0x0, 0x17, 5)
 
 // DWORD 1..6 - ConstantBufferBody
 
@@ -543,6 +544,7 @@ typedef struct ConstantBufferBody
 #define _3DSTATE_PUSH_CONSTANT_ALLOC_HS GFX_INSTR(0x3, 0x1, 0x13, 0)
 #define _3DSTATE_PUSH_CONSTANT_ALLOC_DS GFX_INSTR(0x3, 0x1, 0x14, 0)
 #define _3DSTATE_PUSH_CONSTANT_ALLOC_GS GFX_INSTR(0x3, 0x1, 0x15, 0)
+#define _3DSTATE_PUSH_CONSTANT_ALLOC_PS GFX_INSTR(0x3, 0x1, 0x16, 0)
 
 // DWORD 1 - CONST_ALLOC
 
@@ -1042,6 +1044,304 @@ typedef struct ScissorRect
     u16 maxX;
     u16 maxY;
 } ScissorRect;
+
+// ------------------------------------------------------------------------------------------------
+// 11.2.1 3DSTATE_WM
+
+#define _3DSTATE_WM                     GFX_INSTR(0x3, 0x0, 0x14, 1)
+
+// PSCDEPTH
+#define PSCDEPTH_OFF                    0x0
+#define PSCDEPTH_ON                     0x1
+#define PSCDEPTH_ON_GE                  0x2
+#define PSCDEPTH_ON_LE                  0x3
+#define PSCDEPTH_MASK                   0x3
+
+// EDSC_MODE
+#define EDSC_NORMAL                     0x0
+#define EDSC_PSEXEC                     0x1
+#define EDSC_PREPS                      0x2
+#define EDSC_MASK                       0x3
+
+// INTERP_MODE
+#define INTERP_PIXEL                    0x0
+#define INTERP_CENTROID                 0x2
+#define INTERP_SAMPLE                   0x3
+#define INTERP_MASK                     0x3
+
+// AA_REGION
+#define AA_HALF_PIXEL                   0x0
+#define AA_ONE_PIXEL                    0x1
+#define AA_TWO_PIXELS                   0x2
+#define AA_FOUR_PIXELS                  0x3
+#define AA_MASK                         0x3
+
+// DWORD 1
+#define WM_STATISTICS                   (1 << 31)
+#define WM_DEPTH_BUFFER_CLEAR           (1 << 30)
+#define WM_THREAD_DISPATCH              (1 << 29)
+#define WM_DEPTH_BUFFER_RESOLVE         (1 << 28)
+#define WM_HIER_DEPTH_BUFFER_RESOLVE    (1 << 27)
+#define WM_LEGACY_DIAMOND_LINE          (1 << 26)
+#define WM_PS_KILL_PIXEL                (1 << 25)
+#define WM_PS_COMPUTED_DEPTH_SHIFT      23          // PSCDEPTH
+#define WM_EARLY_DS_CONTROL_SHIFT       21          // EDSC_MODE
+#define WM_PS_USES_SOURCE_DEPTH         (1 << 20)
+#define WM_PS_USES_SOURCE_W             (1 << 19)
+#define WM_POS_ZW_INTERP_MODE_SHIFT     17
+#define WM_PS_USES_NON_PERSP_SAMPLE     (1 << 16)
+#define WM_PS_USES_NON_PERSP_CENTROID   (1 << 15)
+#define WM_PS_USES_NON_PERSP_LOC        (1 << 14)
+#define WM_PS_USES_PERSP_SAMPLE         (1 << 13)
+#define WM_PS_USES_PERSP_CENTROID       (1 << 12)
+#define WM_PS_USES_PERSP_LOC            (1 << 11)
+#define WM_PS_USES_COVERAGE_MASK        (1 << 10)
+#define WM_LINE_END_CAP_AA_WIDTH_SHIFT  8           // AA_REGION
+#define WM_LINE_AA_WIDTH_SHIFT          6           // AA_REGION
+#define WM_POLYGON_STIPPLE              (1 << 4)
+#define WM_LINE_STIPPLE                 (1 << 3)
+#define WM_RASTRULE_UPPER_RIGHT         (1 << 2)
+#define WM_MS_RASTERIZER                (1 << 1)
+#define WM_MS_PATTERN                   (1 << 0)
+
+// DWORD 2
+#define WM_MS_PER_PIXEL                 (1 << 31)
+
+// ------------------------------------------------------------------------------------------------
+// 11.2.2 3DSTATE_PS
+
+#define _3DSTATE_PS                     GFX_INSTR(0x3, 0x0, 0x20, 6)
+
+// ROUND_MODE
+#define ROUND_EVEN                      0x0
+#define ROUND_UP                        0x1
+#define ROUND_DOWN                      0x2
+#define ROUND_ZERO                      0x3
+#define ROUND_MASK                      0x3
+
+// POSOFFSET_MODE
+#define POSOFFSET_NONE                  0x0
+#define POSOFFSET_CENTROID              0x2
+#define POSOFFSET_SAMPLE                0x3
+
+// DWORD 1 - Kernel Start Pointer 0 (relative to Instruction Base Address)
+
+// DWORD 2
+#define PS_SINGLE_PROGRAM_FLOW          (1 << 31)
+#define PS_VECTOR_MASK                  (1 << 30)
+#define PS_SAMPLER_COUNT_SHIFT          27          // SAMPLER_USAGE
+#define PS_DENORMAL_RETAIN              (1 << 26)
+#define PS_BINDING_COUNT_SHIFT          18
+#define PS_BINDING_COUNT_MASK           0xff
+#define PS_FLOATING_POINT_ALT           (1 << 16)
+#define PS_ROUND_MODE_SHIFT             14
+#define PS_ILLEGAL_OPCODE_EX            (1 << 13)
+#define PS_MASK_STACK_EX                (1 << 11)
+#define PS_SOFTWARE_EX                  (1 << 7)
+
+// DWORD 3
+#define PS_SCRATCH_SPACE_BASE_SHIFT     (1 << 10)
+#define PS_SCRATCH_SPACE_BASE_MASK      0x3fffff
+#define PS_PER_THREAD_SPACE_SHIFT       0           // Power of 2 bytes + 1KB
+#define PS_PER_THREAD_SPACE_MASK        0xf
+
+// DWORD 4
+#define PS_MAX_THREAD_SHIFT             24
+#define PS_MAX_THREAD_MASK              0xff
+#define PS_PUSH_CONSTANTS               (1 << 11)
+#define PS_ATTRIBUTES                   (1 << 10)
+#define PS_OUTPUT_MASK                  (1 << 9)
+#define PS_RENDER_TARGET_FAST_CLEAR     (1 << 8)
+#define PS_DUAL_SOUCE_BLEND             (1 << 7)
+#define PS_RENDER_TARGET_RESOLVE        (1 << 6)
+#define PS_POS_XY_OFFSET_SHIFT          3
+#define PS_DISPATCH32                   (1 << 2)
+#define PS_DISPATCH16                   (1 << 1)
+#define PS_DISPATCH8                    (1 << 0)
+
+// DWORD 5
+#define PS_DISPATCH_GRF_MASK            0x7f
+#define PS_DISPATCH0_GRF_SHIFT          16
+#define PS_DISPATCH1_GRF_SHIFT          8
+#define PS_DISPATCH2_GRF_SHIFT          0
+
+// DWORD 6 - Kernel Start Pointer 1 (relative to Instruction Base Address)
+
+// DWORD 7 - Kernel Start Pointer 2 (relative to Instruction Base Address)
+
+// ------------------------------------------------------------------------------------------------
+// 11.2.5 3DSTATE_SAMPLE_MASK
+
+#define _3DSTATE_SAMPLE_MASK            GFX_INSTR(0x3, 0x0, 0x18, 0)
+
+// DWORD 1 - Sample Mask (low-byte)
+
+// ------------------------------------------------------------------------------------------------
+// 11.3.2.2 3DSTATE_AA_LINE_PARAMS
+
+#define _3DSTATE_AA_LINE_PARAMS             GFX_INSTR(0x3, 0x1, 0x0a, 1)
+
+// DWORD 1
+#define AA_LINE_COVERAGE_BIAS_SHIFT         16
+#define AA_LINE_COVERAGE_BIAS_MASK          0xff
+#define AA_LINE_COVERAGE_SLOPE_SHIFT        0
+#define AA_LINE_COVERAGE_SLOPE_MASK         0xff
+
+// DWORD 2
+#define AA_LINE_COVERAGE_ENDCAP_BIAS_SHIFT  16
+#define AA_LINE_COVERAGE_ENDCAP_BIAS_MASK   0xff
+#define AA_LINE_COVERAGE_ENDCAP_SLOPE_SHIFT 0
+#define AA_LINE_COVERAGE_ENDCAP_SLOPE_MASK  0xff
+
+// ------------------------------------------------------------------------------------------------
+// 11.3.2.4 3DSTATE_LINE_STIPPLE
+
+#define _3DSTATE_LINE_STIPPLE               GFX_INSTR(0x3, 0x1, 0x08, 1)
+
+// DWORD 1
+#define LINE_STIPPLE_MODIFY                 (1 << 31)
+#define LINE_STIPPLE_REPEAT_COUNTER_SHIFT   21
+#define LINE_STIPPLE_REPEAT_COUNTER_MASK    0x1ff
+#define LINE_STIPPLE_CURRENT_INDEX_SHIFT    16
+#define LINE_STIPPLE_CURRENT_INDEX_MASK     0xf
+#define LINE_STIPPLE_PATTERN_SHIFT          0
+#define LINE_STIPPLE_PATTERN_MASK           0xffff
+
+// DWORD 2
+#define LINE_STIPPLE_INV_REPEAT_COUNT_SHIFT 15
+#define LINE_STIPPLE_INV_REPEAT_COUNT_MASK  0x1ffff
+#define LINE_STIPPLE_REPEAT_COUNT_SHIFT     0
+#define LINE_STIPPLE_REPEAT_COUNT_MASK      0x1ff
+
+// ------------------------------------------------------------------------------------------------
+// 11.3.3.2 3DSTATE_POLY_STIPPLE_OFFSET
+
+#define _3DSTATE_POLY_STIPPLE_OFFSET    GFX_INSTR(0x3, 0x1, 0x06, 0)
+
+// DWORD 1
+#define POLY_STIPPLE_X_OFFSET_SHIFT     8
+#define POLY_STIPPLE_X_OFFSET_MASK      0x1f
+#define POLY_STIPPLE_Y_OFFSET_SHIFT     0
+#define POLY_STIPPLE_Y_OFFSET_MASK      0x1f
+
+// ------------------------------------------------------------------------------------------------
+// 11.3.3.3 3DSTATE_POLY_STIPPLE_PATTERN
+
+#define _3DSTATE_POLY_STIPPLE_PATTERN(n)    GFX_INSTR(0x3, 0x1, 0x07, (n)-1)
+
+// DWORD 1 - Stipple Pattern Row 1
+// DWORD 2..32 - Stipple Pattern Rown 2-32
+
+// ------------------------------------------------------------------------------------------------
+// 11.4.2 3DSTATE_MULTISAMPLE
+
+#define _3DSTATE_MULTISAMPLE            GFX_INSTR(0x3, 0x1, 0x0d, 2)
+
+// MS_COUNT
+#define MS_COUNT_1                      0x0
+#define MS_COUNT_4                      0x2
+#define MS_COUNT_8                      0x3
+#define MS_COUNT_MASK                   0x7
+
+// DWORD 1
+#define MS_PIXEL_UPPER_LEFT             (1 << 4)
+#define MS_COUNT_SHIFT                  1
+
+// DWORD 2
+#define MS_SAMPLE_OFFSET_MASK           0xf
+#define MS_SAMPLE3_X_OFFSET_SHIFT       28
+#define MS_SAMPLE3_Y_OFFSET_SHIFT       24
+#define MS_SAMPLE2_X_OFFSET_SHIFT       20
+#define MS_SAMPLE2_Y_OFFSET_SHIFT       16
+#define MS_SAMPLE1_X_OFFSET_SHIFT       12
+#define MS_SAMPLE1_Y_OFFSET_SHIFT       8
+#define MS_SAMPLE0_X_OFFSET_SHIFT       4
+#define MS_SAMPLE0_Y_OFFSET_SHIFT       0
+
+// DWORD 3
+#define MS_SAMPLE7_X_OFFSET_SHIFT       28
+#define MS_SAMPLE7_Y_OFFSET_SHIFT       24
+#define MS_SAMPLE6_X_OFFSET_SHIFT       20
+#define MS_SAMPLE6_Y_OFFSET_SHIFT       16
+#define MS_SAMPLE5_X_OFFSET_SHIFT       12
+#define MS_SAMPLE5_Y_OFFSET_SHIFT       8
+#define MS_SAMPLE4_X_OFFSET_SHIFT       4
+#define MS_SAMPLE4_Y_OFFSET_SHIFT       0
+
+// ------------------------------------------------------------------------------------------------
+// 11.5.5.1 3DSTATE_DEPTH_BUFFER
+
+#define _3DSTATE_DEPTH_BUFFER               GFX_INSTR(0x3, 0x0, 0x05, 0)
+
+// DWORD 1
+#define DEPTH_BUF_SURFACE_TYPE_SHIFT        29          // SURFTYPE
+#define DEPTH_BUF_DEPTH_WRITE               (1 << 28)
+#define DEPTH_BUF_STENCIL_WRITE             (1 << 27)
+#define DEPTH_BUF_HIER_BUFFER               (1 << 22)
+#define DEPTH_BUF_SURFACE_FMT_SHIFT         18          // DEPTH_FORMAT
+#define DEPTH_BUF_SURFACE_PITCH_SHIFT       0
+#define DEPTH_BUF_SURFACE_PITCH_MASK        0x3ffff
+
+// DWORD 2 - Surface Base Address
+
+// DWORD 3
+#define DEPTH_BUF_HEIGHT_SHIFT              18
+#define DEPTH_BUF_HEIGHT_MASK               0x3fff
+#define DEPTH_BUF_WIDTH_SHIFT               4
+#define DEPTH_BUF_WIDTH_MASK                0x3fff
+#define DEPTH_BUF_LOD_SHIFT                 0
+#define DEPTH_BUF_LOD_MASK                  0xf
+
+// DWORD 4
+#define DEPTH_BUF_DEPTH_SHIFT               21
+#define DEPTH_BUF_DEPTH_MASK                0x7ff
+#define DEPTH_BUF_MIN_ELEMENT_SHIFT         10
+#define DEPTH_BUF_MIN_ELEMENT_MASK          0x7ff
+#define DEPTH_BUF_OBJ_CONTROL_STATE_SHIFT   0x0         // MEMORY_OBJECT_CONTROL_STATE
+
+// DWORD 5
+#define DEPTH_BUF_OFFSET_Y_SHIFT            16
+#define DEPTH_BUF_OFFSET_Y_MASK             0xffff
+#define DEPTH_BUF_OFFSET_X_SHIFT            0
+#define DEPTH_BUF_OFFSET_X_MASK             0xffff
+
+// DWORD 6
+#define DEPTH_BUF_RT_VIEW_EXTENT_SHIFT      21
+#define DEPTH_BUF_RT_VIEW_EXTENT_MASK       0x7ff
+
+// ------------------------------------------------------------------------------------------------
+// 11.5.5.2 3DSTATE_STENCIL_BUFFER
+
+#define _3DSTATE_STENCIL_BUFFER             GFX_INSTR(0x3, 0x0, 0x06, 1)
+
+// DWORD 1
+#define STENCIL_BUF_OBJ_CONTROL_STATE_SHIFT 25          // MEMORY_OBJECT_CONTROL_STATE
+#define STENCIL_BUF_SURFACE_PITCH_SHIFT     0
+#define STENCIL_BUF_SURFACE_PITCH_MASK      0xffff
+
+// DWORD 2 - Surface Base Address
+
+// ------------------------------------------------------------------------------------------------
+// 11.5.5.3 3DSTATE_HIER_DEPTH_BUFFER
+
+#define _3DSTATE_HIER_DEPTH_BUFFER          GFX_INSTR(0x3, 0x0, 0x07, 1)
+
+// DWORD 1
+#define HDEPTH_BUF_OBJ_CONTRL_STATE_SHIFT   25          // MEMORY_OBJECT_CONTROL_STATE
+#define HDEPTH_BUF_SURFACE_PITCH_SHIFT      0
+#define HDEPTH_BUF_SURFACE_PITCH_MASK       0xffff
+
+// DWORD 2 - Surface Base Address
+
+// ------------------------------------------------------------------------------------------------
+// 11.5.5.4 3DSTATE_CLEAR_PARAMS
+
+#define _3DSTATE_CLEAR_PARAMS           GFX_INSTR(0x3, 0x0, 0x04, 1)
+
+// DWORD 1 - Depth Clear Value
+
+// DWORD 2
+#define CLEAR_DEPTH_VALUE               (1 << 0)
 
 // ------------------------------------------------------------------------------------------------
 // 12.2 Pixel Pipeline State
@@ -1717,7 +2017,7 @@ typedef struct CCViewport
 #define MULTISAMPLECOUNT_MASK           0x7
 
 // Flags 0
-#define SURFACE_TYPE_SHIFT              (1 << 29)   // SURFTYPE
+#define SURFACE_TYPE_SHIFT              29          // SURFTYPE
 #define SURFACE_ARRAY                   (1 << 28)
 #define SURFACE_FORMAT_SHIFT            18          // SURFACE_FORMAT
 #define SURFACE_VERT_ALIGN_SHIFT        16          // Values not doucmented

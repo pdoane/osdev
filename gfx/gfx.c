@@ -441,13 +441,13 @@ static void CreateTestBatchBuffer()
     *cmd++ = 0;
     *cmd++ = 0;
 
-    // Clip
+    // Setup
     *cmd++ = _3DSTATE_CLIP;
     *cmd++ = 0;
     *cmd++ = 0;
     *cmd++ = 0;
 
-    // Setup
+    // Rasterizer
     *cmd++ = _3DSTATE_DRAWING_RECTANGLE;
     *cmd++ = 0;
     *cmd++ = (480 << DRAWING_RECT_Y_MAX_SHIFT) | (720 << DRAWING_RECT_X_MAX_SHIFT);
@@ -473,6 +473,50 @@ static void CreateTestBatchBuffer()
     *cmd++ = 0;
     *cmd++ = 0;
     *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
+    // Pixel Shader (Windower)
+    *cmd++ = _3DSTATE_WM;
+    *cmd++ = WM_THREAD_DISPATCH;
+    *cmd++ = 0;
+
+    *cmd++ = _3DSTATE_PS;
+    *cmd++ = 0;     // TODO - need pixel shader kernel
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = (85 << PS_MAX_THREAD_SHIFT) | PS_DISPATCH8;    // TODO - which kernel for dispatch 8/16/32?
+    *cmd++ = 0;     // TODO - where to read GPF? Is it even needed for a constant color kernel?
+    *cmd++ = 0;
+    *cmd++ = 0;
+
+    *cmd++ = _3DSTATE_SAMPLE_MASK;
+    *cmd++ = 1;
+
+    *cmd++ = _3DSTATE_MULTISAMPLE;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
+    *cmd++ = _3DSTATE_DEPTH_BUFFER;
+    *cmd++ =
+          (SURFTYPE_NULL << DEPTH_BUF_SURFACE_TYPE_SHIFT)
+        | (DFMT_D32_FLOAT << DEPTH_BUF_SURFACE_FMT_SHIFT);
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
+    *cmd++ = _3DSTATE_STENCIL_BUFFER;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
+    *cmd++ = _3DSTATE_HIER_DEPTH_BUFFER;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
+    *cmd++ = _3DSTATE_CLEAR_PARAMS;
     *cmd++ = 0;
     *cmd++ = 0;
 
