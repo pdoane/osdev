@@ -768,8 +768,8 @@ typedef struct ConstantBufferBody
 #define SO_STREAM2_READ_LEN_SHIFT       16
 #define SO_STREAM1_READ_OFFSET          (1 << 13)
 #define SO_STREAM1_READ_LEN_SHIFT       8
-#define SO_STREAM1_READ_OFFSET          (1 << 5)
-#define SO_STREAM1_READ_LEN_SHIFT       0
+#define SO_STREAM0_READ_OFFSET          (1 << 5)
+#define SO_STREAM0_READ_LEN_SHIFT       0
 
 // ------------------------------------------------------------------------------------------------
 // 8.5 3DSTATE_SO_DECL_LIST
@@ -815,6 +815,60 @@ typedef struct ConstantBufferBody
 
 // DWORD 2 - Surface Base Address
 // DWORD 3 - End Base Address
+
+// ------------------------------------------------------------------------------------------------
+// 9.3.1.1 3DSTATE_CLIP
+
+#define _3DSTATE_CLIP                   GFX_INSTR(0x3, 0x0, 0x12, 2)
+
+// CULL_MODE
+#define CULL_BOTH                       0x0
+#define CULL_NONE                       0x1
+#define CULL_FRONT                      0x2
+#define CULL_BACK                       0x3
+#define CULL_MASK                       0x3
+
+// CLIP_MODE
+#define CLIP_NORMAL                     0x0
+#define CLIP_REJECT_ALL                 0x3
+#define CLIP_ACCEPT_ALL                 0x4
+#define CLIP_MASK                       0x7
+
+// DWORD 1
+#define CLIP_FRONT_CCW                  (1 << 20)
+#define CLIP_SUBPIXEL_4_BITS            (1 << 19)
+#define CLIP_EARLY_CULL                 (1 << 18)
+#define CLIP_CULL_SHIFT                 16          // CULL_MODE
+#define CLIP_STATISTICS                 (1 << 10)
+#define CLIP_USER_CULL_SHIFT            0
+#define CLIP_USER_CULL_MASK             0xff
+
+// DWORD 2
+#define CLIP_ENABLE                     (1 << 31)
+#define CLIP_API_DX                     (1 << 30)   // Value not documented, 0 is OGL
+#define CLIP_VIEWPORT_XY                (1 << 28)
+#define CLIP_VIEWPORT_Z                 (1 << 27)
+#define CLIP_GUARDBAND                  (1 << 26)
+#define CLIP_USER_CLIP_SHIFT            16
+#define CLIP_USER_CLIP_MASK             0xff
+#define CLIP_MODE_SHIFT                 13          // CLIP_MODE
+#define CLIP_PERSP_DIVIDE               (1 << 9)
+#define CLIP_NON_PERSP_BARY             (1 << 8)
+#define CLIP_TRI_STRIP_LIST_PVTX_SHIFT  4
+#define CLIP_TRI_STRIP_LIST_PVTX_MASK   0x3
+#define CLIP_LINE_STRIP_LIST_PVTX_SHIFT 2
+#define CLIP_LINE_STRIP_LIST_PVTX_MASK  0x3
+#define CLIP_TRI_FAN_PVTX_SHIFT         0
+#define CLIP_TRI_FAN_PVTX_MASK          0x3
+
+// DWORD 3
+#define CLIP_MIN_POINT_WIDTH_SHIFT      17          // Unsigned 8.3
+#define CLIP_MIN_POINT_WIDTH_MASK       0x7ff
+#define CLIP_MAX_POINT_WIDTH_SHIFT      6           // Unsigned 8.3
+#define CLIP_MAX_POINT_WIDTH_MASK       0x7ff
+#define CLIP_FORCE_ZERO_RTA_INDEX       (1 << 5)
+#define CLIP_MAX_VP_INDEX_SHIFT         0
+#define CLIP_MAX_VP_INDE_MASK           0xf
 
 // ------------------------------------------------------------------------------------------------
 // 10.3.15 SF_CLIP_VIEWPORT
