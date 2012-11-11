@@ -343,6 +343,31 @@ static void CreateTestBatchBuffer()
     *cmd++ = _3DSTATE_SCISSOR_STATE_POINTERS;
     *cmd++ = 0;     // can be disabled in the 3DSTATE_SF
 
+    // URB
+    *cmd++ = _3DSTATE_URB_VS;
+    *cmd++ =
+          (0 << URB_START_ADDR_SHIFT)       // 0KB start
+        | (0 << URB_ENTRY_ALLOC_SIZE_SHIFT) // 1 64B entry
+        | (704 << URB_ENTRY_COUNT_SHIFT);   // maximum entry count for VS
+
+    *cmd++ = _3DSTATE_URB_HS;
+    *cmd++ =
+          (0 << URB_START_ADDR_SHIFT)       // 0KB start
+        | (0 << URB_ENTRY_ALLOC_SIZE_SHIFT) // 1 64B entry
+        | (0 << URB_ENTRY_COUNT_SHIFT);     // no entries
+
+    *cmd++ = _3DSTATE_URB_DS;
+    *cmd++ =
+          (0 << URB_START_ADDR_SHIFT)       // 0KB start
+        | (0 << URB_ENTRY_ALLOC_SIZE_SHIFT) // 1 64B entry
+        | (0 << URB_ENTRY_COUNT_SHIFT);     // no entries
+
+    *cmd++ = _3DSTATE_URB_GS;
+    *cmd++ =
+          (0 << URB_START_ADDR_SHIFT)       // 0KB start
+        | (0 << URB_ENTRY_ALLOC_SIZE_SHIFT) // 1 64B entry
+        | (0 << URB_ENTRY_COUNT_SHIFT);     // no entries
+
     // Index Buffer
     *cmd++ = _3DSTATE_INDEX_BUFFER;
     *cmd++ = 0;

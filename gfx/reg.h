@@ -329,6 +329,22 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // DWORD 1 - Pointer to ScissorRect table (relative to Dynamic State Base Address)
 
 // ------------------------------------------------------------------------------------------------
+// 1.7.1 3DSTATE_URB_*S
+
+#define _3DSTATE_URB_VS                             GFX_INSTR(0x3, 0x0, 0x30, 0)
+#define _3DSTATE_URB_HS                             GFX_INSTR(0x3, 0x0, 0x31, 0)
+#define _3DSTATE_URB_DS                             GFX_INSTR(0x3, 0x0, 0x32, 0)
+#define _3DSTATE_URB_GS                             GFX_INSTR(0x3, 0x0, 0x33, 0)
+
+// DWORD 1
+#define URB_START_ADDR_SHIFT                        25          // multiples of 8KB
+#define URB_START_ADDR_MASK                         0x1f
+#define URB_ENTRY_ALLOC_SIZE_SHIFT                  16          // multiples of 64B - 1
+#define URB_ENTRY_ALLOC_SIZE_MASK                   01ff
+#define URB_ENTRY_COUNT_SHIFT                       0
+#define URB_ENTRY_COUNT_MASK                        0xffff
+
+// ------------------------------------------------------------------------------------------------
 // 1.10.4 PIPE_CONTROL Command
 
 #define PIPE_CONTROL                                GFX_INSTR(0x3, 0x2, 0x0, 3)
