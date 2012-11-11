@@ -411,6 +411,11 @@ static void CreateTestBatchBuffer()
     *cmd++ = 0;
     *cmd++ = 0;
 
+    // Stream Out
+    *cmd++ = _3DSTATE_STREAMOUT;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
     // Dummy Draw (needed after MI_SET_CONTEXT or PIPELINE_SELECT)
     *cmd++ = _3DPRIMITIVE;
     *cmd++ = 0;

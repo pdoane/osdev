@@ -744,6 +744,79 @@ typedef struct ConstantBufferBody
 // DWORD 6 - Semaphore Handle
 
 // ------------------------------------------------------------------------------------------------
+// 8.4 3DSTATE_STREAMOUT
+
+#define _3DSTATE_STREAMOUT              GFX_INSTR(0x3, 0x0, 0x1e, 1)
+
+// DWORD 1
+#define SO_ENABLE                       (1 << 31)
+#define SO_RENDERING_DISABLE            (1 << 30)
+#define SO_RENDER_STREAM_SHIFT          27
+#define SO_RENDER_STREAM_MASK           0x3
+#define SO_REORDER_TRAILING             (1 << 26)
+#define SO_STATISTICS                   (1 << 25)
+#define SO_BUFFER3                      (1 << 11)
+#define SO_BUFFER2                      (1 << 10)
+#define SO_BUFFER1                      (1 << 9)
+#define SO_BUFFER0                      (1 << 8)
+
+// DWORD 2
+#define SO_STREAM_READ_LEN_MASK         0x1f
+#define SO_STREAM3_READ_OFFSET          (1 << 29)
+#define SO_STREAM3_READ_LEN_SHIFT       24
+#define SO_STREAM2_READ_OFFSET          (1 << 21)
+#define SO_STREAM2_READ_LEN_SHIFT       16
+#define SO_STREAM1_READ_OFFSET          (1 << 13)
+#define SO_STREAM1_READ_LEN_SHIFT       8
+#define SO_STREAM1_READ_OFFSET          (1 << 5)
+#define SO_STREAM1_READ_LEN_SHIFT       0
+
+// ------------------------------------------------------------------------------------------------
+// 8.5 3DSTATE_SO_DECL_LIST
+
+#define _3DSTATE_SO_DECL_LIST(n)        GFX_INSTR(0x3, 0x1, 0x17, (n)*2 + 1)
+
+// DWORD 1
+#define SO_DECLS_STREAM_OFFSETS_MASK    0xf
+#define SO_DECLS_STREAM3_OFFSETS_SHIFT  12
+#define SO_DECLS_STREAM2_OFFSETS_SHIFT  8
+#define SO_DECLS_STREAM1_OFFSETS_SHIFT  4
+#define SO_DECLS_STREAM0_OFFSETS_SHIFT  0
+
+// DWORD 2
+#define SO_DECLS_STREAM_ENTRIES_MASK    0xff
+#define SO_DECLS_STREAM3_ENTRIES_SHIFT  24
+#define SO_DECLS_STREAM2_ENTRIES_SHIFT  16
+#define SO_DECLS_STREAM1_ENTRIES_SHIFT  8
+#define SO_DECLS_STREAM0_ENTRIES_SHIFT  0
+
+// ------------------------------------------------------------------------------------------------
+// 8.5.1 SO_DECL
+
+// WORD
+#define SO_DECL_OUTPUT_SLOT_SHIFT       12
+#define SO_DECL_OUTPUT_SLOT_MASK        0x3
+#define SO_DECL_HOLE_FLAG               (1 << 11)
+#define SO_DECL_REG_INDEX_SHIFT         4
+#define SO_DECL_REG_INDEX_MASK          0x3f
+#define SO_DECL_COMP_MASK_SHIFT         0           // xyzw bitfield
+
+// ------------------------------------------------------------------------------------------------
+// 8.6 3DSTATE_SO_BUFFER
+
+#define _3DSTATE_SO_BUFFER              GFX_INSTR(0x3, 0x1, 0x18, 2)
+
+// DWORD 1
+#define SO_BUF_INDEX_SHIFT              29
+#define SO_BUF_INDEX_MASK               0x3
+#define SO_BUF_OBJ_CONTROL_STATE_SHIFT  25      // MEMORY_OBJECT_CONTROL_STATE
+#define SO_BUF_PITCH_SHIFT              0
+#define SO_BUF_PITCH_MASK               0xfff
+
+// DWORD 2 - Surface Base Address
+// DWORD 3 - End Base Address
+
+// ------------------------------------------------------------------------------------------------
 // 10.3.15 SF_CLIP_VIEWPORT
 
 typedef struct SFClipViewport
