@@ -404,8 +404,24 @@ static void CreateTestBatchBuffer()
     *cmd++ = 0;
     *cmd++ = 0;
 
+    *cmd++ = _3DSTATE_CONSTANT_VS;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
     // Hull Shader
     *cmd++ = _3DSTATE_HS;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
+    *cmd++ = _3DSTATE_CONSTANT_HS;
     *cmd++ = 0;
     *cmd++ = 0;
     *cmd++ = 0;
@@ -427,8 +443,24 @@ static void CreateTestBatchBuffer()
     *cmd++ = 0;
     *cmd++ = 0;
 
+    *cmd++ = _3DSTATE_CONSTANT_DS;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
     // Geometry Shader
     *cmd++ = _3DSTATE_GS;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
+    *cmd++ = _3DSTATE_CONSTANT_GS;
     *cmd++ = 0;
     *cmd++ = 0;
     *cmd++ = 0;
@@ -490,6 +522,14 @@ static void CreateTestBatchBuffer()
     *cmd++ = 0;
     *cmd++ = 0;
 
+    *cmd++ = _3DSTATE_CONSTANT_PS;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+    *cmd++ = 0;
+
     *cmd++ = _3DSTATE_SAMPLE_MASK;
     *cmd++ = 1;
 
@@ -529,7 +569,6 @@ static void CreateTestBatchBuffer()
     *cmd++ = 0;
     *cmd++ = 0;
 
-    /*
     // Triangle Draw
     *cmd++ = _3DPRIMITIVE;
     *cmd++ = (_3DPRIM_TRILIST << PRIM_TOPOLOGY_SHIFT);
@@ -537,7 +576,7 @@ static void CreateTestBatchBuffer()
     *cmd++ = 0;
     *cmd++ = 1;
     *cmd++ = 0;
-    *cmd++ = 0;*/
+    *cmd++ = 0;
 
     // Debug
     *cmd++ = MI_STORE_DATA_INDEX;
