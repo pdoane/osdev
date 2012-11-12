@@ -157,6 +157,34 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 #define BCS_RING_BUFFER_CTL             0x2203c     // R/W
 
 // ------------------------------------------------------------------------------------------------
+// 1.1.15 Pipeline Statistics Counters
+
+#define IA_VERTICES_COUNT               0x02310     // R/W - 3DSTATE_VF_STATISTICS
+#define IA_PRIMITIVES_COUNT             0x02318     // R/W - 3DSTATE_VF_STATISTICS
+#define VS_INVOCATION_COUNT             0x02320     // R/W - 3DSTATE_VS
+#define HS_INVOCATION_COUNT             0x02300     // R/W - 3DSTATE_HS
+#define DS_INVOCATION_COUNT             0x02308     // R/W - 3DSTATE_DS
+#define GS_INVOCATION_COUNT             0x02328     // R/W - 3DSTATE_GS
+#define GS_PRIMITIVES_COUNT             0x02330     // R/W - 3DSTATE_GS
+#define CL_INVOCATION_COUNT             0x02338     // R/W - 3DSTATE_CLIP
+#define CL_PRIMITIVES_COUNT             0x02340     // R/W - 3DSTATE_CLIP
+#define PS_INVOCATION_COUNT             0x02348     // R/W - 3DSTATE_WM
+#define PS_DEPTH_COUNT                  0x02350     // R/W - 3DSTATE_WM
+#define TIMESTAMP                       0x02358     // R/W
+#define SO_NUM_PRIMS_WRITTEN0           0x05200     // R/W - 3DSTATE_STREAMOUT
+#define SO_NUM_PRIMS_WRITTEN1           0x05208     // R/W - 3DSTATE_STREAMOUT
+#define SO_NUM_PRIMS_WRITTEN2           0x05210     // R/W - 3DSTATE_STREAMOUT
+#define SO_NUM_PRIMS_WRITTEN3           0x05218     // R/W - 3DSTATE_STREAMOUT
+#define SO_PRIM_STORAGE_NEEDED0         0x05240     // R/W
+#define SO_PRIM_STORAGE_NEEDED1         0x05248     // R/W
+#define SO_PRIM_STORAGE_NEEDED2         0x05250     // R/W
+#define SO_PRIM_STORAGE_NEEDED3         0x05258     // R/W
+#define SO_WRITE_OFFSET0                0x05280     // R/W
+#define SO_WRITE_OFFSET1                0x05288     // R/W
+#define SO_WRITE_OFFSET2                0x05290     // R/W
+#define SO_WRITE_OFFSET3                0x05298     // R/W
+
+// ------------------------------------------------------------------------------------------------
 // 1.2.5 MI_BATCH_BUFFER_END
 
 #define MI_BATCH_BUFFER_END             MI_INSTR(0x0a, 0)
@@ -347,7 +375,7 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 // 1.10.4 PIPE_CONTROL Command
 
-#define PIPE_CONTROL                                GFX_INSTR(0x3, 0x2, 0x0, 3)
+#define PIPE_CONTROL(n)                             GFX_INSTR(0x3, 0x2, 0x0, (n)-2)
 
 // DWORD 1 - flags
 #define PIPE_CONTROL_DEPTH_CACHE_FLUSH              (1 << 0)
@@ -503,7 +531,15 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // DWORD 6 - Base Vertex Location
 
 // ------------------------------------------------------------------------------------------------
-// 3/4 Vertex/Hull Shader Stages
+// 2.7.1 3DSTATE_VF_STATISTICS
+
+#define _3DSTATE_VF_STATISTICS          GFX_INSTR(0x1, 0x0, 0x0b, 0)
+
+// DWORD 0
+#define VF_STATISTICS                   (1 << 0)
+
+// ------------------------------------------------------------------------------------------------
+// Shader Stages
 
 // SAMPLER_USAGE
 #define SAMPLER_USAGE_NONE              0x0

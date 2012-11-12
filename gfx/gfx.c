@@ -159,6 +159,23 @@ static void GfxPrintPipeState()
 */
 
 // ------------------------------------------------------------------------------------------------
+static void GfxPrintStatistics()
+{
+    EnterForceWake();
+    {
+        RlogPrint("Stats:\n");
+        RlogPrint("  IA_VERTICES_COUNT: %d\n", GfxRead64(&s_gfxDevice.pci, IA_VERTICES_COUNT));
+        RlogPrint("  IA_PRIMITIVES_COUNT: %d\n", GfxRead64(&s_gfxDevice.pci, IA_PRIMITIVES_COUNT));
+        RlogPrint("  VS_INVOCATION_COUNT: %d\n", GfxRead64(&s_gfxDevice.pci, VS_INVOCATION_COUNT));
+        RlogPrint("  CL_INVOCATION_COUNT: %d\n", GfxRead64(&s_gfxDevice.pci, CL_INVOCATION_COUNT));
+        RlogPrint("  CL_PRIMITIVES_COUNT: %d\n", GfxRead64(&s_gfxDevice.pci, CL_PRIMITIVES_COUNT));
+        RlogPrint("  PS_INVOCATION_COUNT: %d\n", GfxRead64(&s_gfxDevice.pci, PS_INVOCATION_COUNT));
+        RlogPrint("  PS_DEPTH_COUNT: %d\n", GfxRead64(&s_gfxDevice.pci, PS_DEPTH_COUNT));
+    }
+    ExitForceWake();
+}
+
+// ------------------------------------------------------------------------------------------------
 void GfxInit(uint id, PciDeviceInfo *info)
 {
     if (!(((info->classCode << 8) | info->subclass) == PCI_DISPLAY_VGA &&
@@ -396,13 +413,17 @@ static void CreateTestBatchBuffer()
         | (VFCOMP_STORE_SRC << VE_COMP2_SHIFT)
         | (VFCOMP_STORE_1_FP << VE_COMP3_SHIFT);
 
+    // Vertex Fetch State
+    *cmd++ = _3DSTATE_VF_STATISTICS | VF_STATISTICS;
+
+
     // Vertex Shader
     *cmd++ = _3DSTATE_VS;
     *cmd++ = 0;
     *cmd++ = 0;
     *cmd++ = 0;
     *cmd++ = 0;
-    *cmd++ = 0;
+    *cmd++ = VS_STATISTICS;
 
     *cmd++ = _3DSTATE_CONSTANT_VS;
     *cmd++ = 0;
@@ -475,7 +496,7 @@ static void CreateTestBatchBuffer()
 
     // Setup
     *cmd++ = _3DSTATE_CLIP;
-    *cmd++ = 0;
+    *cmd++ = CLIP_STATISTICS;
     *cmd++ = 0;
     *cmd++ = 0;
 
@@ -510,7 +531,7 @@ static void CreateTestBatchBuffer()
 
     // Pixel Shader (Windower)
     *cmd++ = _3DSTATE_WM;
-    *cmd++ = WM_THREAD_DISPATCH;
+    *cmd++ = WM_STATISTICS | WM_THREAD_DISPATCH;
     *cmd++ = 0;
 
     *cmd++ = _3DSTATE_PS;
@@ -679,7 +700,7 @@ void GfxStart()
 
     // PIPE_CONTROL with CS_STALL
     cmd = GfxBeginCmd(ring, 6);
-    *cmd++ = PIPE_CONTROL;
+    *cmd++ = PIPE_CONTROL(5);
     *cmd++ = PIPE_CONTROL_SCOREBOARD_STALL
         | PIPE_CONTROL_CS_STALL;
     *cmd++ = 0; // address
@@ -690,7 +711,7 @@ void GfxStart()
 
     // PIPE_CONTROL for flush
     cmd = GfxBeginCmd(ring, 6);
-    *cmd++ = PIPE_CONTROL;
+    *cmd++ = PIPE_CONTROL(5);
     *cmd++ = PIPE_CONTROL_DEPTH_CACHE_FLUSH
         | PIPE_CONTROL_STATE_CACHE_INVALIDATE
         | PIPE_CONTROL_CONST_CACHE_INVALIDATE
@@ -728,6 +749,7 @@ void GfxStart()
     GfxEndCmd(&s_gfxDevice.pci, ring, cmd);
 
     GfxPrintRingState(&s_gfxDevice.pci, ring);
+    GfxPrintStatistics();
 
     s_gfxDevice.active = true;
 }
@@ -749,5 +771,6 @@ void GfxPoll()
         lastCursorPos = cursorPos;
         GfxWrite32(&s_gfxDevice.pci, CUR_POS_A, cursorPos);
         GfxPrintRingState(&s_gfxDevice.pci, &s_gfxDevice.renderRing);
+        GfxPrintStatistics();
     }
 }
