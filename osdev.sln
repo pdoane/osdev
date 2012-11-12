@@ -1,6 +1,6 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{B8D3EDD8-6529-4E3E-BC69-B7D34C33A8A7}"
 	ProjectSection(SolutionItems) = preProject
 		tools\fat16.c = tools\fat16.c
@@ -172,6 +172,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "stdlib", "stdlib", "{030391
 	ProjectSection(SolutionItems) = preProject
 		stdlib\format.c = stdlib\format.c
 		stdlib\format.h = stdlib\format.h
+		stdlib\limits.h = stdlib\limits.h
 		stdlib\link.c = stdlib\link.c
 		stdlib\link.h = stdlib\link.h
 		stdlib\stdarg.h = stdlib\stdarg.h
