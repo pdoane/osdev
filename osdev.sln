@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
+# Visual Studio 2010
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{B8D3EDD8-6529-4E3E-BC69-B7D34C33A8A7}"
 	ProjectSection(SolutionItems) = preProject
 		tools\fat16.c = tools\fat16.c
@@ -235,8 +235,17 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "gfx", "gfx", "{9EA32D36-847
 		gfx\vga.h = gfx\vga.h
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shaders", "shaders", "{B152D7D8-C4C8-4E6E-8B0D-63C504E55CE6}"
+	ProjectSection(SolutionItems) = preProject
+		gfx\shaders\passthrough_p.vs = gfx\shaders\passthrough_p.vs
+		gfx\shaders\solid_ff8040ff.ps = gfx\shaders\solid_ff8040ff.ps
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B152D7D8-C4C8-4E6E-8B0D-63C504E55CE6} = {9EA32D36-847D-434D-9EFF-D6A8185E571A}
 	EndGlobalSection
 EndGlobal
