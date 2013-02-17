@@ -23,32 +23,59 @@
 #define DEVICE_HD3000       0x0162
 #define DEVICE_PANTHERPOINT 0x1e00
 
+#define SCREEN_WIDTH        720
+#define SCREEN_HEIGHT       400
+
+// ------------------------------------------------------------------------------------------------
+enum ShaderObject
+{
+    VS_PASSTHROUGH_P,
+    PS8_SOLID_FF8040FF,
+    PS16_SOLID_FF8040FF,
+    PS32_SOLID_FF8040FF,
+    SHADER_OBJ_COUNT
+};
+
+// ------------------------------------------------------------------------------------------------
+typedef struct GfxHeap
+{
+    GfxObject       storage;
+    uint            next;
+    uint            size;
+} GfxHeap;
+
 // ------------------------------------------------------------------------------------------------
 typedef struct GfxDevice
 {
-    bool            active;
+    bool                active;
 
-    GfxPci          pci;
-    GfxGTT          gtt;
-    GfxMemManager   memManager;
-    GfxDisplay      display;
+    GfxPci              pci;
+    GfxGTT              gtt;
+    GfxMemManager       memManager;
+    GfxDisplay          display;
 
-    GfxObject       surface;
-    GfxObject       cursor;
+    GfxObject           surface;
+    GfxObject           cursor;
 
-    GfxRing         renderRing;
-    GfxObject       renderContext;
+    GfxRing             renderRing;
+    GfxObject           renderContext;
 
-    GfxObject       batchBuffer;
+    GfxHeap             dynamicHeap;
+    ColorCalcState     *colorCalcStateTable;
+    BlendState         *blendStateTable;
+    DepthStencilState  *depthStencilStateTable;
+    u32                *bindingTable[SHADER_COUNT];
+    CCViewport         *ccViewportTable;
+    SFClipViewport     *sfClipViewportTable;
 
-    GfxObject       colorCalcStates;
-    GfxObject       blendStates;
-    GfxObject       depthStencilStates;
-    GfxObject       bindingTables[SHADER_COUNT];
-    GfxObject       samplerTables[SHADER_COUNT];
-    GfxObject       ccViewportTable;
+    GfxHeap             surfaceHeap;
+    SamplerState       *samplerTable[SHADER_COUNT];
 
-    GfxObject       triangleVB;
+    GfxHeap             instructionHeap;
+    u32                *shaderObjs[SHADER_OBJ_COUNT];
+
+    GfxObject           batchBuffer;
+    GfxObject           triangleVB;
 } GfxDevice;
 
 GfxDevice s_gfxDevice;
@@ -219,11 +246,35 @@ static bool ValidateChipset()
 }
 
 // ------------------------------------------------------------------------------------------------
-static void CreateStates()
+static void InitHeap(GfxDevice *device, GfxHeap *heap, uint size, uint align)
 {
-    // Color Calc State
-    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.colorCalcStates, sizeof(ColorCalcState), 64);
-    ColorCalcState *ccState = (ColorCalcState *)s_gfxDevice.colorCalcStates.cpuAddr;
+    GfxAlloc(&device->memManager, &heap->storage, size, align);
+    heap->size = size;
+    heap->next = 0;
+}
+
+// ------------------------------------------------------------------------------------------------
+static u8 *HeapAlloc(GfxHeap *heap, uint size, uint align)
+{
+    uint result = heap->next;
+    uint offset = result & (align - 1);
+    if (offset)
+        result += align - offset;
+
+    heap->next = result + size;
+    return heap->storage.cpuAddr + result;
+}
+
+// ------------------------------------------------------------------------------------------------
+static void CreateStates(GfxDevice *device)
+{
+    // Create heaps
+    InitHeap(device, &device->dynamicHeap, 8 * KB, 64);
+    InitHeap(device, &device->surfaceHeap, 4 * KB, 64);
+
+    // Color Calc State - Dynamic State
+    device->colorCalcStateTable = (ColorCalcState *)HeapAlloc(&device->dynamicHeap, sizeof(ColorCalcState), COLOR_CALC_TABLE_ALIGN);
+    ColorCalcState *ccState = device->colorCalcStateTable;
     ccState->flags = 0;
     ccState->alphaRef.intVal = 0;
     ccState->constR = 1.0f;
@@ -231,38 +282,84 @@ static void CreateStates()
     ccState->constB = 1.0f;
     ccState->constA = 1.0f;
 
-    // Blend State
-    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.blendStates, sizeof(BlendState), 64);
-    BlendState *blendState = (BlendState *)s_gfxDevice.blendStates.cpuAddr;
-    blendState->flags0 = 0;
+    // Blend State - Dynamic State
+    device->blendStateTable = (BlendState *)HeapAlloc(&device->dynamicHeap, sizeof(BlendState), BLEND_TABLE_ALIGN);
+    BlendState *blendState = device->blendStateTable;
+    blendState->flags0 =
+          BLEND_COLOR
+        | (BLEND_FUNC_ADD << BLEND_FUNC_ALPHA_SHIFT)
+        | (BLEND_FACTOR_ONE << BLEND_SRC_ALPHA_SHIFT)
+        | (BLEND_FACTOR_ZERO << BLEND_DST_ALPHA_SHIFT)
+        | (BLEND_FUNC_ADD << BLEND_FUNC_COLOR_SHIFT)
+        | (BLEND_FACTOR_ONE << BLEND_SRC_COLOR_SHIFT)
+        | (BLEND_FACTOR_ZERO << BLEND_DST_COLOR_SHIFT);
     blendState->flags1 = 0;
 
-    // Depth Stencil State
-    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.depthStencilStates, sizeof(DepthStencilState), 64);
-    DepthStencilState *depthStencilState = (DepthStencilState *)s_gfxDevice.depthStencilStates.cpuAddr;
+    // Depth Stencil State - Dynamic State
+    device->depthStencilStateTable = (DepthStencilState *)HeapAlloc(&device->dynamicHeap, sizeof(DepthStencilState), DEPTH_STENCIL_TABLE_ALIGN);
+    DepthStencilState *depthStencilState = device->depthStencilStateTable;
     depthStencilState->stencilFlags = 0;
     depthStencilState->stencilMasks = 0;
     depthStencilState->depthFlags = 0;
 
-    // Shader State Tables
+    // Initialize Empty Shader State Tables
     for (uint i = 0; i < SHADER_COUNT; ++i)
     {
-        // Binding Tables
-        GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.bindingTables[i], BINDING_TABLE_SIZE * sizeof(u32), 32);
-        u32* bindingTable = (u32 *)s_gfxDevice.bindingTables[i].cpuAddr;
+        // Binding Tables - Surface State
+        device->bindingTable[i] = (u32 *)HeapAlloc(&device->surfaceHeap, BINDING_TABLE_SIZE * sizeof(u32), BINDING_TABLE_ALIGN);
+        u32 *bindingTable = device->bindingTable[i];
         memset(bindingTable, 0, BINDING_TABLE_SIZE * sizeof(u32));
 
-        // Sampler Tables
-        GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.samplerTables[i], SAMPLER_TABLE_SIZE * sizeof(SamplerState), 32);
-        SamplerState* samplerTable = (SamplerState *)s_gfxDevice.samplerTables[i].cpuAddr;
+        // Sampler Tables - Dynamic State
+        device->samplerTable[i] = (SamplerState *)HeapAlloc(&device->dynamicHeap, SAMPLER_TABLE_SIZE * sizeof(SamplerState), SAMPLER_TABLE_ALIGN);
+        SamplerState *samplerTable = device->samplerTable[i];
         memset(samplerTable, 0, SAMPLER_TABLE_SIZE * sizeof(SamplerState));
     }
 
-    // Viewport State (SFClipViewport and ScissorRect can be disabled in the SF state, so ignore for now)
-    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.ccViewportTable, VIEWPORT_TABLE_SIZE * sizeof(CCViewport), 32);
-    CCViewport *ccViewport = (CCViewport *)s_gfxDevice.ccViewportTable.cpuAddr;
-    ccViewport->minDepth = -F32_MAX;
-    ccViewport->maxDepth = F32_MAX;
+    // Viewport State - Dynamic State
+    device->ccViewportTable = (CCViewport *)HeapAlloc(&device->dynamicHeap, CC_VIEWPORT_TABLE_SIZE * sizeof(CCViewport), CC_VIEWPORT_TABLE_ALIGN);
+    CCViewport *ccViewport = device->ccViewportTable;
+    for (uint i = 0; i < CC_VIEWPORT_TABLE_SIZE; ++i)
+    {
+        ccViewport->minDepth = -F32_MAX;
+        ccViewport->maxDepth = F32_MAX;
+        ++ccViewport;
+    }
+
+    device->sfClipViewportTable = (SFClipViewport *)HeapAlloc(&device->dynamicHeap, SF_CLIP_VIEWPORT_TABLE_SIZE * sizeof(SFClipViewport), SF_CLIP_VIEWPORT_TABLE_ALIGN);
+    SFClipViewport *sfClipViewport = device->sfClipViewportTable;
+    for (uint i = 0; i < SF_CLIP_VIEWPORT_TABLE_SIZE; ++i)
+    {
+        // Points are transformed by scale and then translate.
+        sfClipViewport->scaleX = SCREEN_WIDTH * 0.5f;
+        sfClipViewport->scaleY = SCREEN_HEIGHT * 0.5f;
+        sfClipViewport->scaleZ = 1.0f;
+        sfClipViewport->transX = SCREEN_WIDTH * 0.5f;
+        sfClipViewport->transY = SCREEN_HEIGHT * 0.5f;
+        sfClipViewport->transZ = 0.0f;
+        sfClipViewport->pad0[0] = 0.0f;
+        sfClipViewport->pad0[1] = 0.0f;
+
+        // Guardband is in NDC space.
+        sfClipViewport->guardbandMinX = -1.0f;
+        sfClipViewport->guardbandMaxX = 1.0f;
+        sfClipViewport->guardbandMinY = -1.0f;
+        sfClipViewport->guardbandMaxY = 1.0f;
+        ++sfClipViewport;
+    }
+
+    // Scissor State  - Dynamic State (ignore for now as it is disabled in the SF state)
+}
+
+// ------------------------------------------------------------------------------------------------
+static void CreateShaders(GfxDevice *device)
+{
+    InitHeap(device, &device->instructionHeap, 4 * KB, 64);
+
+    device->shaderObjs[VS_PASSTHROUGH_P] = 0;  // TODO
+    device->shaderObjs[PS8_SOLID_FF8040FF] = 0;
+    device->shaderObjs[PS16_SOLID_FF8040FF] = 0;
+    device->shaderObjs[PS32_SOLID_FF8040FF] = 0;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -285,77 +382,79 @@ static void CreateTriangle()
 }
 
 // ------------------------------------------------------------------------------------------------
-static void CreateTestBatchBuffer()
+static void CreateTestBatchBuffer(GfxDevice *device)
 {
-    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.batchBuffer, 4 * KB, 4 * KB);
-    u32 *cmd = (u32 *)s_gfxDevice.batchBuffer.cpuAddr;
+    GfxAlloc(&s_gfxDevice.memManager, &device->batchBuffer, 4 * KB, 4 * KB);
+    u32 *cmd = (u32 *)device->batchBuffer.cpuAddr;
 
     // Switch to 3D pipeline
     *cmd++ = PIPELINE_SELECT(PIPELINE_3D);
 
     // Update base addresses - just use 0 for everything with no caching or upper bounds
     *cmd++ = STATE_BASE_ADDRESS;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
-    *cmd++ = BASE_ADDRESS_MODIFY;
+    *cmd++ = 0 | BASE_ADDRESS_MODIFY;                                       // General State Base Address
+    *cmd++ = device->surfaceHeap.storage.gfxAddr | BASE_ADDRESS_MODIFY;     // Surface State Base Address
+    *cmd++ = device->dynamicHeap.storage.gfxAddr | BASE_ADDRESS_MODIFY;     // Dynamic State Base Address
+    *cmd++ = 0 | BASE_ADDRESS_MODIFY;                                       // Indirect State Base Address
+    *cmd++ = device->instructionHeap.storage.gfxAddr | BASE_ADDRESS_MODIFY; // Instruction Base Address
+    *cmd++ = 0 | BASE_ADDRESS_MODIFY;                                       // General State Access Upper Bound
+    *cmd++ = 0 | BASE_ADDRESS_MODIFY;                                       // Dynamic State Access Upper Bound
+    *cmd++ = 0 | BASE_ADDRESS_MODIFY;                                       // Indirect State Access Upper Bound
+    *cmd++ = 0 | BASE_ADDRESS_MODIFY;                                       // Instruction Access Upper Bound
 
     // Color Calc State
     *cmd++ = _3DSTATE_CC_STATE_POINTERS;
-    *cmd++ = s_gfxDevice.colorCalcStates.gfxAddr;
+    *cmd++ = (u8*)device->colorCalcStateTable - device->dynamicHeap.storage.cpuAddr;
 
     // Blend State
     *cmd++ = _3DSTATE_BLEND_STATE_POINTERS;
-    *cmd++ = s_gfxDevice.blendStates.gfxAddr;
+    *cmd++ = (u8*)device->blendStateTable - device->dynamicHeap.storage.cpuAddr;
 
     // Depth/Stencil State
     *cmd++ = _3DSTATE_DEPTH_STENCIL_STATE_POINTERS;
-    *cmd++ = s_gfxDevice.depthStencilStates.gfxAddr;
+    *cmd++ = (u8*)device->depthStencilStateTable - device->dynamicHeap.storage.cpuAddr;
 
     // Binding Tables
+    u32* psBindingTable = device->bindingTable[SHADER_PS];
+    psBindingTable[0] = device->surface.gfxAddr;
+
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_VS;
-    *cmd++ = s_gfxDevice.bindingTables[SHADER_VS].gfxAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_VS] - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_HS;
-    *cmd++ = s_gfxDevice.bindingTables[SHADER_HS].gfxAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_HS] - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_DS;
-    *cmd++ = s_gfxDevice.bindingTables[SHADER_DS].gfxAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_DS] - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_GS;
-    *cmd++ = s_gfxDevice.bindingTables[SHADER_GS].gfxAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_GS] - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_PS;
-    *cmd++ = s_gfxDevice.bindingTables[SHADER_PS].gfxAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_PS] - device->dynamicHeap.storage.cpuAddr;
 
     // Sampler Tables
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_VS;
-    *cmd++ = s_gfxDevice.samplerTables[SHADER_VS].gfxAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_VS] - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_HS;
-    *cmd++ = s_gfxDevice.samplerTables[SHADER_HS].gfxAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_HS] - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_DS;
-    *cmd++ = s_gfxDevice.samplerTables[SHADER_DS].gfxAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_DS] - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_GS;
-    *cmd++ = s_gfxDevice.samplerTables[SHADER_GS].gfxAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_GS] - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_PS;
-    *cmd++ = s_gfxDevice.samplerTables[SHADER_PS].gfxAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_PS] - device->surfaceHeap.storage.cpuAddr;
 
     // Viewport State
     *cmd++ = _3DSTATE_VIEWPORT_STATE_POINTERS_CC;
-    *cmd++ = s_gfxDevice.ccViewportTable.gfxAddr;
+    *cmd++ = (u8*)device->ccViewportTable - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP;
-    *cmd++ = 0;     // can be disabled in the 3DSTATE_SF
+    *cmd++ = (u8*)device->sfClipViewportTable - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SCISSOR_STATE_POINTERS;
     *cmd++ = 0;     // can be disabled in the 3DSTATE_SF
@@ -396,8 +495,8 @@ static void CreateTestBatchBuffer()
           (0 << VB_INDEX_SHIFT)
         | VB_ADDRESS_MODIFY
         | ((sizeof(float) * 3) << VB_PITCH_SHIFT);
-    *cmd++ = s_gfxDevice.triangleVB.gfxAddr;
-    *cmd++ = s_gfxDevice.triangleVB.gfxAddr + sizeof(float) * 9 - 1;
+    *cmd++ = device->triangleVB.gfxAddr;
+    *cmd++ = device->triangleVB.gfxAddr + sizeof(float) * 9 - 1;
     *cmd++ = 0;
 
     // Vertex Elements
@@ -414,16 +513,21 @@ static void CreateTestBatchBuffer()
         | (VFCOMP_STORE_1_FP << VE_COMP3_SHIFT);
 
     // Vertex Fetch State
-    *cmd++ = _3DSTATE_VF_STATISTICS | VF_STATISTICS;
+    *cmd++ = _3DSTATE_VF_STATISTICS;
 
 
     // Vertex Shader
     *cmd++ = _3DSTATE_VS;
+    *cmd++ = (u8*)device->shaderObjs[VS_PASSTHROUGH_P] - device->instructionHeap.storage.cpuAddr;
     *cmd++ = 0;
     *cmd++ = 0;
-    *cmd++ = 0;
-    *cmd++ = 0;
-    *cmd++ = VS_STATISTICS;
+    *cmd++ =
+          (1 << VS_DISPATCH_GRF_SHIFT)
+        | (1 << VS_URB_READ_LENGTH_SHIFT)
+        | (0 << VS_URB_READ_OFFSET_SHIFT);
+    *cmd++ =
+          (1 << VS_MAX_THREAD_SHIFT)
+        | VS_ENABLE;
 
     *cmd++ = _3DSTATE_CONSTANT_VS;
     *cmd++ = 0;
@@ -496,19 +600,23 @@ static void CreateTestBatchBuffer()
 
     // Setup
     *cmd++ = _3DSTATE_CLIP;
-    *cmd++ = CLIP_STATISTICS;
+    *cmd++ = (CULL_NONE << CLIP_CULL_SHIFT);
     *cmd++ = 0;
-    *cmd++ = 0;
+    *cmd++ = (1 << CLIP_MAX_VP_INDEX_SHIFT);
 
     // Rasterizer
     *cmd++ = _3DSTATE_DRAWING_RECTANGLE;
     *cmd++ = 0;
-    *cmd++ = (480 << DRAWING_RECT_Y_MAX_SHIFT) | (720 << DRAWING_RECT_X_MAX_SHIFT);
+    *cmd++ =
+          (SCREEN_HEIGHT << DRAWING_RECT_Y_MAX_SHIFT)
+        | (SCREEN_WIDTH << DRAWING_RECT_X_MAX_SHIFT);
     *cmd++ = 0;
 
     *cmd++ = _3DSTATE_SF;
-    *cmd++ = 0;
-    *cmd++ = CULL_NONE << SF_CULL_SHIFT;
+    *cmd++ =
+          (DFMT_D32_FLOAT << SF_FORMAT_SHIFT)
+        | SF_VIEW_TRANSFORM;
+    *cmd++ = (CULL_NONE << SF_CULL_SHIFT);
     *cmd++ = 0;
     *cmd++ = 0;
     *cmd++ = 0;
@@ -531,17 +639,22 @@ static void CreateTestBatchBuffer()
 
     // Pixel Shader (Windower)
     *cmd++ = _3DSTATE_WM;
-    *cmd++ = WM_STATISTICS | WM_THREAD_DISPATCH;
+    *cmd++ = WM_THREAD_DISPATCH;
     *cmd++ = 0;
 
     *cmd++ = _3DSTATE_PS;
-    *cmd++ = 0;     // TODO - need pixel shader kernel
+    *cmd++ = (u8*)device->shaderObjs[PS8_SOLID_FF8040FF] - device->instructionHeap.storage.cpuAddr;
+    *cmd++ = (1 << PS_BINDING_COUNT_SHIFT);     // comment says this is for prefetching?
     *cmd++ = 0;
-    *cmd++ = 0;
-    *cmd++ = (85 << PS_MAX_THREAD_SHIFT) | PS_DISPATCH8;    // TODO - which kernel for dispatch 8/16/32?
-    *cmd++ = 0;     // TODO - where to read GPF? Is it even needed for a constant color kernel?
-    *cmd++ = 0;
-    *cmd++ = 0;
+    *cmd++ =
+          (15 << PS_MAX_THREAD_SHIFT)
+        | PS_DISPATCH8;
+    *cmd++ =
+          (1 << PS_DISPATCH0_GRF_SHIFT)
+        | (1 << PS_DISPATCH1_GRF_SHIFT)
+        | (1 << PS_DISPATCH2_GRF_SHIFT);
+    *cmd++ = (u8*)device->shaderObjs[PS16_SOLID_FF8040FF] - device->instructionHeap.storage.cpuAddr;   // TODO - order of kernels?
+    *cmd++ = (u8*)device->shaderObjs[PS32_SOLID_FF8040FF] - device->instructionHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_CONSTANT_PS;
     *cmd++ = 0;
@@ -608,7 +721,7 @@ static void CreateTestBatchBuffer()
     // End Batch Buffer
     *cmd++ = MI_BATCH_BUFFER_END;
 
-    RlogPrint("Batch Buffer Size = %08x\n", (u8 *)cmd - s_gfxDevice.batchBuffer.cpuAddr);
+    RlogPrint("Batch Buffer Size = %08x\n", (u8 *)cmd - device->batchBuffer.cpuAddr);
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -641,7 +754,7 @@ void GfxStart()
     // Allocate Surface - 256KB aligned, +512 PTEs
     uint surfaceMemSize = 16 * MB;         // TODO: compute appropriate surface size
     GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.surface, surfaceMemSize, 256 * KB);
-    memset(s_gfxDevice.surface.cpuAddr, 0x77, 720 * 400 * 4);
+    memset(s_gfxDevice.surface.cpuAddr, 0x77, SCREEN_WIDTH * SCREEN_HEIGHT * 4);
 
     // Allocate Cursor - 64KB aligned, +2 PTEs
     uint cursorMemSize = 64 * 64 * sizeof(u32) + 8 * KB;
@@ -655,17 +768,18 @@ void GfxStart()
     GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.renderContext, 4 * KB, 4 * KB);
 
     // Allocate States
-    CreateStates();
+    CreateStates(&s_gfxDevice);
+    CreateShaders(&s_gfxDevice);
 
     // Allocate Gfx Buffers
     CreateTriangle();
 
     // Allocate Batch Buffer
-    CreateTestBatchBuffer();
+    CreateTestBatchBuffer(&s_gfxDevice);
 
     // Setup Primary Plane
-    uint width = 720;                       // TODO: mode support
-    //uint height = 400;
+    uint width = SCREEN_WIDTH;                       // TODO: mode support
+    //uint height = SCREEN_HEIGHT;
     uint stride = (width * sizeof(u32) + 63) & ~63;   // 64-byte aligned
 
     GfxWrite32(&s_gfxDevice.pci, PRI_CTL_A, PRI_PLANE_ENABLE | PRI_PLANE_32BPP);

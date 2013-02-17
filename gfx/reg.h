@@ -289,12 +289,16 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 // 1.4.2 3DSTATE_CC_STATE_POINTERS
 
+#define COLOR_CALC_TABLE_ALIGN          64
+
 #define _3DSTATE_CC_STATE_POINTERS      GFX_INSTR(0x3, 0x0, 0xe, 0)
 
 // DWORD 1 - Pointer to ColorCalcState (relative to Dynamic State Base Address)
 
 // ------------------------------------------------------------------------------------------------
 // 1.4.3 3DSTATE_BLEND_STATE_POINTERS
+
+#define BLEND_TABLE_ALIGN               64
 
 #define _3DSTATE_BLEND_STATE_POINTERS   GFX_INSTR(0x3, 0x0, 0x24, 0)
 
@@ -303,6 +307,8 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 // 1.4.4 3DSTATE_DEPTH_STENCIL_STATE_POINTERS
 
+#define DEPTH_STENCIL_TABLE_ALIGN                   64
+
 #define _3DSTATE_DEPTH_STENCIL_STATE_POINTERS       GFX_INSTR(0x3, 0x0, 0x24, 0)
 
 // DWORD 1 - Pointer to DepthStencilState (relative to Dynamic State Base Address)
@@ -310,6 +316,7 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 // 1.4.5 3DSTATE_BINDING_TABLE_POINTERS
 
+#define BINDING_TABLE_ALIGN                         32
 #define BINDING_TABLE_SIZE                          256
 
 #define _3DSTATE_BINDING_TABLE_POINTERS_VS          GFX_INSTR(0x3, 0x0, 0x26, 0)
@@ -323,6 +330,7 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 // 1.5 3DSTATE_SAMPLER_STATE_POINTERS
 
+#define SAMPLER_TABLE_ALIGN                         32
 #define SAMPLER_TABLE_SIZE                          16
 
 #define _3DSTATE_SAMPLER_STATE_POINTERS_VS          GFX_INSTR(0x3, 0x0, 0x2b, 0)
@@ -336,7 +344,8 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 // ------------------------------------------------------------------------------------------------
 // 1.6.1 3DSTATE_VIEWPORT_STATE_POINTERS_CC
 
-#define VIEWPORT_TABLE_SIZE                         16
+#define CC_VIEWPORT_TABLE_ALIGN                     32
+#define CC_VIEWPORT_TABLE_SIZE                      16
 
 #define _3DSTATE_VIEWPORT_STATE_POINTERS_CC         GFX_INSTR(0x3, 0x0, 0x23, 0)
 
@@ -344,6 +353,9 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 
 // ------------------------------------------------------------------------------------------------
 // 1.6.2 3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP
+
+#define SF_CLIP_VIEWPORT_TABLE_ALIGN                64
+#define SF_CLIP_VIEWPORT_TABLE_SIZE                 16
 
 #define _3DSTATE_VIEWPORT_STATE_POINTERS_SF_CLIP    GFX_INSTR(0x3, 0x0, 0x21, 0)
 
@@ -922,7 +934,7 @@ typedef struct ConstantBufferBody
 #define CLIP_MAX_POINT_WIDTH_MASK       0x7ff
 #define CLIP_FORCE_ZERO_RTA_INDEX       (1 << 5)
 #define CLIP_MAX_VP_INDEX_SHIFT         0
-#define CLIP_MAX_VP_INDE_MASK           0xf
+#define CLIP_MAX_VP_INDEX_MASK          0xf
 
 // ------------------------------------------------------------------------------------------------
 // 10.3.5.1 3DSTATE_DRAWING_RECTANGLE
@@ -1063,10 +1075,10 @@ typedef struct SFClipViewport
     float transY;
     float transZ;
     float pad0[2];
-    float guardbandMinX;
-    float guardbandMaxX;
-    float guardbandMinY;
-    float guardbandMaxY;
+    float guardbandMinX;            // NDC space
+    float guardbandMaxX;            // NDC space
+    float guardbandMinY;            // NDC space
+    float guardbandMaxY;            // NDC space
     float pad1[4];
 } SFClipViewport;
 
