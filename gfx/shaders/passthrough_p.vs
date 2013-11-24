@@ -14,8 +14,8 @@
 
 // Mode: SIMD4x2
 
-mov  (8) r126<8>:f r0<8>:f {NoMask}       // Copy header to output (don't use execution mask)  
-mov  (1) r126.5 0x0000FF00:ud  {NoMask}   // Set the channel enable mask in header
-mov  (8) r127<4>.xyzw:f r1<4>.xyzw:f      // Pass through the vertices (unmodified)
-send (8) null r126:f 0x26 0x04084000      // Send EOT | URB , URB_WRITE_HWORD | URB_INTERLEAVED | HEADER_PRESENT
+mov  (8) g126<1>f r0<1>f {NoMask};         // Copy header to output (don't use execution mask)  
+mov  (1) g126.5 0x0000FF00ud  {NoMask};    // Set the channel enable mask in header
+mov  (8) g127<4>.xyzw g1<4>.xyzw;          // Pass through the vertices (unmodified)
+send (8) null g126 0x26 0x04084000;        // Send EOT | URB , URB_WRITE_HWORD | URB_INTERLEAVED | HEADER_PRESENT
 
