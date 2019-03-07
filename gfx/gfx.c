@@ -394,20 +394,23 @@ static void CreateShaders(GfxDevice *device)
 // ------------------------------------------------------------------------------------------------
 static void CreateTriangle()
 {
-    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.triangleVB, sizeof(float) * 9, sizeof(float));
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.triangleVB, sizeof(float) * 12, sizeof(float));
     float* p = (float *)s_gfxDevice.triangleVB.cpuAddr;
 
     *p++ = 0.0f;
     *p++ = 0.5f;
     *p++ = 0.5f;
+    *p++ = 1.0f;
 
     *p++ = 0.5f;
     *p++ = -0.5f;
     *p++ = 0.5f;
+    *p++ = 1.0f;
 
     *p++ = -0.5f;
     *p++ = -0.5f;
     *p++ = 0.5f;
+    *p++ = 1.0f;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -523,9 +526,9 @@ static void CreateTestBatchBuffer(GfxDevice *device)
     *cmd++ =
           (0 << VB_INDEX_SHIFT)
         | VB_ADDRESS_MODIFY
-        | ((sizeof(float) * 3) << VB_PITCH_SHIFT);
+        | ((sizeof(float) * 4) << VB_PITCH_SHIFT);
     *cmd++ = device->triangleVB.gfxAddr;
-    *cmd++ = device->triangleVB.gfxAddr + sizeof(float) * 9 - 1;
+    *cmd++ = device->triangleVB.gfxAddr + sizeof(float) * 12 - 1;
     *cmd++ = 0;
 
     // Vertex Elements
@@ -533,13 +536,13 @@ static void CreateTestBatchBuffer(GfxDevice *device)
     *cmd++ =
           (0 << VE_INDEX_SHIFT)
         | VE_VALID
-        | (FMT_R32G32B32_FLOAT << VE_FORMAT_SHIFT)
+        | (FMT_R32G32B32A32_FLOAT << VE_FORMAT_SHIFT)
         | (0 << VE_OFFSET_SHIFT);
     *cmd++ =
           (VFCOMP_STORE_SRC << VE_COMP0_SHIFT)
         | (VFCOMP_STORE_SRC << VE_COMP1_SHIFT)
         | (VFCOMP_STORE_SRC << VE_COMP2_SHIFT)
-        | (VFCOMP_STORE_1_FP << VE_COMP3_SHIFT);
+        | (VFCOMP_STORE_SRC << VE_COMP3_SHIFT);
 
     // Vertex Fetch State
     *cmd++ = _3DSTATE_VF_STATISTICS;
