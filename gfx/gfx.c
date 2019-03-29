@@ -270,7 +270,7 @@ static void CreateStates(GfxDevice *device)
 {
     // Create heaps
     InitHeap(device, &device->dynamicHeap, 8 * KB, 64);
-    InitHeap(device, &device->surfaceHeap, 4 * KB, 64);
+    InitHeap(device, &device->surfaceHeap, 8 * KB, 64);
 
     // Color Calc State - Dynamic State
     device->colorCalcStateTable = (ColorCalcState *)HeapAlloc(&device->dynamicHeap, sizeof(ColorCalcState), COLOR_CALC_TABLE_ALIGN);
