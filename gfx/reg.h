@@ -2140,8 +2140,8 @@ typedef struct SurfaceState
 {
     u32 flags0;
     u32 baseAddr;
-    u16 height;
     u16 width;
+    u16 height;
     u32 pitchDepth;
     u32 flags1;
     u32 flags2;

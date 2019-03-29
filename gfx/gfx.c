@@ -67,6 +67,7 @@ typedef struct GfxDevice
     u32                *bindingTable[SHADER_COUNT];
     CCViewport         *ccViewportTable;
     SFClipViewport     *sfClipViewportTable;
+    SurfaceState       *surfaceState;
 
     GfxHeap             surfaceHeap;
     SamplerState       *samplerTable[SHADER_COUNT];
@@ -349,6 +350,19 @@ static void CreateStates(GfxDevice *device)
     }
 
     // Scissor State  - Dynamic State (ignore for now as it is disabled in the SF state)
+
+    // Render Surface State
+    device->surfaceState = (SurfaceState *)HeapAlloc(&device->surfaceHeap, sizeof(SurfaceState), BINDING_TABLE_ALIGN);
+    SurfaceState * surfaceState = device->surfaceState;
+    surfaceState->flags0 =
+          SURFTYPE_2D << SURFACE_TYPE_SHIFT
+        | FMT_B8G8R8A8_UNORM << SURFACE_FORMAT_SHIFT;
+    surfaceState->baseAddr = device->surface.gfxAddr;
+    surfaceState->width = SCREEN_WIDTH - 1;
+    surfaceState->height = SCREEN_HEIGHT - 1;
+    surfaceState->pitchDepth =
+        (SCREEN_WIDTH * sizeof(u32) - 1) << SURFACE_PITCH_SHIFT;
+    surfaceState->flags4 = 0;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -416,7 +430,7 @@ static void CreateTestBatchBuffer(GfxDevice *device)
 
     // Binding Tables
     u32* psBindingTable = device->bindingTable[SHADER_PS];
-    psBindingTable[0] = device->surface.gfxAddr;
+    psBindingTable[0] = (u8*)device->surfaceState - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_VS;
     *cmd++ = (u8*)device->bindingTable[SHADER_VS] - device->surfaceHeap.storage.cpuAddr;
