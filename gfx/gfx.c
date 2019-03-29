@@ -250,6 +250,7 @@ static bool ValidateChipset()
 static void InitHeap(GfxDevice *device, GfxHeap *heap, uint size, uint align)
 {
     GfxAlloc(&device->memManager, &heap->storage, size, align);
+    memset(heap->storage.cpuAddr, 0, size);
     heap->size = size;
     heap->next = 0;
 }
