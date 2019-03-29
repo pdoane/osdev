@@ -419,35 +419,35 @@ static void CreateTestBatchBuffer(GfxDevice *device)
     psBindingTable[0] = device->surface.gfxAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_VS;
-    *cmd++ = (u8*)device->bindingTable[SHADER_VS] - device->dynamicHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_VS] - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_HS;
-    *cmd++ = (u8*)device->bindingTable[SHADER_HS] - device->dynamicHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_HS] - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_DS;
-    *cmd++ = (u8*)device->bindingTable[SHADER_DS] - device->dynamicHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_DS] - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_GS;
-    *cmd++ = (u8*)device->bindingTable[SHADER_GS] - device->dynamicHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_GS] - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_PS;
-    *cmd++ = (u8*)device->bindingTable[SHADER_PS] - device->dynamicHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_PS] - device->surfaceHeap.storage.cpuAddr;
 
     // Sampler Tables
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_VS;
-    *cmd++ = (u8*)device->samplerTable[SHADER_VS] - device->surfaceHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_VS] - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_HS;
-    *cmd++ = (u8*)device->samplerTable[SHADER_HS] - device->surfaceHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_HS] - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_DS;
-    *cmd++ = (u8*)device->samplerTable[SHADER_DS] - device->surfaceHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_DS] - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_GS;
-    *cmd++ = (u8*)device->samplerTable[SHADER_GS] - device->surfaceHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_GS] - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_PS;
-    *cmd++ = (u8*)device->samplerTable[SHADER_PS] - device->surfaceHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_PS] - device->dynamicHeap.storage.cpuAddr;
 
     // Viewport State
     *cmd++ = _3DSTATE_VIEWPORT_STATE_POINTERS_CC;
