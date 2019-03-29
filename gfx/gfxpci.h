@@ -25,4 +25,4 @@ void GfxInitPci(GfxPci *pci);
 u32 GfxRead32(GfxPci *pci, uint reg);
 u64 GfxRead64(GfxPci *pci, uint reg);
 void GfxWrite32(GfxPci *pci, uint reg, u32 value);
-void GfxWrite64(GfxPci *pci, uint reg, u32 value);
+void GfxWrite64(GfxPci *pci, uint reg, u64 value);

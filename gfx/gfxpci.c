@@ -53,7 +53,7 @@ void GfxWrite32(GfxPci *pci, uint reg, u32 value)
 }
 
 // ------------------------------------------------------------------------------------------------
-void GfxWrite64(GfxPci *pci, uint reg, u32 value)
+void GfxWrite64(GfxPci *pci, uint reg, u64 value)
 {
     MmioWrite64((u8 *)pci->mmioBar + reg, value);
 }
