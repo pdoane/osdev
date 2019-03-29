@@ -791,6 +791,9 @@ void GfxStart()
     GfxWrite32(&s_gfxDevice.pci, CUR_CTL_A, CUR_MODE_ARGB | CUR_MODE_64_32BPP);
     GfxWrite32(&s_gfxDevice.pci, CUR_BASE_A, s_gfxDevice.cursor.gfxAddr);
 
+    // Setup resolution
+    GfxWrite32(&s_gfxDevice.pci, PIPE_SRCSZ_A, ((SCREEN_WIDTH - 1) << 16) + (SCREEN_HEIGHT - 1));
+
     // Log initial port state
     GfxPrintPortState();
 
