@@ -608,8 +608,8 @@ static void CreateTestBatchBuffer(GfxDevice *device)
     *cmd++ = _3DSTATE_DRAWING_RECTANGLE;
     *cmd++ = 0;
     *cmd++ =
-          (SCREEN_HEIGHT << DRAWING_RECT_Y_MAX_SHIFT)
-        | (SCREEN_WIDTH << DRAWING_RECT_X_MAX_SHIFT);
+          ((SCREEN_HEIGHT - 1) << DRAWING_RECT_Y_MAX_SHIFT)
+        | ((SCREEN_WIDTH - 1) << DRAWING_RECT_X_MAX_SHIFT);
     *cmd++ = 0;
 
     *cmd++ = _3DSTATE_SF;
