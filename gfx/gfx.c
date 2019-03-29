@@ -371,8 +371,22 @@ static void CreateShaders(GfxDevice *device)
 {
     InitHeap(device, &device->instructionHeap, 4 * KB, 64);
 
-    device->shaderObjs[VS_PASSTHROUGH_P] = 0;  // TODO
-    device->shaderObjs[PS8_SOLID_FF8040FF] = 0;
+    {
+        #include "gfx/shaders/passthrough_p.vs.c"
+
+        device->shaderObjs[VS_PASSTHROUGH_P] = (u32*)HeapAlloc(&device->instructionHeap, sizeof(gen_eu_bytes), 64);
+        memcpy(device->shaderObjs[VS_PASSTHROUGH_P], gen_eu_bytes, sizeof(gen_eu_bytes));
+    }
+
+    {
+        #include "gfx/shaders/solid_ff8040ff.ps.h"
+        #include "gfx/shaders/solid_ff8040ff.ps.c"
+
+        u32 shaderSize = (solid_ff8040ff_dispatch8_end_IP - solid_ff8040ff_dispatch8_begin_IP) * 32;
+        device->shaderObjs[PS8_SOLID_FF8040FF] = (u32*)HeapAlloc(&device->instructionHeap, shaderSize, 64);
+        memcpy(device->shaderObjs[PS8_SOLID_FF8040FF], gen_eu_bytes + solid_ff8040ff_dispatch8_begin_IP * 32, shaderSize);
+    }
+
     device->shaderObjs[PS16_SOLID_FF8040FF] = 0;
     device->shaderObjs[PS32_SOLID_FF8040FF] = 0;
 }
@@ -663,13 +677,13 @@ static void CreateTestBatchBuffer(GfxDevice *device)
     *cmd++ = 0;
     *cmd++ =
           (15 << PS_MAX_THREAD_SHIFT)
-        | PS_DISPATCH8;
+        | PS_DISPATCH8; // dispatch16 and dispatch 32 disabled
     *cmd++ =
           (1 << PS_DISPATCH0_GRF_SHIFT)
         | (1 << PS_DISPATCH1_GRF_SHIFT)
         | (1 << PS_DISPATCH2_GRF_SHIFT);
-    *cmd++ = (u8*)device->shaderObjs[PS16_SOLID_FF8040FF] - device->instructionHeap.storage.cpuAddr;   // TODO - order of kernels?
-    *cmd++ = (u8*)device->shaderObjs[PS32_SOLID_FF8040FF] - device->instructionHeap.storage.cpuAddr;
+    *cmd++ = 0;
+    *cmd++ = 0;
 
     *cmd++ = _3DSTATE_CONSTANT_PS;
     *cmd++ = 0;
