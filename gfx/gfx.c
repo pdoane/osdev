@@ -67,6 +67,7 @@ typedef struct GfxDevice
     u32                *bindingTable[SHADER_COUNT];
     CCViewport         *ccViewportTable;
     SFClipViewport     *sfClipViewportTable;
+    SurfaceState       *surfaceState;
 
     GfxHeap             surfaceHeap;
     SamplerState       *samplerTable[SHADER_COUNT];
@@ -249,6 +250,7 @@ static bool ValidateChipset()
 static void InitHeap(GfxDevice *device, GfxHeap *heap, uint size, uint align)
 {
     GfxAlloc(&device->memManager, &heap->storage, size, align);
+    memset(heap->storage.cpuAddr, 0, size);
     heap->size = size;
     heap->next = 0;
 }
@@ -270,7 +272,7 @@ static void CreateStates(GfxDevice *device)
 {
     // Create heaps
     InitHeap(device, &device->dynamicHeap, 8 * KB, 64);
-    InitHeap(device, &device->surfaceHeap, 4 * KB, 64);
+    InitHeap(device, &device->surfaceHeap, 8 * KB, 64);
 
     // Color Calc State - Dynamic State
     device->colorCalcStateTable = (ColorCalcState *)HeapAlloc(&device->dynamicHeap, sizeof(ColorCalcState), COLOR_CALC_TABLE_ALIGN);
@@ -349,6 +351,19 @@ static void CreateStates(GfxDevice *device)
     }
 
     // Scissor State  - Dynamic State (ignore for now as it is disabled in the SF state)
+
+    // Render Surface State
+    device->surfaceState = (SurfaceState *)HeapAlloc(&device->surfaceHeap, sizeof(SurfaceState), BINDING_TABLE_ALIGN);
+    SurfaceState * surfaceState = device->surfaceState;
+    surfaceState->flags0 =
+          SURFTYPE_2D << SURFACE_TYPE_SHIFT
+        | FMT_B8G8R8A8_UNORM << SURFACE_FORMAT_SHIFT;
+    surfaceState->baseAddr = device->surface.gfxAddr;
+    surfaceState->width = SCREEN_WIDTH - 1;
+    surfaceState->height = SCREEN_HEIGHT - 1;
+    surfaceState->pitchDepth =
+        (SCREEN_WIDTH * sizeof(u32) - 1) << SURFACE_PITCH_SHIFT;
+    surfaceState->flags4 = 0;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -356,8 +371,22 @@ static void CreateShaders(GfxDevice *device)
 {
     InitHeap(device, &device->instructionHeap, 4 * KB, 64);
 
-    device->shaderObjs[VS_PASSTHROUGH_P] = 0;  // TODO
-    device->shaderObjs[PS8_SOLID_FF8040FF] = 0;
+    {
+        #include "gfx/shaders/passthrough_p.vs.c"
+
+        device->shaderObjs[VS_PASSTHROUGH_P] = (u32*)HeapAlloc(&device->instructionHeap, sizeof(gen_eu_bytes), 64);
+        memcpy(device->shaderObjs[VS_PASSTHROUGH_P], gen_eu_bytes, sizeof(gen_eu_bytes));
+    }
+
+    {
+        #include "gfx/shaders/solid_ff8040ff.ps.h"
+        #include "gfx/shaders/solid_ff8040ff.ps.c"
+
+        u32 shaderSize = (solid_ff8040ff_dispatch8_end_IP - solid_ff8040ff_dispatch8_begin_IP) * 32;
+        device->shaderObjs[PS8_SOLID_FF8040FF] = (u32*)HeapAlloc(&device->instructionHeap, shaderSize, 64);
+        memcpy(device->shaderObjs[PS8_SOLID_FF8040FF], gen_eu_bytes + solid_ff8040ff_dispatch8_begin_IP * 32, shaderSize);
+    }
+
     device->shaderObjs[PS16_SOLID_FF8040FF] = 0;
     device->shaderObjs[PS32_SOLID_FF8040FF] = 0;
 }
@@ -365,20 +394,23 @@ static void CreateShaders(GfxDevice *device)
 // ------------------------------------------------------------------------------------------------
 static void CreateTriangle()
 {
-    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.triangleVB, sizeof(float) * 9, sizeof(float));
+    GfxAlloc(&s_gfxDevice.memManager, &s_gfxDevice.triangleVB, sizeof(float) * 12, sizeof(float));
     float* p = (float *)s_gfxDevice.triangleVB.cpuAddr;
 
     *p++ = 0.0f;
     *p++ = 0.5f;
     *p++ = 0.5f;
+    *p++ = 1.0f;
 
     *p++ = 0.5f;
     *p++ = -0.5f;
     *p++ = 0.5f;
+    *p++ = 1.0f;
 
     *p++ = -0.5f;
     *p++ = -0.5f;
     *p++ = 0.5f;
+    *p++ = 1.0f;
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -416,38 +448,38 @@ static void CreateTestBatchBuffer(GfxDevice *device)
 
     // Binding Tables
     u32* psBindingTable = device->bindingTable[SHADER_PS];
-    psBindingTable[0] = device->surface.gfxAddr;
+    psBindingTable[0] = (u8*)device->surfaceState - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_VS;
-    *cmd++ = (u8*)device->bindingTable[SHADER_VS] - device->dynamicHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_VS] - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_HS;
-    *cmd++ = (u8*)device->bindingTable[SHADER_HS] - device->dynamicHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_HS] - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_DS;
-    *cmd++ = (u8*)device->bindingTable[SHADER_DS] - device->dynamicHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_DS] - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_GS;
-    *cmd++ = (u8*)device->bindingTable[SHADER_GS] - device->dynamicHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_GS] - device->surfaceHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_BINDING_TABLE_POINTERS_PS;
-    *cmd++ = (u8*)device->bindingTable[SHADER_PS] - device->dynamicHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->bindingTable[SHADER_PS] - device->surfaceHeap.storage.cpuAddr;
 
     // Sampler Tables
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_VS;
-    *cmd++ = (u8*)device->samplerTable[SHADER_VS] - device->surfaceHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_VS] - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_HS;
-    *cmd++ = (u8*)device->samplerTable[SHADER_HS] - device->surfaceHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_HS] - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_DS;
-    *cmd++ = (u8*)device->samplerTable[SHADER_DS] - device->surfaceHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_DS] - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_GS;
-    *cmd++ = (u8*)device->samplerTable[SHADER_GS] - device->surfaceHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_GS] - device->dynamicHeap.storage.cpuAddr;
 
     *cmd++ = _3DSTATE_SAMPLER_STATE_POINTERS_PS;
-    *cmd++ = (u8*)device->samplerTable[SHADER_PS] - device->surfaceHeap.storage.cpuAddr;
+    *cmd++ = (u8*)device->samplerTable[SHADER_PS] - device->dynamicHeap.storage.cpuAddr;
 
     // Viewport State
     *cmd++ = _3DSTATE_VIEWPORT_STATE_POINTERS_CC;
@@ -494,9 +526,9 @@ static void CreateTestBatchBuffer(GfxDevice *device)
     *cmd++ =
           (0 << VB_INDEX_SHIFT)
         | VB_ADDRESS_MODIFY
-        | ((sizeof(float) * 3) << VB_PITCH_SHIFT);
+        | ((sizeof(float) * 4) << VB_PITCH_SHIFT);
     *cmd++ = device->triangleVB.gfxAddr;
-    *cmd++ = device->triangleVB.gfxAddr + sizeof(float) * 9 - 1;
+    *cmd++ = device->triangleVB.gfxAddr + sizeof(float) * 12 - 1;
     *cmd++ = 0;
 
     // Vertex Elements
@@ -504,13 +536,13 @@ static void CreateTestBatchBuffer(GfxDevice *device)
     *cmd++ =
           (0 << VE_INDEX_SHIFT)
         | VE_VALID
-        | (FMT_R32G32B32_FLOAT << VE_FORMAT_SHIFT)
+        | (FMT_R32G32B32A32_FLOAT << VE_FORMAT_SHIFT)
         | (0 << VE_OFFSET_SHIFT);
     *cmd++ =
           (VFCOMP_STORE_SRC << VE_COMP0_SHIFT)
         | (VFCOMP_STORE_SRC << VE_COMP1_SHIFT)
         | (VFCOMP_STORE_SRC << VE_COMP2_SHIFT)
-        | (VFCOMP_STORE_1_FP << VE_COMP3_SHIFT);
+        | (VFCOMP_STORE_SRC << VE_COMP3_SHIFT);
 
     // Vertex Fetch State
     *cmd++ = _3DSTATE_VF_STATISTICS;
@@ -608,8 +640,8 @@ static void CreateTestBatchBuffer(GfxDevice *device)
     *cmd++ = _3DSTATE_DRAWING_RECTANGLE;
     *cmd++ = 0;
     *cmd++ =
-          (SCREEN_HEIGHT << DRAWING_RECT_Y_MAX_SHIFT)
-        | (SCREEN_WIDTH << DRAWING_RECT_X_MAX_SHIFT);
+          ((SCREEN_HEIGHT - 1) << DRAWING_RECT_Y_MAX_SHIFT)
+        | ((SCREEN_WIDTH - 1) << DRAWING_RECT_X_MAX_SHIFT);
     *cmd++ = 0;
 
     *cmd++ = _3DSTATE_SF;
@@ -648,13 +680,13 @@ static void CreateTestBatchBuffer(GfxDevice *device)
     *cmd++ = 0;
     *cmd++ =
           (15 << PS_MAX_THREAD_SHIFT)
-        | PS_DISPATCH8;
+        | PS_DISPATCH8; // dispatch16 and dispatch 32 disabled
     *cmd++ =
           (1 << PS_DISPATCH0_GRF_SHIFT)
         | (1 << PS_DISPATCH1_GRF_SHIFT)
         | (1 << PS_DISPATCH2_GRF_SHIFT);
-    *cmd++ = (u8*)device->shaderObjs[PS16_SOLID_FF8040FF] - device->instructionHeap.storage.cpuAddr;   // TODO - order of kernels?
-    *cmd++ = (u8*)device->shaderObjs[PS32_SOLID_FF8040FF] - device->instructionHeap.storage.cpuAddr;
+    *cmd++ = 0;
+    *cmd++ = 0;
 
     *cmd++ = _3DSTATE_CONSTANT_PS;
     *cmd++ = 0;
@@ -790,6 +822,9 @@ void GfxStart()
     // Setup Cursor Plane
     GfxWrite32(&s_gfxDevice.pci, CUR_CTL_A, CUR_MODE_ARGB | CUR_MODE_64_32BPP);
     GfxWrite32(&s_gfxDevice.pci, CUR_BASE_A, s_gfxDevice.cursor.gfxAddr);
+
+    // Setup resolution
+    GfxWrite32(&s_gfxDevice.pci, PIPE_SRCSZ_A, ((SCREEN_WIDTH - 1) << 16) + (SCREEN_HEIGHT - 1));
 
     // Log initial port state
     GfxPrintPortState();

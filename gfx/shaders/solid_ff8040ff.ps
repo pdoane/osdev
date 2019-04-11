@@ -19,15 +19,15 @@
 // C7.a C6.a C5.a C4.a C3.a C2.a C1.a C0.a   - r127
 //
 
-solid_ff8040ff_dispatch8:
-mov (1) g2<1>F 0x30201030VF;  // Unpack immediate vector
+solid_ff8040ff_dispatch8_begin:
+mov (4) g2<1>F 0x30201030VF;  // Unpack immediate vector
 mov (8) g124<1>F g2.0<0;1,0>F;   // Copy red to output
-mov (8) g125<1>F g2.1<0;1,0>F;   // Copy green to output
-mov (8) g126<1>F g2.2<0;1,0>F;   // Copy blue to output
-mov (8) g127<1>F g2.3<0;1,0>F;   // Copy alpha to output
+mov (8) g125<1>F g2.4<0;1,0>F;   // Copy green to output
+mov (8) g126<1>F g2.8<0;1,0>F;   // Copy blue to output
+mov (8) g127<1>F g2.12<0;1,0>F;  // Copy alpha to output
 send (8) null g124 0x25 0x08031400;        // Send EOT | Render Cache DP, RENDER_TARGET_WRITE | LAST_RENDER_TARGET | SLOTGRP_LO | SIMD8_LO | BINDING_TABLE_IDX(0)
 
-
+solid_ff8040ff_dispatch8_end:
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 // Kernel 1: 32-pixel Dispatch - SIMD16 mode
@@ -60,19 +60,20 @@ send (8) null g124 0x25 0x08031400;        // Send EOT | Render Cache DP, RENDER
 // C31.a C30.a C29.a C28.a C27.a C26.a C25.a C24.a   - r127
 //
 
-solid_ff8040ff_dispatch32:
-mov (1) g2<1>f 0x30201030:vf;  // Unpack immediate vector
+solid_ff8040ff_dispatch32_begin:
+mov (4) g2<1>f 0x30201030:vf;  // Unpack immediate vector
 mov (16) g112<1>f g2.0<0;1,0>f;   // Copy red to output
 mov (16) g120<1>f g2.0<0;1,0>f;   // Copy red to output
-mov (16) g114<1>f g2.1<0;1,0>f;   // Copy green to output
-mov (16) g122<1>f g2.1<0;1,0>f;   // Copy green to output
-mov (16) g116<1>f g2.2<0;1,0>f;   // Copy blue to output
-mov (16) g124<1>f g2.2<0;1,0>f;   // Copy blue to output
-mov (16) g118<1>f g2.3<0;1,0>f;   // Copy alpha to output
-mov (16) g126<1>f g2.3<0;1,0>f;   // Copy alpha to output
+mov (16) g114<1>f g2.4<0;1,0>f;   // Copy green to output
+mov (16) g122<1>f g2.4<0;1,0>f;   // Copy green to output
+mov (16) g116<1>f g2.8<0;1,0>f;   // Copy blue to output
+mov (16) g124<1>f g2.8<0;1,0>f;   // Copy blue to output
+mov (16) g118<1>f g2.12<0;1,0>f;  // Copy alpha to output
+mov (16) g126<1>f g2.12<0;1,0>f;  // Copy alpha to output
 send (16) null g124 0x05 0x10031000;  // Send Render Cache DP, RENDER_TARGET_WRITE | LAST_RENDER_TARGET | SLOTGRP_LO | SIMD16 | BINDING_TABLE_IDX(0)
 send (16) null g124 0x25 0x10031700;  // Send EOT | Render Cache DP, RENDER_TARGET_WRITE | LAST_RENDER_TARGET | SLOTGRP_HI | SIMD16 | BINDING_TABLE_IDX(0)
 
+solid_ff8040ff_dispatch32_end:
 
 /////////////////////////////////////////////////////////////////////////////////////////////
 // Kernel 2: 16-pixel Dispatch - SIMD16 mode
@@ -97,11 +98,13 @@ send (16) null g124 0x25 0x10031700;  // Send EOT | Render Cache DP, RENDER_TARG
 // C15.a C14.a C13.a C12.a C11.a C10.a C09.a C08.a   - r127
 //
 
-solid_ff8040ff_dispatch16:
+solid_ff8040ff_dispatch16_begin:
 
-mov (1) g2<1>f 0x30201030vf;  // Unpack immediate vector
+mov (4) g2<1>f 0x30201030vf;  // Unpack immediate vector
 mov (16) g120<1>f g2.0<0;1,0>f;   // Copy red to output
-mov (16) g122<1>f g2.1<0;1,0>f;   // Copy green to output
-mov (16) g124<1>f g2.2<0;1,0>f;   // Copy blue to output
-mov (16) g126<1>f g2.3<0;1,0>f;   // Copy alpha to output
+mov (16) g122<1>f g2.4<0;1,0>f;   // Copy green to output
+mov (16) g124<1>f g2.8<0;1,0>f;   // Copy blue to output
+mov (16) g126<1>f g2.12<0;1,0>f;  // Copy alpha to output
 send (16) null g120 0x25 0x10031000;  // Send EOT | Render Cache DP, RENDER_TARGET_WRITE | LAST_RENDER_TARGET | SLOTGRP_LO | SIMD16 | BINDING_TABLE_IDX(0)
+
+solid_ff8040ff_dispatch16_end:

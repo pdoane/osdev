@@ -309,7 +309,7 @@ typedef u64 GfxAddress;    // Address in Gfx Virtual space
 
 #define DEPTH_STENCIL_TABLE_ALIGN                   64
 
-#define _3DSTATE_DEPTH_STENCIL_STATE_POINTERS       GFX_INSTR(0x3, 0x0, 0x24, 0)
+#define _3DSTATE_DEPTH_STENCIL_STATE_POINTERS       GFX_INSTR(0x3, 0x0, 0x25, 0)
 
 // DWORD 1 - Pointer to DepthStencilState (relative to Dynamic State Base Address)
 
@@ -2140,8 +2140,8 @@ typedef struct SurfaceState
 {
     u32 flags0;
     u32 baseAddr;
-    u16 height;
     u16 width;
+    u16 height;
     u32 pitchDepth;
     u32 flags1;
     u32 flags2;

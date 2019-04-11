@@ -14,8 +14,9 @@
 
 // Mode: SIMD4x2
 
-mov  (8) g126<1>f r0<1>f {NoMask};         // Copy header to output (don't use execution mask)  
-mov  (1) g126.5 0x0000FF00ud  {NoMask};    // Set the channel enable mask in header
-mov  (8) g127<4>.xyzw g1<4>.xyzw;          // Pass through the vertices (unmodified)
-send (8) null g126 0x26 0x04084000;        // Send EOT | URB , URB_WRITE_HWORD | URB_INTERLEAVED | HEADER_PRESENT
+mov  (8) g125<1>f r0<1>f {NoMask};         // Copy header to output (don't use execution mask)
+mov  (1) g125.20UD 0x0000FF00ud {NoMask};  // Set the channel enable mask in header
+mov  (8) g126<1>UD 0x00000000UD;           // D0-D3 of VUE Vertex Header for URB handle 0 and 1
+mov  (8) g127<1>.xyzw g1<4>.xyzw {align16};// Pass through the vertices (unmodified)
+send (8) null g125 0x26 0x06084000;        // Send EOT | URB , URB_WRITE_HWORD | URB_INTERLEAVED | HEADER_PRESENT
 
